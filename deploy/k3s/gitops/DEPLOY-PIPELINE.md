@@ -1,8 +1,13 @@
 # Deploy-pipeline rewrite — Coolify API → Argo CD GitOps
 
-**Plan only.** This documents how `.forgejo/workflows/deploy-dashboard.yml` changes once
-the K3s cluster + Argo CD are live. **The live workflow is NOT rewritten in this PR** — the
-target shape and the diff are documented here so the cutover PR is mechanical and reviewable.
+**Plan + the now-real workflow.** This documents how `.forgejo/workflows/deploy-dashboard.yml`
+changes once the K3s cluster + Argo CD are live. The build→push→bump pipeline is now
+**implemented** as `.forgejo/workflows/deploy-k3s.yml` (+ the extracted
+`.forgejo/scripts/k3s-build-push-bump.sh`), shipped **behind the `K3S_DEPLOY_ENABLED` Forgejo
+Actions variable** so it can land and be reviewed without yanking the proven Coolify path out
+from under prod. On cutover day: set `K3S_DEPLOY_ENABLED=1` (org/repo Actions variable) and
+retire `deploy-dashboard.yml` (Coolify). Until then `deploy-k3s.yml` no-ops on every trigger.
+The §4 sketch below is the design rationale; the live code is the workflow + script.
 
 Source of truth: `planning/k3s-cluster-target-design.md` §8.
 

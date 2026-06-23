@@ -1,19 +1,19 @@
 /**
- * Verified-context runtime helpers for AAIF (Stage 4.3).
+ * Verified-context runtime helpers for Dispatch (Stage 4.3).
  *
  * These helpers let non-MCP agent frameworks (LangChain, LlamaIndex, custom
- * orchestrators) work with the verified-claim envelopes carried on AAIF
+ * orchestrators) work with the verified-claim envelopes carried on Dispatch
  * request/response payloads without importing @restormel/contracts or Zod.
  *
  * Placement: docs/decisions/aaif-envelope-placement.md (Stage 4.3 update).
  */
 import type {
-  AAIFVerifiedClaimEnvelope,
-  AAIFVerifiedClaimState,
-  AAIFVerifiedContextInput,
-  AAIFVerifiedContextOutput,
-  AAIFRequest,
-  AAIFResponse,
+  DispatchVerifiedClaimEnvelope,
+  DispatchVerifiedClaimState,
+  DispatchVerifiedContextInput,
+  DispatchVerifiedContextOutput,
+  DispatchRequest,
+  DispatchResponse,
 } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -22,7 +22,7 @@ import type {
 
 /**
  * Build a per-state count summary from an array of verified claim envelopes.
- * Use this to produce the `summary` field on AAIFVerifiedContextOutput without
+ * Use this to produce the `summary` field on DispatchVerifiedContextOutput without
  * iterating the claims array yourself.
  *
  * @example
@@ -30,9 +30,9 @@ import type {
  * // { supported: 3, inferred: 1, unverified: 0 }
  */
 export function summariseVerifiedClaims(
-  claims: AAIFVerifiedClaimEnvelope[],
-): Partial<Record<AAIFVerifiedClaimState, number>> {
-  const counts: Partial<Record<AAIFVerifiedClaimState, number>> = {};
+  claims: DispatchVerifiedClaimEnvelope[],
+): Partial<Record<DispatchVerifiedClaimState, number>> {
+  const counts: Partial<Record<DispatchVerifiedClaimState, number>> = {};
   for (const c of claims) {
     counts[c.state] = (counts[c.state] ?? 0) + 1;
   }
@@ -50,9 +50,9 @@ export function summariseVerifiedClaims(
  * const supported = filterClaimsByState(response.verifiedContext, "supported");
  */
 export function filterClaimsByState(
-  ctx: AAIFVerifiedContextInput | AAIFVerifiedContextOutput | undefined | null,
-  state: AAIFVerifiedClaimState,
-): AAIFVerifiedClaimEnvelope[] {
+  ctx: DispatchVerifiedContextInput | DispatchVerifiedContextOutput | undefined | null,
+  state: DispatchVerifiedClaimState,
+): DispatchVerifiedClaimEnvelope[] {
   if (!ctx) return [];
   return ctx.claims.filter((c) => c.state === state);
 }
@@ -67,7 +67,7 @@ export function filterClaimsByState(
  * }
  */
 export function allClaimsSupported(
-  ctx: AAIFVerifiedContextInput | AAIFVerifiedContextOutput | undefined | null,
+  ctx: DispatchVerifiedContextInput | DispatchVerifiedContextOutput | undefined | null,
 ): boolean {
   if (!ctx || ctx.claims.length === 0) return false;
   return ctx.claims.every((c) => c.state === "supported");
@@ -77,7 +77,7 @@ export function allClaimsSupported(
  * True if any claim in the context block has `state === "contradicted"`.
  */
 export function hasContradictedClaims(
-  ctx: AAIFVerifiedContextInput | AAIFVerifiedContextOutput | undefined | null,
+  ctx: DispatchVerifiedContextInput | DispatchVerifiedContextOutput | undefined | null,
 ): boolean {
   if (!ctx) return false;
   return ctx.claims.some((c) => c.state === "contradicted");
@@ -88,21 +88,21 @@ export function hasContradictedClaims(
 // ---------------------------------------------------------------------------
 
 /**
- * Build an AAIFVerifiedContextInput from an array of verified claim envelopes.
+ * Build a DispatchVerifiedContextInput from an array of verified claim envelopes.
  * Use after fetching claims from Connect v1 `retrieve` or the MCP
- * `connect.retrieve_verified` tool before embedding them in an AAIFRequest.
+ * `connect.retrieve_verified` tool before embedding them in a DispatchRequest.
  *
  * @example
  * const connectClaims = await connectClient.retrieve(query);
- * const request: AAIFRequest = {
+ * const request: DispatchRequest = {
  *   input: buildPromptWithClaims(connectClaims),
  *   verifiedContext: buildVerifiedContextInput(connectClaims, traceRef),
  * };
  */
 export function buildVerifiedContextInput(
-  claims: AAIFVerifiedClaimEnvelope[],
+  claims: DispatchVerifiedClaimEnvelope[],
   retrievalTraceRef?: string | null,
-): AAIFVerifiedContextInput {
+): DispatchVerifiedContextInput {
   return {
     claims,
     ...(retrievalTraceRef != null ? { retrieval_trace_ref: retrievalTraceRef } : {}),
@@ -110,14 +110,14 @@ export function buildVerifiedContextInput(
 }
 
 /**
- * Build an AAIFVerifiedContextOutput from an array of verified claim envelopes,
+ * Build a DispatchVerifiedContextOutput from an array of verified claim envelopes,
  * computing the summary automatically.
  *
  * Use this inside a host's generate callback or post-processing step to attach
- * verification metadata to the AAIF response.
+ * verification metadata to the Dispatch response.
  *
  * @example
- * const response = await executeAAIFRequest(request, keys, {
+ * const response = await executeDispatchRequest(request, keys, {
  *   generate: async (ctx) => {
  *     const output = await myLlm(ctx.request.input);
  *     return output;
@@ -126,9 +126,9 @@ export function buildVerifiedContextInput(
  * response.verifiedContext = buildVerifiedContextOutput(claims, request.verifiedContext?.retrieval_trace_ref);
  */
 export function buildVerifiedContextOutput(
-  claims: AAIFVerifiedClaimEnvelope[],
+  claims: DispatchVerifiedClaimEnvelope[],
   retrievalTraceRef?: string | null,
-): AAIFVerifiedContextOutput {
+): DispatchVerifiedContextOutput {
   return {
     claims,
     summary: summariseVerifiedClaims(claims),
@@ -141,30 +141,30 @@ export function buildVerifiedContextOutput(
 // ---------------------------------------------------------------------------
 
 /**
- * Extract the verified context input block from an AAIF request, or `undefined`
+ * Extract the verified context input block from a Dispatch request, or `undefined`
  * if the request carries no verified context.
  */
 export function getRequestVerifiedContext(
-  request: AAIFRequest,
-): AAIFVerifiedContextInput | undefined {
+  request: DispatchRequest,
+): DispatchVerifiedContextInput | undefined {
   return request.verifiedContext;
 }
 
 /**
- * Extract the verified context output block from an AAIF response, or `undefined`
+ * Extract the verified context output block from a Dispatch response, or `undefined`
  * if the response carries no verified context.
  */
 export function getResponseVerifiedContext(
-  response: AAIFResponse,
-): AAIFVerifiedContextOutput | undefined {
+  response: DispatchResponse,
+): DispatchVerifiedContextOutput | undefined {
   return response.verifiedContext;
 }
 
 /**
- * Convenience: extract only the supported claim envelopes from an AAIF response.
+ * Convenience: extract only the supported claim envelopes from a Dispatch response.
  * Returns an empty array when the response carries no verified context or when no
  * claims are supported.
  */
-export function getSupportedClaims(response: AAIFResponse): AAIFVerifiedClaimEnvelope[] {
+export function getSupportedClaims(response: DispatchResponse): DispatchVerifiedClaimEnvelope[] {
   return filterClaimsByState(response.verifiedContext, "supported");
 }

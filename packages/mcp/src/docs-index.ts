@@ -50,7 +50,7 @@ export const DOC_INDEX: DocIndexEntry[] = [
     section: "cli",
   },
   {
-    title: "AAIF overview",
+    title: "Dispatch overview",
     url: "/keys/docs/integrations/aaif",
     keywords: ["aaif", "contract", "structured", "ai interaction", "routingContext", "resolve"],
     section: "aaif",

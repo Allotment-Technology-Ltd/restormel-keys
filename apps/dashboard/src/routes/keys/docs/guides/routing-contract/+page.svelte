@@ -2,7 +2,7 @@
   <title>Routing contract — Restormel Keys</title>
   <meta
     name="description"
-    content="Canonical routing contract: resolve, stepChain, ingestion workload/stage, simulate diagnostics, MCP and AAIF alignment for SOPHIA-class workloads."
+    content="Canonical routing contract: resolve, stepChain, ingestion workload/stage, simulate diagnostics, MCP and Dispatch alignment for SOPHIA-class workloads."
   />
 </svelte:head>
 
@@ -86,9 +86,9 @@
     <code class="inline-code">GET …/routes/&#123;routeId&#125;/explain-chain</code> returns a compact summary: route metadata, ordered steps (including <code class="inline-code">advanceOn</code> / <code class="inline-code">retryOn</code> hints when present), and policies bound at workspace, project, environment, and route scope (read-only). Optional query <code class="inline-code">includePolicyRuleJson=true</code>. MCP: <code class="inline-code">routing.explain_chain</code>.
   </p>
 
-  <h2>AAIF</h2>
+  <h2>Dispatch</h2>
   <p>
-    <code class="inline-code">@restormel/aaif</code> adds optional <code class="inline-code">routingContext</code> on requests (mirrors resolve hints). The AAIF helper does not call HTTP resolve; use
+    <code class="inline-code">@restormel/dispatch</code> adds optional <code class="inline-code">routingContext</code> on requests (mirrors resolve hints). The Dispatch helper does not call HTTP resolve; use
     <code class="inline-code">@restormel/keys</code> dashboard client <code class="inline-code">resolve()</code> when you need a full <code class="inline-code">stepChain</code>.
   </p>
 

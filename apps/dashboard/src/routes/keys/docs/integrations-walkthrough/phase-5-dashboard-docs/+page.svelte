@@ -12,7 +12,7 @@
       title: "Prompt I07 — Dashboard and doc links",
       intent: "Add a short Restormel Integrations section to README or docs with links to Dashboard and doc pages.",
       contextDocs: ["This page: /keys/docs/integrations-walkthrough/phase-5-dashboard-docs"],
-      prompt: `You are working in [your app repo]. Goal: Add a "Restormel Integrations" section to README or docs. Steps: 1) Add section with links: Dashboard Developer Tools (/keys/dashboard/dev-tools), Integrations walkthrough (/keys/docs/integrations-walkthrough), and the reference for your surface (CLI, MCP, or AAIF). 2) One sentence on what you use. DO NOT: Paste URLs with secrets or session tokens.`,
+      prompt: `You are working in [your app repo]. Goal: Add a "Restormel Integrations" section to README or docs. Steps: 1) Add section with links: Dashboard Developer Tools (/keys/dashboard/dev-tools), Integrations walkthrough (/keys/docs/integrations-walkthrough), and the reference for your surface (CLI, MCP, or Dispatch). 2) One sentence on what you use. DO NOT: Paste URLs with secrets or session tokens.`,
       gate: "README or doc has an Integrations section with at least two correct links.",
     },
   ];
@@ -35,7 +35,7 @@
   <p>This phase ties the Integrations experience together: Developer Tools section, usage path, and doc links.</p>
 
   <h2>Step 5.1 — Developer Tools in the Dashboard</h2>
-  <p>In the Dashboard sidebar, open <strong>Developer Tools</strong>. You see an overview with cards for CLI, MCP, AAIF and tabs: CLI (install + commands), MCP (connection + tools), AAIF (schema + logs when wired).</p>
+  <p>In the Dashboard sidebar, open <strong>Developer Tools</strong>. You see an overview with cards for CLI, MCP, Dispatch and tabs: CLI (install + commands), MCP (connection + tools), Dispatch (schema + logs when wired).</p>
 
   <h2>Step 5.1b — Gateway keys and Connect CLI</h2>
   <p>
@@ -55,7 +55,7 @@
   <p>On the Dashboard <strong>Overview</strong> page, the usage path selector shows your chosen workflow and links to SDK docs, CLI quickstart, or MCP setup, plus Developer tools and "Change."</p>
 
   <h2>Step 5.3 — Doc links</h2>
-  <p>Bookmark: <a href="/keys/docs/guides/keys-testing-onboarding">Keys + Testing onboarding</a>, <a href="/keys/docs/integrations">Integrations overview</a>, <a href="/keys/docs/integrations-walkthrough">Integrations walkthrough</a>, <a href="/keys/docs/integrations/cli">CLI quickstart</a>, <a href="/keys/docs/integrations/mcp">MCP setup</a>, <a href="/keys/docs/integrations/aaif">AAIF overview</a>.</p>
+  <p>Bookmark: <a href="/keys/docs/guides/keys-testing-onboarding">Keys + Testing onboarding</a>, <a href="/keys/docs/integrations">Integrations overview</a>, <a href="/keys/docs/integrations-walkthrough">Integrations walkthrough</a>, <a href="/keys/docs/integrations/cli">CLI quickstart</a>, <a href="/keys/docs/integrations/mcp">MCP setup</a>, <a href="/keys/docs/integrations/aaif">Dispatch overview</a>.</p>
 
   <AgentPromptsSection
     intro="Optional. Use if a coding agent should add Integrations section and links to your docs."

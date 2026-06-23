@@ -7,11 +7,11 @@
 # Order: graph-core first, then ui-graph-svelte (pnpm rewrites workspace:* on graph-core to semver).
 # Same registry/org pattern as Keys (`@restormel/*`). Requires NPM_TOKEN.
 # pnpm version must match root package.json "packageManager" (9.0.0).
+# MIRROR DEDUPE (PBI #248): canonical publisher is .forgejo/workflows/publish-graph.yml
+# (same `graph-v*` tag). `push: tags` removed so a mirror tag-push no longer re-fires this
+# copy → avoids the double npm publish race; workflow_dispatch retained for manual recovery.
 name: Publish Graph packages
 on:
-  push:
-    tags:
-      - "graph-v*"
   workflow_dispatch:
     inputs:
       dry_run:

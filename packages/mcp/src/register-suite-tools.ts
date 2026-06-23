@@ -138,7 +138,7 @@ export function registerHorizonSuiteTools(server: McpServer, flags?: SuiteToolMo
     "routing.capabilities",
     {
       description:
-        "Return a structured summary of Restormel Keys routing features (resolve, simulate, MCP tool names, AAIF note). Read-only; no network. Use so agents know what is possible before calling the control plane.",
+        "Return a structured summary of Restormel Keys routing features (resolve, simulate, MCP tool names, Dispatch note). Read-only; no network. Use so agents know what is possible before calling the control plane.",
       inputSchema: { _noop: z.boolean().optional().describe("Ignored; callers may send an empty object.") },
       outputSchema: routingCapabilitiesOutput,
     },

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { AAIFVerifiedClaimEnvelope, AAIFResponse } from "./types.js";
+import type { DispatchVerifiedClaimEnvelope, DispatchResponse } from "./types.js";
 import {
   summariseVerifiedClaims,
   filterClaimsByState,
@@ -18,8 +18,8 @@ import {
 
 function makeEnvelope(
   id: string,
-  state: AAIFVerifiedClaimEnvelope["state"],
-): AAIFVerifiedClaimEnvelope {
+  state: DispatchVerifiedClaimEnvelope["state"],
+): DispatchVerifiedClaimEnvelope {
   return {
     claim: { id, text: `Claim text for ${id}` },
     state,
@@ -206,7 +206,7 @@ describe("getRequestVerifiedContext", () => {
 });
 
 describe("getResponseVerifiedContext", () => {
-  const baseResponse: AAIFResponse = {
+  const baseResponse: DispatchResponse = {
     output: "result",
     provider: "openai",
     model: "gpt-4o-mini",
@@ -220,13 +220,13 @@ describe("getResponseVerifiedContext", () => {
 
   it("returns the verifiedContext block when present", () => {
     const ctx = buildVerifiedContextOutput([supported1]);
-    const res: AAIFResponse = { ...baseResponse, verifiedContext: ctx };
+    const res: DispatchResponse = { ...baseResponse, verifiedContext: ctx };
     expect(getResponseVerifiedContext(res)).toBe(ctx);
   });
 });
 
 describe("getSupportedClaims", () => {
-  const baseResponse: AAIFResponse = {
+  const baseResponse: DispatchResponse = {
     output: "result",
     provider: "openai",
     model: "gpt-4o-mini",
@@ -240,7 +240,7 @@ describe("getSupportedClaims", () => {
 
   it("returns only supported claims", () => {
     const ctx = buildVerifiedContextOutput([supported1, inferred1, unverified1]);
-    const res: AAIFResponse = { ...baseResponse, verifiedContext: ctx };
+    const res: DispatchResponse = { ...baseResponse, verifiedContext: ctx };
     const result = getSupportedClaims(res);
     expect(result).toHaveLength(1);
     expect(result[0].claim.id).toBe("unit:1");

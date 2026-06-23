@@ -1,4 +1,4 @@
-import type { AAIFLatency, AAIFRequest } from '@restormel/aaif';
+import type { DispatchLatency, DispatchRequest } from '@restormel/dispatch';
 import type { ModelProvider } from '@restormel/contracts/providers';
 import { estimateIngestLlmUsageUsd } from './llm-token-usd-rates.js';
 import type {
@@ -63,7 +63,7 @@ function argumentCountEstimate(context: IngestionPlanningContext): number {
   return Math.max(2, Math.ceil(claimCountEstimate(context) / 8));
 }
 
-function stageLatency(stage: IngestionStage, context: IngestionPlanningContext): AAIFLatency {
+function stageLatency(stage: IngestionStage, context: IngestionPlanningContext): DispatchLatency {
   if (stage === 'json_repair') return 'low';
   if (stage === 'embedding') return 'low';
   const tokens = context.estimatedTokens;
@@ -97,7 +97,7 @@ function stagePass(stage: Exclude<IngestionStage, 'embedding'>): 'analysis' | 's
   return 'analysis';
 }
 
-function latencyToDepth(latency: AAIFLatency): 'quick' | 'standard' | 'deep' {
+function latencyToDepth(latency: DispatchLatency): 'quick' | 'standard' | 'deep' {
   if (latency === 'low') return 'quick';
   if (latency === 'high') return 'deep';
   return 'standard';
@@ -155,11 +155,11 @@ async function resolveRouteBindingForPlan(stage: IngestionStage, deps: IngestPla
 
 function buildStageRestormelContext(options: {
   stage: IngestionStage;
-  task: AAIFRequest['task'];
+  task: DispatchRequest['task'];
   estimatedInputTokens: number;
   estimatedInputChars: number;
   complexity: 'low' | 'medium' | 'high';
-  constraints: AAIFRequest['constraints'];
+  constraints: DispatchRequest['constraints'];
 }) {
   return {
     workload: 'ingestion' as const,
@@ -181,7 +181,7 @@ function stageMaxCost(stage: IngestionStage): number | undefined {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-function buildStageRequest(stage: IngestionStage, context: IngestionPlanningContext): AAIFRequest {
+function buildStageRequest(stage: IngestionStage, context: IngestionPlanningContext): DispatchRequest {
   const claims = claimCountEstimate(context);
   const relations = relationCountEstimate(context);
   const argumentsCount = argumentCountEstimate(context);

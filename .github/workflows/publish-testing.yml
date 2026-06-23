@@ -1,10 +1,10 @@
 # Publish @restormel/testing-* packages to npm (tag testing-v* or manual dispatch).
 # Does not publish Keys packages. Use tag keys-v* → publish.yml for Keys train.
+# MIRROR DEDUPE (PBI #248): canonical publisher is .forgejo/workflows/publish-testing.yml
+# (same `testing-v*` tag). `push: tags` removed so a mirror tag-push no longer re-fires this
+# copy → avoids the double npm publish race; workflow_dispatch retained for manual recovery.
 name: Publish Testing packages
 on:
-  push:
-    tags:
-      - "testing-v*"
   workflow_dispatch:
     inputs:
       dry_run:

@@ -136,7 +136,7 @@
 <ul class="docs-links">
   <li><a href="/keys/docs/cloud-api">Cloud API</a> — policy evaluate and resolve (same surfaces MCP uses)</li>
   <li><a href="/keys/docs/integrations/cli">CLI quickstart</a> — terminal-based tools</li>
-  <li><a href="/keys/docs/integrations/aaif">AAIF overview</a> — structured AI interaction contract</li>
+  <li><a href="/keys/docs/integrations/aaif">Dispatch overview</a> — structured AI interaction contract</li>
   <li><a href="/keys/docs/integrations">All integrations</a></li>
 </ul>
 

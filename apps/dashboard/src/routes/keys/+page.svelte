@@ -99,7 +99,7 @@ pnpm exec keys doctor`;
         </a>
         <a class="intent-card" href="/keys/docs/integrations">
           <strong>CLI, agent, or IDE path</strong>
-          <span>Developer tooling path (CLI, MCP, AAIF).</span>
+          <span>Developer tooling path (CLI, MCP, Dispatch).</span>
         </a>
         <a class="intent-card" href="/keys/docs/walkthrough/verification-strategy">
           <strong>Running platform operations</strong>

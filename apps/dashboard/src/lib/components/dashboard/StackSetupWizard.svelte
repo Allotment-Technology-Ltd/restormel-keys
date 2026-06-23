@@ -2,11 +2,11 @@
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import type { AAIFIntegrationStack } from "@restormel/aaif";
+  import type { DispatchIntegrationStack } from "@restormel/dispatch";
   import {
     INTEGRATION_STACK_SCHEMA_VERSION,
-    isAAIFRequest,
-  } from "@restormel/aaif";
+    isDispatchRequest,
+  } from "@restormel/dispatch";
   import { integrationCatalogForFlags, integrationStackTemplatesForFlags } from "$lib/integration-catalog-for-flags";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
@@ -34,7 +34,7 @@
   let copyMsg = "";
   let loadError = "";
 
-  function stackForTemplate(id: string): AAIFIntegrationStack {
+  function stackForTemplate(id: string): DispatchIntegrationStack {
     const t = templatesForUi.find((x) => x.id === id);
     if (!t) throw new Error("unknown template");
     return {
@@ -51,7 +51,7 @@
 
   $: stackObj = selectedTemplateId == null ? null : stackForTemplate(selectedTemplateId);
   $: stackJson = stackObj == null ? "" : JSON.stringify(stackObj, null, 2);
-  $: stackValid = stackObj !== null && isAAIFRequest({ input: "x", integrationStack: stackObj });
+  $: stackValid = stackObj !== null && isDispatchRequest({ input: "x", integrationStack: stackObj });
 
   onMount(() => {
     try {
@@ -114,12 +114,12 @@
     <h2 id="stack-wiz-h" class="stack-wiz-title">Connect your stack</h2>
     <p class="stack-wiz-desc">
       Pick a template, follow the checklist in the dashboard, then copy a machine-readable
-      <code class="inline">integrationStack</code> for AAIF hosts and agents (
-      <a href="/keys/docs/integrations/aaif">AAIF docs</a>).
+      <code class="inline">integrationStack</code> for Dispatch hosts and agents (
+      <a href="/keys/docs/integrations/aaif">Dispatch docs</a>).
     </p>
   {:else}
     <p class="stack-wiz-desc stack-wiz-desc--compact">
-      <a href="/keys/docs/integrations/aaif">AAIF integrationStack</a> — JSON preset for your host or agent.
+      <a href="/keys/docs/integrations/aaif">Dispatch integrationStack</a> — JSON preset for your host or agent.
     </p>
   {/if}
   {#if loadError}
@@ -192,8 +192,8 @@
     <p class="stack-picked">
       <button type="button" class="linkish" on:click={() => (step = 2)}>Back</button>
     </p>
-    <p class="stack-json-hint">Optional <code class="inline">integrationStack</code> on an <code class="inline">AAIFRequest</code>:</p>
-    <pre class="stack-pre" role="region" aria-label="AAIF integrationStack JSON">{stackJson}</pre>
+    <p class="stack-json-hint">Optional <code class="inline">integrationStack</code> on a <code class="inline">DispatchRequest</code>:</p>
+    <pre class="stack-pre" role="region" aria-label="Dispatch integrationStack JSON">{stackJson}</pre>
     <div class="stack-actions">
       <button type="button" class="btn btn-primary" on:click={copyJson} disabled={!stackValid}>Copy JSON</button>
       {#if copyMsg}

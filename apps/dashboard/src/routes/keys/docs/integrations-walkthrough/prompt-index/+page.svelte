@@ -37,7 +37,7 @@
   <ul>
     <li><strong>Full:</strong> I01 → I02 → I03 → I03b → I04 → I05 → I06 → I07 → I08</li>
     <li><strong>CLI-only:</strong> I01 → I02 → I03 → I03b → I04 → I07 → I08</li>
-    <li><strong>MCP/AAIF schema-only:</strong> I01 → I02 → I05 → I06 → I07 → I08</li>
+    <li><strong>MCP/Dispatch schema-only:</strong> I01 → I02 → I05 → I06 → I07 → I08</li>
   </ul>
 
   <h2>Full prompt text</h2>
