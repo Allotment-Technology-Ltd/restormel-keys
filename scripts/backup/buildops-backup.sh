@@ -1,15 +1,29 @@
 #!/usr/bin/env bash
 # /opt/buildops-backup/backup.sh
-# Restic backup of build/ops box (.150) to Hetzner Storage Box BX11
-# Mirrors the pattern from .167 (restic-surreal repo), new repo: restic-buildops
+# Restic backup of build/ops box (.150).
+# PRIMARY target: Hetzner Object Storage S3 (fsn1) — bucket restormel-restic-backups/restic-buildops
+# FALLBACK target: Hetzner Storage Box BX11 — rclone:storagebox:restic-buildops (kept until BX11 is cancelled)
 # Runs as root via cron at 02:00 daily (staggered from 03:00 Surreal job)
 # DO NOT EDIT ON BOX — version-controlled in restormel-keys scripts/backup/
+#
+# Migration note (2026-06-23): backups now write to BOTH S3 (primary) and BX11 (fallback)
+# so the cutover is non-destructive. Once a clean S3-only cycle is confirmed and BX11 is
+# cancelled (human-gated), the BX11 block + rclone target can be removed and BACKUP_BX11=0.
 
 set -euo pipefail
 
-export RESTIC_REPOSITORY="rclone:storagebox:restic-buildops"
+# ── Repo targets ────────────────────────────────────────────────────────────────
+# S3 (primary). Credentials come from /root/.config/s3fsn1.env (mode 600):
+#   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY  (Hetzner Object Storage fsn1 keys)
+S3_ENV="/root/.config/s3fsn1.env"
+S3_REPO="s3:https://fsn1.your-objectstorage.com/restormel-restic-backups/restic-buildops"
+# BX11 (fallback) — toggle off after BX11 is cancelled.
+BACKUP_BX11="${BACKUP_BX11:-1}"
+BX11_REPO="rclone:storagebox:restic-buildops"
+
 export RESTIC_PASSWORD_FILE="/root/.config/restic-password"
 RCLONE_CONFIG="/root/.config/rclone/rclone.conf"
+RCLONE_ARGS="serve restic --stdio --config $RCLONE_CONFIG"
 TELEGRAM_ENV="/root/.config/telegram.env"
 LOG="/var/log/buildops-backup.log"
 DUMP_DIR="/tmp/buildops-dumps"
@@ -30,6 +44,12 @@ echo "buildops-backup START: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 echo "======================================================="
 
 log() { echo "[$(date -u '+%H:%M:%S')] $*"; }
+
+# Load S3 credentials for the primary (S3) target.
+if [ -f "$S3_ENV" ]; then
+  set -a; source "$S3_ENV"; set +a
+fi
+
 fail() {
   log "ERROR: $*"
   # Telegram alert on failure
@@ -102,31 +122,46 @@ fi
 sha256sum "$DUMP_DIR"/*.dump > "$DUMP_DIR/SHA256SUMS"
 log "SHA256SUMS written"
 
-# ── Restic backup ───────────────────────────────────────────────────────────────
-log "Running restic backup..."
-restic backup \
-  --option rclone.args="serve restic --stdio --config $RCLONE_CONFIG" \
-  --tag buildops \
-  --tag "$(date -u '+%Y-%m-%d')" \
-  "$DUMP_DIR" \
-  "$FORGEJO_DATA" \
-  "$COOLIFY_DATA" \
-  "$INFISICAL_CONFIG" \
-  --exclude="$COOLIFY_DATA/backups" \
-  --exclude="$COOLIFY_DATA/source" \
-  --exclude="$INFISICAL_CONFIG/pg" \
-  --exclude="$INFISICAL_CONFIG/redis" \
-  2>&1 || fail "restic backup failed"
+# ── Backup helpers (per target) ─────────────────────────────────────────────────
+# do_backup <repo> [extra restic args...]
+do_backup() {
+  local repo="$1"; shift
+  restic -r "$repo" "$@" backup \
+    --tag buildops \
+    --tag "$(date -u '+%Y-%m-%d')" \
+    "$DUMP_DIR" \
+    "$FORGEJO_DATA" \
+    "$COOLIFY_DATA" \
+    "$INFISICAL_CONFIG" \
+    --exclude="$COOLIFY_DATA/backups" \
+    --exclude="$COOLIFY_DATA/source" \
+    --exclude="$INFISICAL_CONFIG/pg" \
+    --exclude="$INFISICAL_CONFIG/redis"
+}
+# do_forget <repo> [extra restic args...]  — retention identical to legacy policy.
+do_forget() {
+  local repo="$1"; shift
+  restic -r "$repo" "$@" forget \
+    --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+}
 
-# ── Retention / prune ──────────────────────────────────────────────────────────
-log "Running restic forget + prune..."
-restic forget \
-  --option rclone.args="serve restic --stdio --config $RCLONE_CONFIG" \
-  --keep-daily 7 \
-  --keep-weekly 4 \
-  --keep-monthly 6 \
-  --prune \
-  2>&1 || fail "restic forget/prune failed"
+# ── Restic backup — S3 (primary) ─────────────────────────────────────────────────
+log "Running restic backup -> S3 (primary)..."
+do_backup "$S3_REPO" 2>&1 || fail "restic backup to S3 failed"
+log "Running restic forget + prune on S3..."
+do_forget "$S3_REPO" 2>&1 || fail "restic forget/prune on S3 failed"
+
+# ── Restic backup — BX11 (fallback, kept until BX11 cancelled) ───────────────────
+if [ "$BACKUP_BX11" = "1" ]; then
+  log "Running restic backup -> BX11 (fallback)..."
+  do_backup "$BX11_REPO" --option rclone.args="$RCLONE_ARGS" 2>&1 \
+    || fail "restic backup to BX11 failed"
+  log "Running restic forget + prune on BX11..."
+  do_forget "$BX11_REPO" --option rclone.args="$RCLONE_ARGS" 2>&1 \
+    || fail "restic forget/prune on BX11 failed"
+else
+  log "BX11 fallback disabled (BACKUP_BX11=0) — S3-only."
+fi
 
 # ── Dead-man's-switch ──────────────────────────────────────────────────────────
 log "Pinging dead-man's-switch..."
@@ -141,8 +176,8 @@ fi
 # Telegram success notification
 if [ -f "$TELEGRAM_ENV" ]; then
   source "$TELEGRAM_ENV"
-  SNAP_COUNT=$(restic snapshots --option rclone.args="serve restic --stdio --config $RCLONE_CONFIG" --json 2>/dev/null | python3 -c "import json,sys; snaps=json.load(sys.stdin); print(len(snaps))" 2>/dev/null || echo "?")
-  MSG="✅ buildops backup OK (.150) at $(date -u '+%Y-%m-%dT%H:%M:%SZ') — ${SNAP_COUNT} snapshot(s) in repo"
+  SNAP_COUNT=$(restic -r "$S3_REPO" snapshots --json 2>/dev/null | python3 -c "import json,sys; snaps=json.load(sys.stdin); print(len(snaps))" 2>/dev/null || echo "?")
+  MSG="✅ buildops backup OK (.150) at $(date -u '+%Y-%m-%dT%H:%M:%SZ') — ${SNAP_COUNT} snapshot(s) in S3 repo (primary)"
   curl -s -o /dev/null -X POST \
     "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
     -d "chat_id=${TELEGRAM_CHAT_ID}" \

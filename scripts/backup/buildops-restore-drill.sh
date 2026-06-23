@@ -7,9 +7,20 @@
 
 set -euo pipefail
 
-export RESTIC_REPOSITORY="rclone:storagebox:restic-buildops"
-export RESTIC_PASSWORD_FILE="/root/.config/restic-password"
+# Drill the PRIMARY (S3) repo by default; override with RESTIC_DRILL_TARGET=bx11.
+# S3 creds load from /root/.config/s3fsn1.env (mode 600).
+S3_ENV="/root/.config/s3fsn1.env"
+DRILL_TARGET="${RESTIC_DRILL_TARGET:-s3}"
 RCLONE_CONFIG="/root/.config/rclone/rclone.conf"
+if [ "$DRILL_TARGET" = "bx11" ]; then
+  export RESTIC_REPOSITORY="rclone:storagebox:restic-buildops"
+  RESTIC_RCLONE_OPT=(--option "rclone.args=serve restic --stdio --config $RCLONE_CONFIG")
+else
+  [ -f "$S3_ENV" ] && { set -a; source "$S3_ENV"; set +a; }
+  export RESTIC_REPOSITORY="s3:https://fsn1.your-objectstorage.com/restormel-restic-backups/restic-buildops"
+  RESTIC_RCLONE_OPT=()
+fi
+export RESTIC_PASSWORD_FILE="/root/.config/restic-password"
 RESTORE_DIR="/tmp/buildops-restore-drill-$$"
 SCRATCH_DB="restore_drill_$$"
 LOG="/var/log/buildops-restore-drill.log"
@@ -18,7 +29,7 @@ exec >> "$LOG" 2>&1
 
 echo ""
 echo "======================================================="
-echo "buildops RESTORE DRILL START: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+echo "buildops RESTORE DRILL START: $(date -u '+%Y-%m-%dT%H:%M:%SZ') [target=$DRILL_TARGET]"
 echo "======================================================="
 
 log() { echo "[$(date -u '+%H:%M:%S')] $*"; }
@@ -41,8 +52,7 @@ log "Using container: $APP_PG"
 
 # ── Find latest snapshot ────────────────────────────────────────────────────────
 log "Finding latest restic snapshot..."
-LATEST_SNAP=$(restic snapshots \
-  --option rclone.args="serve restic --stdio --config $RCLONE_CONFIG" \
+LATEST_SNAP=$(restic snapshots "${RESTIC_RCLONE_OPT[@]}" \
   --json --latest 1 \
   2>/dev/null | python3 -c "
 import json, sys
@@ -58,8 +68,7 @@ log "Latest snapshot: $LATEST_SNAP"
 # ── Restore app.dump from snapshot ─────────────────────────────────────────────
 log "Restoring app.dump from snapshot $LATEST_SNAP..."
 mkdir -p "$RESTORE_DIR"
-restic restore "$LATEST_SNAP" \
-  --option rclone.args="serve restic --stdio --config $RCLONE_CONFIG" \
+restic restore "$LATEST_SNAP" "${RESTIC_RCLONE_OPT[@]}" \
   --include "**/app.dump" \
   --target "$RESTORE_DIR" \
   2>&1 || fail "restic restore failed"
