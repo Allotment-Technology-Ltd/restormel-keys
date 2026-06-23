@@ -36,8 +36,8 @@ an auto-surface hook, and per-repo identity.
   (fall back to Forgejo MCP repo `Allotment-Technology-Ltd/restormel-ops` if not local)
 - **Prerequisite rename + A2A program:** `planning/a2a-protocol-implementation-plan.md` (REC-PLAN-014)
 - **Decision record:** REC-ADR-007 (`docs/decisions/adopt-real-a2a-supersede-door3-hedge.md`, drafted)
-- **Tracking issue:** `Allotment-Technology-Ltd/restormel-keys#<ISSUE>` (the resumable worklist;
-  this number is filled in by the agent that opens the issue — see Resumability)
+- **Tracking issue:** `Allotment-Technology-Ltd/restormel-keys#268` (the resumable worklist;
+  its checklist mirrors this plan — keep the two in sync)
 
 ---
 
@@ -200,7 +200,7 @@ strip every `@restormel/*` / `$lib` coupling, and re-target cadre's schema.
 A resuming agent (after a crash / context reset) should, in order:
 
 1. **Read this plan** (`planning/cadre-build-plan.md`) and the **tracking issue**
-   `Allotment-Technology-Ltd/restormel-keys#<ISSUE>` — the issue checklist is the live worklist;
+   `Allotment-Technology-Ltd/restormel-keys#268` — the issue checklist is the live worklist;
    ticked boxes there are authoritative for "what's done".
 2. **Re-check the GATE (G0).** If the rename PR is not yet merged
    (`git grep -l "@restormel/dispatch" packages/dispatch/package.json` in restormel-keys main
