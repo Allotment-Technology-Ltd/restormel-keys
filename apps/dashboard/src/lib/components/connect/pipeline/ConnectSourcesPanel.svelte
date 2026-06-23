@@ -565,6 +565,13 @@
             >
               {loadingStarter ? "Loading…" : "Load 3 starter documents"}
             </button>
+            <!-- Source-first reassurance (journey Phase 1, dossier §5 stage ①):
+                 adding documents is the concrete START — no credentials needed
+                 here. Models/keys are bound at the next stage, deferrable.
+                 Reuses the global `muted` utility (no local style block here). -->
+            <p class="muted sources-empty-reassure">
+              No keys needed yet — we'll set up models after you've picked sources.
+            </p>
           </div>
         {:else}
         <ul class="doc-inventory-list">
