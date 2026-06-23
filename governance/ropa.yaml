@@ -271,6 +271,43 @@ processing_activities:
       marketing send.
     product: restormel
 
+  - id: PROC-012
+    purpose: >
+      Provide the non-sovereign QUICK-START database tier for Restormel Connect — provision and operate
+      a dedicated per-workspace managed Postgres (Neon) for workspaces that explicitly opt into the
+      quick-start tier instead of the EU/UK self-hosted sovereign default. PLANNED (REC-ADR-009, PR #285)
+      — GO-LIVE-GATED: no customer data on Neon until the governance triplet (this entry + suppliers.yaml
+      + DPIA evidence/dpia/neon-quick-start-tier.md) is filed AND founder-approved.
+    lawful_basis: >
+      CONTRACT — provision of the tier the user selected at workspace creation (Art 6(1)(b)). Tier choice
+      + non-sovereign acknowledgement recorded against the workspace.
+    data_subjects: "Registered users and their end-users whose workspace data lands in a quick-start (Neon) workspace DB"
+    data_categories:
+      - "Connect ingest content, verification results, provenance traces (workspace product data)"
+      - "Workspace / project metadata"
+      - "Per-workspace DB connection credentials (ciphertext; stored in Restormel vault, encrypted at rest)"
+    recipients:
+      - "Neon Inc. (US company; data resident in AWS eu-central-1 Frankfurt, EU) — managed per-workspace Postgres"
+      - "Hetzner (Helsinki EU) — Restormel control plane orchestrating provisioning + holding encrypted creds + usage ledger"
+    transfers: >
+      Data at rest resides in the EU (Frankfurt). Neon Inc. is US-controlled, so a transfer instrument is
+      required for potential US access despite EU residency: Neon DPA + SCCs/IDTA apply ([PLACEHOLDER —
+      confirm] accepted — see suppliers.yaml). EU-region residency is a mitigation, not an elimination —
+      see DPIA (Schrems-II / FISA).
+    retention: >
+      Workspace product data: retained while the workspace is active; physically deleted via Neon project
+      deletion within 30 days of workspace closure / Art-17 erasure request / day-0 reset. Project deletion
+      erases the entire per-workspace DB (no residual rows).
+    security_measures: >
+      Dedicated per-workspace Neon project (physical isolation); EU-region pin at creation (immutable);
+      connection credentials encrypted at rest, never logged; per-project quota caps; provision/suspend/delete
+      lifecycle tied to the Stage-2 state machine; usage metering + budget guard. Sovereign self-hosted tier
+      offered as default and as one-click migration.
+    privacy_notice_ref: >
+      [PLACEHOLDER — confirm] the privacy notice MUST list Neon (quick-start tier) as a sub-processor and
+      describe the EU-region/non-sovereign nature before the tier is offered. Update
+      https://restormel.dev/keys/privacy §3.
+    product: restormel
   # --- PROC-010 / PROC-011 added 2026-06-23 (ISMS scope expansion: PlotBudget + Sophia now in
   #     scope). SCAFFOLDED from infra ground-truth — specifics to be confirmed by each product's
   #     DPIA (filed follow-up PBIs). Do not treat the placeholders as settled. ---
