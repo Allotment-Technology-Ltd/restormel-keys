@@ -1,5 +1,5 @@
 ---
-id: REC-INC-008
+id: REC-INC-009
 title: "Incident — SurrealDB K3s knowledge-graph had NO working backup (DR gap); export broken + BX11 repointed to S3 fsn1"
 class: evidence
 owner: founder
@@ -12,7 +12,7 @@ created: 2026-06-23
 last-reviewed: 2026-06-23
 review-interval: P12M
 retention: P6Y
-related: [REC-TPL-004, AST-012, AST-022, AST-014, RISK-001, RISK-009]
+related: [REC-TPL-004, AST-012, AST-029, AST-014, RISK-001, RISK-009]
 ---
 
 # Incident — SurrealDB (K3s) knowledge-graph backup DR gap closed; export repaired + BX11 → S3 fsn1
@@ -89,7 +89,7 @@ related: [REC-TPL-004, AST-012, AST-022, AST-014, RISK-001, RISK-009]
     `restormel-backup` skill — Uptime-Kuma push + Telegram). Not yet wired on K3s.
   - **Confirm the broader restic→S3 migration** intent: BX11's `restic-surreal` (6 historical snapshots)
     and `restic-buildops` repos are preserved and untouched; this incident only repoints the **K3s** Surreal
-    backup to the new sovereign S3 target (AST-022).
+    backup to the new sovereign S3 target (AST-029).
 
 - **Closed:** 2026-06-23 — one good backup in S3 (snapshot `d19605b7`), restore verified, durable fix in
   PR #4, live CronJob fixed + un-suspended + a self-produced verifying snapshot (`27d20347`).

@@ -235,8 +235,8 @@ assets:
           restic-surreal no longer covers SurrealDB data. <!-- VERIFY post-Phase-2: confirm
           what .167 services are currently in scope for this backup job (Postgres, Hydra, etc.)
           and update this entry accordingly. -->
-          NOTE (2026-06-23, REC-INC-008 / PBI #229): the K3s sovereign-stack SurrealDB
-          (NS=main / DB=sophia) backup now targets Hetzner Object Storage S3 fsn1 (AST-022,
+          NOTE (2026-06-23, REC-INC-009 / PBI #229): the K3s sovereign-stack SurrealDB
+          (NS=main / DB=sophia) backup now targets Hetzner Object Storage S3 fsn1 (AST-029,
           repo surreal-k3s), NOT this BX11 repo. This restic-surreal repo + its 6 historical
           snapshots are PRESERVED (read-only) pending the BX11 decommission sign-off.
         - restic-buildops: Box B build/ops data → BX11:/restic-buildops (cron 02:00 UTC,
@@ -426,7 +426,7 @@ assets:
       mail-auth records; added CAA letsencrypt). A-records re-point to the K3s cluster at cutover.
       Availability concentration: RISK-013. Hetzner sub-processor: suppliers.yaml.
 
-  - id: AST-022
+  - id: AST-029
     asset: "Hetzner Object Storage (S3, fsn1) — restic backup target"
     type: backup/storage
     owner: founder
@@ -440,7 +440,7 @@ assets:
       delivered into the K3s `data` plane via the External Secrets `infisical-infra` store.
       Repos (restic-encrypted, same passphrase convention as AST-012):
         - surreal-k3s: SurrealDB (NS=main / DB=sophia) hourly logical `surreal export` →
-          s3://restormel-restic-backups/surreal-k3s. Added 2026-06-23 (REC-INC-008 / PBI #229);
+          s3://restormel-restic-backups/surreal-k3s. Added 2026-06-23 (REC-INC-009 / PBI #229);
           retention keep-hourly 24 / keep-daily 7 / keep-weekly 4 / keep-monthly 6; restore drill
           verified 2026-06-23 (snapshot d19605b7). Replaces the dead BX11 restic-surreal write path.
       EU-sovereign backup — Falkenstein DE, no third-party SaaS. Mitigating control for RISK-001

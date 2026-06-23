@@ -193,7 +193,7 @@ records:
     next-review: 2027-06-23
     retention: P6Y
     path: evidence/incidents/2026-06-23-plotbudget-cnpg-authenticator-401.md
-  - id: REC-INC-008
+  - id: REC-INC-009
     title: Incident — SurrealDB K3s knowledge-graph had NO working backup (DR gap); export broken + BX11 repointed to S3 fsn1
     class: evidence
     status: closed
