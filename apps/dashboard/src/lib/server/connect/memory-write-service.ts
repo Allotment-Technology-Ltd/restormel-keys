@@ -145,7 +145,8 @@ export async function resolveMemoryWriteDeps(args: {
   }
   if (target.provider === "postgres") {
     const flags = resolveModuleFlagsSync();
-    if (!isModuleEnabled(flags, "connectNeonGraphStore")) {
+    // REC-ADR-008: flag renamed to connectHostManagedGraphStore; error code kept (API-compat).
+    if (!isModuleEnabled(flags, "connectHostManagedGraphStore")) {
       return {
         ok: false,
         status: 503,

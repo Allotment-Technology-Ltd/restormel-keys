@@ -35,6 +35,7 @@ import { resolveWorkspaceRetrievalConfig } from "./workspace-retrieval-config.js
 import { buildProvenanceTrace } from "./provenance-trace-builder.js";
 import { buildVerifiedClaims, type VerifiedClaimSourceClaim } from "./verified-claims.js";
 import { applyTemporalValidity, parseTemporalRequest } from "./temporal-validity.js";
+import { retrievePostgresSpineViaOrchestrator } from "./postgres-orchestrator-bridge.js";
 
 const emptyGraphStore: GraphStore = {
   async query<T>(_sql: string, _vars?: Record<string, unknown>): Promise<T> {
@@ -140,6 +141,10 @@ export async function executeConnectGraphOp(args: {
   const targetRow = await getConnectGraphTargetForWorkspace(args.auth.workspaceId);
   const hasTarget = Boolean(targetRow);
   const targetSurreal = targetRow?.provider === "surreal";
+  // REC-ADR-008 (Stage-1): a host-managed Postgres target retrieves through the spine
+  // bridge instead of the SurrealQL engine, so a Postgres-defaulted workspace actually
+  // answers from its graph (was: fell through to emptyGraphStore → retrieved empty).
+  const targetPostgres = targetRow?.provider === "postgres";
   const targetOk = targetRow?.status === "ok";
 
   let store: GraphStore = emptyGraphStore;
@@ -178,6 +183,30 @@ export async function executeConnectGraphOp(args: {
   }
   const orchestrator = new RetrievalOrchestrator(config, deps);
   const verificationPolicy = mapVerificationPolicy(request.verification_policy);
+
+  // REC-ADR-008 (Stage-1): for a host-managed Postgres target, retrieve through the spine
+  // bridge (store-native lexical seed + 1-hop traversal + identical VerificationPolicy +
+  // identical orchestrator assembly) instead of the SurrealQL engine. Returns null for a
+  // non-Postgres target so the caller falls through to the normal engine path.
+  const postgresRetrieve = targetPostgres
+    ? (
+        operation: "retrieve_context" | "expand_context" | "find_relevant_subgraph",
+        params: { query: string; maxClaims?: number; seedClaimIds?: string[] },
+        maxTokens?: number,
+      ): Promise<OrchestratorResult> =>
+        retrievePostgresSpineViaOrchestrator({
+          orchestrator,
+          operation,
+          params: {
+            workspaceId: args.auth.workspaceId,
+            query: params.query,
+            ...(params.maxClaims !== undefined ? { maxClaims: params.maxClaims } : {}),
+            ...(params.seedClaimIds ? { seedClaimIds: params.seedClaimIds } : {}),
+            ...(verificationPolicy ? { verificationPolicy } : {}),
+          },
+          ...(maxTokens !== undefined ? { maxTokens } : {}),
+        })
+    : null;
 
   // ── Provenance trace context (Stage 4B) ──
   const graphStoreType = targetRow?.provider ?? "none";
@@ -297,14 +326,20 @@ export async function executeConnectGraphOp(args: {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "query is required for retrieve_context" } };
       }
       const startedAt = Date.now();
-      const retrieved = await orchestrator.retrieveContext({
-        query: request.query,
-        topK: request.top_k,
-        maxDepth: request.max_depth,
-        maxTokens: request.max_tokens,
-        domain: request.domain,
-        verificationPolicy,
-      });
+      const retrieved = postgresRetrieve
+        ? await postgresRetrieve(
+            "retrieve_context",
+            { query: request.query, ...(request.top_k !== undefined ? { maxClaims: request.top_k } : {}) },
+            request.max_tokens,
+          )
+        : await orchestrator.retrieveContext({
+            query: request.query,
+            topK: request.top_k,
+            maxDepth: request.max_depth,
+            maxTokens: request.max_tokens,
+            domain: request.domain,
+            verificationPolicy,
+          });
       const { result, versions, metadata: temporal } = await projectTemporal(retrieved);
       const traceId = await persistTrace(request.query, result, Date.now() - startedAt, request.max_tokens ?? 0);
       const body = subgraphResponse(request, requestId, result, traceId);
@@ -318,13 +353,19 @@ export async function executeConnectGraphOp(args: {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "seed_node_ids is required for expand_context" } };
       }
       const startedAt = Date.now();
-      const expanded = await orchestrator.expandContext({
-        seedNodeIds: request.seed_node_ids,
-        depth: request.depth ?? request.max_depth,
-        edgeTypeFiltering: request.edge_types,
-        verificationPolicy,
-        maxTokens: request.max_tokens,
-      });
+      const expanded = postgresRetrieve
+        ? await postgresRetrieve(
+            "expand_context",
+            { query: request.query ?? "", seedClaimIds: request.seed_node_ids },
+            request.max_tokens,
+          )
+        : await orchestrator.expandContext({
+            seedNodeIds: request.seed_node_ids,
+            depth: request.depth ?? request.max_depth,
+            edgeTypeFiltering: request.edge_types,
+            verificationPolicy,
+            maxTokens: request.max_tokens,
+          });
       const { result, versions, metadata: temporal } = await projectTemporal(expanded);
       const traceId = await persistTrace(request.query ?? "", result, Date.now() - startedAt, request.max_tokens ?? 0);
       const body = subgraphResponse(request, requestId, result, traceId);
@@ -338,13 +379,19 @@ export async function executeConnectGraphOp(args: {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "topic is required for find_relevant_subgraph" } };
       }
       const startedAt = Date.now();
-      const found = await orchestrator.findRelevantSubgraph({
-        topic: request.topic,
-        reasoningMode: request.reasoning_mode,
-        maxNodes: request.max_nodes,
-        verificationPolicy,
-        maxTokens: request.max_tokens,
-      });
+      const found = postgresRetrieve
+        ? await postgresRetrieve(
+            "find_relevant_subgraph",
+            { query: request.topic, ...(request.max_nodes !== undefined ? { maxClaims: request.max_nodes } : {}) },
+            request.max_tokens,
+          )
+        : await orchestrator.findRelevantSubgraph({
+            topic: request.topic,
+            reasoningMode: request.reasoning_mode,
+            maxNodes: request.max_nodes,
+            verificationPolicy,
+            maxTokens: request.max_tokens,
+          });
       const { result, versions, metadata: temporal } = await projectTemporal(found);
       const traceId = await persistTrace(request.topic, result, Date.now() - startedAt, request.max_tokens ?? 0);
       const body = subgraphResponse(request, requestId, result, traceId);
@@ -382,18 +429,28 @@ export async function executeConnectGraphOp(args: {
       const startedAt = Date.now();
       let retrieved: OrchestratorResult;
       if (request.seed_node_ids && request.seed_node_ids.length > 0) {
-        retrieved = await orchestrator.expandContext({
-          seedNodeIds: request.seed_node_ids,
-          depth: request.depth ?? request.max_depth,
-          verificationPolicy,
-        });
+        retrieved = postgresRetrieve
+          ? await postgresRetrieve("expand_context", {
+              query: request.query ?? request.topic ?? "",
+              seedClaimIds: request.seed_node_ids,
+            })
+          : await orchestrator.expandContext({
+              seedNodeIds: request.seed_node_ids,
+              depth: request.depth ?? request.max_depth,
+              verificationPolicy,
+            });
       } else if (request.query || request.topic) {
-        retrieved = await orchestrator.retrieveContext({
-          query: request.query ?? request.topic ?? "",
-          topK: request.top_k,
-          maxDepth: request.max_depth,
-          verificationPolicy,
-        });
+        retrieved = postgresRetrieve
+          ? await postgresRetrieve("retrieve_context", {
+              query: request.query ?? request.topic ?? "",
+              ...(request.top_k !== undefined ? { maxClaims: request.top_k } : {}),
+            })
+          : await orchestrator.retrieveContext({
+              query: request.query ?? request.topic ?? "",
+              topK: request.top_k,
+              maxDepth: request.max_depth,
+              verificationPolicy,
+            });
       } else {
         return { ok: false, status: 400, body: { error: "invalid_request", message: "summarise_subgraph requires query, topic, or seed_node_ids" } };
       }

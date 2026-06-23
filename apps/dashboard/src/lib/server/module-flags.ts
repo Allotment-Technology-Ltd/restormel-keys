@@ -5,6 +5,7 @@
 import {
   MVP_MODULE_DEFAULTS,
   POSTHOG_MODULE_FLAG_KEYS,
+  POSTHOG_CONNECT_HOST_MANAGED_GRAPH_STORE_LEGACY_KEY,
   type GraphModuleMode,
   type ModuleFlagKey,
   type ModuleFlags,
@@ -41,7 +42,7 @@ function parseEnvOverride(raw: string | undefined): ModuleFlags | null {
     modelPools: false,
     hostedRuntime: false,
     catalogExternalSignals: false,
-    connectNeonGraphStore: false,
+    connectHostManagedGraphStore: false,
     monitor: false,
     fromEnvOverride: true,
   };
@@ -85,9 +86,14 @@ function parseEnvOverride(raw: string | undefined): ModuleFlags | null {
       case "catalog-external-signals":
         flags.catalogExternalSignals = true;
         break;
+      // New canonical tokens + permanent back-compat aliases for the host-managed
+      // Postgres graph store (REC-ADR-008). The old `connect_neon_graph_store` tokens
+      // stay so existing Coolify `RESTORMEL_MODULE_FLAGS` values keep enabling it.
+      case "connect_host_managed_graph_store":
+      case "connect-host-managed-graph-store":
       case "connect_neon_graph_store":
       case "connect-neon-graph-store":
-        flags.connectNeonGraphStore = true;
+        flags.connectHostManagedGraphStore = true;
         break;
       case "monitor":
         flags.monitor = true;
@@ -105,7 +111,11 @@ function graphFromPostHogValue(value: unknown): GraphModuleMode {
   return "disabled";
 }
 
-function flagsFromPostHogPayload(payload: Record<string, unknown>): ModuleFlags {
+/**
+ * Map a raw PostHog `/decide` featureFlags payload to resolved module flags.
+ * Exported for test coverage of the REC-ADR-008 host-managed graph-store dual-read.
+ */
+export function flagsFromPostHogPayload(payload: Record<string, unknown>): ModuleFlags {
   return {
     connect: payload[POSTHOG_MODULE_FLAG_KEYS.connect] === true,
     testing: payload[POSTHOG_MODULE_FLAG_KEYS.testing] === true,
@@ -116,7 +126,12 @@ function flagsFromPostHogPayload(payload: Record<string, unknown>): ModuleFlags 
     modelPools: payload[POSTHOG_MODULE_FLAG_KEYS.modelPools] === true,
     hostedRuntime: payload[POSTHOG_MODULE_FLAG_KEYS.hostedRuntime] === true,
     catalogExternalSignals: payload[POSTHOG_MODULE_FLAG_KEYS.catalogExternalSignals] === true,
-    connectNeonGraphStore: payload[POSTHOG_MODULE_FLAG_KEYS.connectNeonGraphStore] === true,
+    // REC-ADR-008 dual-read: accept the new key OR the legacy `…-neon-graph-store` key
+    // until the EU PostHog flag is re-keyed, so an env with the rollout ON does not
+    // silently revert to the MVP default (OFF).
+    connectHostManagedGraphStore:
+      payload[POSTHOG_MODULE_FLAG_KEYS.connectHostManagedGraphStore] === true ||
+      payload[POSTHOG_CONNECT_HOST_MANAGED_GRAPH_STORE_LEGACY_KEY] === true,
     monitor: payload[POSTHOG_MODULE_FLAG_KEYS.monitor] === true,
     fromEnvOverride: false,
   };
@@ -197,8 +212,8 @@ export function isModuleEnabled(flags: ModuleFlags, key: ModuleFlagKey): boolean
       return flags.hostedRuntime;
     case "catalogExternalSignals":
       return flags.catalogExternalSignals;
-    case "connectNeonGraphStore":
-      return flags.connectNeonGraphStore;
+    case "connectHostManagedGraphStore":
+      return flags.connectHostManagedGraphStore;
     case "monitor":
       return flags.monitor;
     case "graph":

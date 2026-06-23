@@ -1,0 +1,41 @@
+# G4 retrieval gate — host-managed Postgres spine vs the SOPHIA/Surreal baseline
+# (REC-ADR-008, Stage-1). Proves the Postgres store-side trust-state retrieval filter admits
+# the IDENTICAL strict-mode claim set as the canonical Surreal admission over a fixed golden
+# corpus, and that retrieval coverage does not regress against the committed baseline.
+#
+# Parameterised by store backend: the harness compares store_backend=postgres against the
+# baseline_store_backend=surreal admission semantics. Runs on every Connect PR.
+#
+# .forgejo/workflows OVERRIDES .github/workflows on the Forgejo mirror — keep both in sync.
+name: Connect G4 retrieval gate
+on:
+  push:
+    paths:
+      - 'scripts/ci/connect-g4/**'
+      - 'apps/dashboard/src/lib/server/graph-comparison/**'
+      - 'apps/dashboard/src/lib/server/connect-v1/postgres-orchestrator-bridge.ts'
+      - 'packages/graphrag-core/**'
+      - '.forgejo/workflows/connect-g4-retrieval-gate.yml'
+  pull_request:
+
+jobs:
+  g4-retrieval-gate:
+    runs-on: docker
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+      - uses: ./.forgejo/actions/pnpm-workspace-install
+      - name: Build graphrag-core deps (parity suite imports)
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/graph-core run build
+          pnpm --filter @restormel/connect-core run build
+      - name: Store-parity suite (proves embedded G4 logic matches live code, incl. P7)
+        run: pnpm --filter dashboard exec vitest run src/lib/server/graph-comparison/store-parity.test.ts
+      - name: G4 gate — zero strict-mode claim-set delta vs Surreal + no coverage regression
+        run: node scripts/ci/connect-g4/g4-retrieval-postgres.mjs
+      - name: Snapshot-write probe (exit 0, deterministic)
+        run: |
+          node scripts/ci/connect-g4/g4-retrieval-postgres.mjs --write /tmp/g4-probe.json
+          node -e "const j=require('/tmp/g4-probe.json'); if (j.strict_claim_set_delta !== 0) { console.error('delta != 0'); process.exit(1) }"

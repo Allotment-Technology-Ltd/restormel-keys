@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "gate": "g4-retrieval-postgres",
+  "store_backend": "postgres",
+  "baseline_store_backend": "surreal",
+  "policy": "strict",
+  "fingerprint": "00000000e83b2de2",
+  "per_query": [
+    {
+      "query": "When is harm to others a ground for exercising power?",
+      "postgres_hits": 1,
+      "surreal_hits": 1,
+      "postgres_ids": [
+        "u-mill-harm"
+      ],
+      "delta": []
+    },
+    {
+      "query": "Is pulling the lever on the trolley permissible?",
+      "postgres_hits": 1,
+      "surreal_hits": 1,
+      "postgres_ids": [
+        "u-trolley-lever"
+      ],
+      "delta": []
+    },
+    {
+      "query": "How does Kant say we must treat humanity?",
+      "postgres_hits": 1,
+      "surreal_hits": 1,
+      "postgres_ids": [
+        "u-kant-formula"
+      ],
+      "delta": []
+    },
+    {
+      "query": "What does Hume observe about is and ought?",
+      "postgres_hits": 1,
+      "surreal_hits": 1,
+      "postgres_ids": [
+        "u-hume-isought"
+      ],
+      "delta": []
+    }
+  ],
+  "strict_claim_set_delta": 0,
+  "evaluated_at": "2026-06-23T21:54:03.669Z"
+}

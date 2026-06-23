@@ -12,7 +12,14 @@ review-interval: P12M
 
 # Connect first graph onboarding (canonical)
 
-Single operational path: connect **Surreal Cloud**, wire **chat and embedding** ingestion routes in Keys, load the **starter philosophy corpus**, **describe** your graph schema with Graph Designer, then run your first ingest.
+Pick where your graph lives, wire **chat and embedding** ingestion routes in Keys, load the **starter philosophy corpus**, **describe** your graph schema with Graph Designer, then run your first ingest.
+
+Two graph-store tiers (REC-ADR-008):
+
+- **Zero-setup default — host-managed Postgres graph store.** No account, no connection string, no credentials. The workspace graph spine reuses Restormel's own self-hosted EU Postgres; custody stays Restormel-side. This is the low-friction **starter / retrieval** tier: ingest, store, and verified retrieval (strict and annotated trust filtering, evidence-bound claims, honest abstention) all work. It is **not** the graph-native beam-traversal reasoning engine — for that, bring your own Surreal/Neo4j (below).
+- **Bring-your-own — graph-native (Surreal/Neo4j).** Connect a store you manage for the full graph-native experience (multi-hop beam traversal, argument-structure assembly, MCP graph tools). The host-managed tier is the starting point; BYO is the override, reachable any time via **Configure store**.
+
+> Default-on is gated behind a module flag (`connectHostManagedGraphStore`) and is **OFF in production** until founder sign-off. With the flag off, onboarding is BYO Surreal as before.
 
 In-product walkthrough: [/keys/docs/guides/connect-first-graph-onboarding](https://restormel.dev/keys/docs/guides/connect-first-graph-onboarding).
 
@@ -20,7 +27,8 @@ In-product walkthrough: [/keys/docs/guides/connect-first-graph-onboarding](https
 
 | Account | Used for |
 |---------|----------|
-| [Surreal Cloud](https://surrealdb.com/cloud) | Graph store for ideas, edges, and groups |
+| _None_ for the **host-managed Postgres graph store** (zero-setup default) | Workspace graph spine — reuses Restormel's own database, no credentials |
+| [Surreal Cloud](https://surrealdb.com/cloud) **or** Neo4j (optional, BYO) | Graph-native store for ideas, edges, and groups + MCP graph tools |
 | Chat provider (e.g. [OpenRouter](https://openrouter.ai/), [OpenAI](https://platform.openai.com/)) | Extraction, grouping, validation, remediation |
 | Embedding provider ([OpenAI](https://platform.openai.com/), [Together](https://www.together.ai/), [Voyage](https://www.voyageai.com/), or [Vercel AI Gateway](https://vercel.com/docs/ai-gateway)) | Embedding stage |
 
@@ -28,12 +36,22 @@ In-product walkthrough: [/keys/docs/guides/connect-first-graph-onboarding](https
 
 **Embedding note:** Domain packs may reference other models in metadata. The Connect ingest worker supports route-based embeddings for **OpenAI, Together, Voyage, and Vercel AI Gateway**. Use one of those for your first run.
 
-## 1. Connect Surreal Cloud
+## 1. Choose where your graph lives
+
+### Option A — host-managed Postgres graph store (zero-setup default)
+
+When the host-managed store is enabled, the workspace graph spine is **auto-provisioned on pipeline entry** — there is nothing to connect. The **Graph store** step shows it as already active ("auto-provisioned, override available"); you can go straight to routes and sources. To set or re-confirm it manually: **Connect → Pipeline → Graph store** (`?step=store`) → **Use host store**.
+
+Done when: graph target provider is `postgres` (host-managed) and status is `ok`.
+
+What you get on this tier: ingest → verified store → **verified retrieval** (strict supported-only or annotated trust labels, evidence-bound claims with source-anchored spans, honest abstention when nothing matches). What you do **not** get here: the graph-native beam-traversal reasoning engine and MCP graph tools — those need a BYO Surreal/Neo4j store (Option B). No parity with the graph-native engine is claimed for this tier.
+
+### Option B — bring your own Surreal Cloud (graph-native)
 
 1. Create a Surreal Cloud instance.
 2. Copy your `wss://…` connection string ([Surreal connecting docs](https://surrealdb.com/docs/build/deployment/surrealdb-cloud/connecting/via-sdk)).
 3. In the dashboard: **Connect → Pipeline → Graph store** (`/keys/dashboard/connect/pipeline?step=store`).
-4. Paste the connection string, **Test connection**, then save.
+4. Paste the connection string, **Test connection**, then save. This overrides the host-managed default.
 
 Done when: graph target provider is `surreal` and status is `ok`.
 

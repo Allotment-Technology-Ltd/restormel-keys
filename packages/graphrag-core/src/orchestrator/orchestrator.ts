@@ -249,6 +249,22 @@ export class RetrievalOrchestrator {
 
   // ── internals ─────────────────────────────────────────────────────────────
 
+  /**
+   * Assemble an OrchestratorResult from a {@link RetrievalResult} produced OUTSIDE the
+   * SurrealQL engine — e.g. the host-managed Postgres graph spine (REC-ADR-008). The
+   * curation, token-budget packing, context-block build, and trace shape are byte-identical
+   * to the in-engine path, so a Postgres-backed workspace retrieves through the SAME
+   * orchestrator contract the Surreal path uses (the basis of the G4 parity gate). The
+   * caller is responsible for having produced `result` with the same VerificationPolicy.
+   */
+  assembleResult(
+    operation: OrchestratorTrace["operation"],
+    result: RetrievalResult,
+    maxTokens?: number
+  ): OrchestratorResult {
+    return this.assemble(operation, result, maxTokens);
+  }
+
   private assemble(
     operation: OrchestratorTrace["operation"],
     result: RetrievalResult,

@@ -104,6 +104,13 @@ export type BuildSetupStepsInput = {
   hasGraph: boolean;
   surrealStoreReady: boolean;
   neonStoreReady: boolean;
+  /**
+   * REC-ADR-008 (Stage-1): the host-managed Postgres graph store is enabled, so a missing
+   * graph target is auto-provisioned on pipeline entry rather than being a required-first
+   * gate. When true, the graph_store step is surfaced as "auto-provisioned (override
+   * available)" and never blocks the run prerequisites.
+   */
+  autoProvisionAvailable?: boolean;
 };
 
 /** Canonical initial setup order: store → models → sources → domain (optional) → run → monitor → agents (optional). */
@@ -121,11 +128,15 @@ export function buildConnectSetupSteps(input: BuildSetupStepsInput): ConnectSetu
     hasGraph,
     surrealStoreReady,
     neonStoreReady,
+    autoProvisionAvailable = false,
   } = input;
 
-  const prerequisitesForRun = Boolean(target && parsedDocumentCount > 0 && modelsReady);
+  // REC-ADR-008: with the host-managed store on, a missing target is auto-provisioned on
+  // pipeline entry, so for setup-step purposes the store requirement is already satisfied.
+  const graphStoreSatisfied = Boolean(target) || autoProvisionAvailable;
+  const prerequisitesForRun = Boolean(graphStoreSatisfied && parsedDocumentCount > 0 && modelsReady);
   const nextRequired = resolveNextSetupStepId({
-    hasGraphStore: Boolean(target),
+    hasGraphStore: graphStoreSatisfied,
     modelsReady,
     parsedDocumentCount,
   });
@@ -143,18 +154,23 @@ export function buildConnectSetupSteps(input: BuildSetupStepsInput): ConnectSetu
     {
       id: "graph_store",
       title: "Choose where your graph lives",
-      description:
-        "Use your workspace database in one click, or connect SurrealDB you manage so extracted ideas and edges have a durable graph home.",
-      status: target ? "done" : "todo",
+      description: autoProvisionAvailable
+        ? "Auto-provisioned on the host-managed Postgres graph store — or connect SurrealDB you manage to override it."
+        : "Use your workspace database in one click, or connect SurrealDB you manage so extracted ideas and edges have a durable graph home.",
+      // With auto-provision available the store requirement is satisfied even before the
+      // first target row commits, so this step is never the blocking first gate.
+      status: graphStoreSatisfied ? "done" : "todo",
       detail: target
         ? target.provider === "surreal"
           ? target.status === "ok"
             ? "SurrealDB connected"
             : `SurrealDB (${target.status})`
-          : `Connected: ${target.provider}`
-        : "Not connected yet",
+          : "Host-managed Postgres graph store"
+        : autoProvisionAvailable
+          ? "Auto-provisioned (override available)"
+          : "Not connected yet",
       href: pipelineWizardHref("store"),
-      cta: target ? "Review store" : "Connect store",
+      cta: target ? "Review store" : autoProvisionAvailable ? "Override store" : "Connect store",
     },
     {
       id: "ai_keys",

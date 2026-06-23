@@ -126,12 +126,13 @@ export async function activateGraphTarget(
 }
 
 /**
- * One-click connect: use the dashboard's own Neon database as the graph spine.
- * Gated by `restormel-module-connect-neon-graph-store` (default off for MVP).
- * No credentials required — reuses the configured DATABASE_URL. Reuses an existing
- * dashboard-Neon graph for the workspace if one is already saved, and activates it.
+ * One-click connect: use the dashboard's own host-managed Postgres database as the graph
+ * spine (REC-ADR-008 — self-hosted EU Postgres, the EU-sovereign default tier). Gated by
+ * `connectHostManagedGraphStore` (default off for MVP). No credentials required — reuses the
+ * configured server-side DATABASE_URL; custody stays Restormel-side. Reuses an existing
+ * host-managed graph for the workspace if one is already saved, and activates it.
  */
-export async function connectDashboardNeonTarget(workspaceId: string): Promise<ConnectGraphTarget> {
+export async function connectHostManagedGraphTarget(workspaceId: string): Promise<ConnectGraphTarget> {
   const existing = (await listConnectGraphTargetsForWorkspace(workspaceId)).find(
     (t) => t.useDashboardDatabase,
   );
@@ -150,6 +151,12 @@ export async function connectDashboardNeonTarget(workspaceId: string): Promise<C
   await activateGraphTarget(workspaceId, row.id);
   return graphTargetRecordToApi(row, { isActive: true });
 }
+
+/**
+ * Back-compat alias (REC-ADR-008 rename). Prefer {@link connectHostManagedGraphTarget}.
+ * Retained so any not-yet-updated import keeps resolving to the same provisioner.
+ */
+export const connectDashboardNeonTarget = connectHostManagedGraphTarget;
 
 export async function getGraphTargetForUi(workspaceId: string): Promise<ConnectGraphTarget | null> {
   const row = await getConnectGraphTargetForWorkspace(workspaceId);
@@ -539,8 +546,8 @@ export async function testGraphTargetConnection(
         lastError: ok ? null : "dashboard database unreachable",
       });
       return ok
-        ? { ok: true, message: "Connected to this workspace's Neon database." }
-        : { ok: false, message: "Dashboard database unreachable." };
+        ? { ok: true, message: "Connected to this workspace's host-managed Postgres graph store." }
+        : { ok: false, message: "Host-managed Postgres graph store unreachable." };
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Connection failed";
       await updateConnectGraphTargetStatus({ workspaceId, graphTargetId: targetId, status: "error", lastError: msg.slice(0, 280) });

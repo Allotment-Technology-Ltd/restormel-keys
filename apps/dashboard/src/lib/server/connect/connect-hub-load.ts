@@ -194,6 +194,14 @@ export async function loadConnectHubPage(
       parsedDocumentCount: parsedDocs.length,
     });
 
+    // REC-ADR-008: when the host-managed Postgres store is enabled, a missing graph target
+    // is auto-provisioned on pipeline entry, so the graph_store step is "auto-provisioned
+    // (override available)" rather than a required-first gate.
+    const autoProvisionAvailable = Boolean(
+      (event.locals.moduleFlags as { connectHostManagedGraphStore?: boolean } | undefined)
+        ?.connectHostManagedGraphStore,
+    );
+
     const steps = buildConnectSetupSteps({
       target,
       modelsReady: modelsStatus.modelsReady,
@@ -207,6 +215,7 @@ export async function loadConnectHubPage(
       hasGraph,
       surrealStoreReady,
       neonStoreReady,
+      autoProvisionAvailable,
     });
 
     const nextStep = resolveNextSetupStep(steps);
