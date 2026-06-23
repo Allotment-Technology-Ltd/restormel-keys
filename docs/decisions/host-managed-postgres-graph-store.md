@@ -48,18 +48,22 @@ Two things block making it the **default happy path**:
 
 The store names itself "Neon" throughout the code (flag id `connectNeonGraphStore`, PostHog key
 `restormel-module-connect-neon-graph-store`, `connectDashboardNeonTarget`, route segment
-`/graph-target/neon`, UI label "Workspace Neon database", the file `neon.ts`). This is **legacy
-naming debt only** — the actual store is the self-hosted EU Postgres (verified `DATABASE_URL` →
-in-cluster Postgres on the .167 box, `AUTH_PROVIDER=self`). There is no Neon/US managed-DB
-dependency and none should be implied.
+`/graph-target/neon`, UI label "Workspace Neon database", the file `neon.ts`). This **code-level
+naming is historical only** — the actual store this ADR defaults to is the self-hosted EU Postgres
+(verified `DATABASE_URL` → in-cluster Postgres on the .167 box, `AUTH_PROVIDER=self`). This ADR
+introduces no Neon/US managed-DB dependency. Note that managed **Neon is not legacy debt**: it is a
+**separate managed quick-start tier**, pursued via the Neon open-source programme and specified
+under REC-ADR-009 — distinct from the code-level naming above. **This ADR is the EU-sovereign
+DEFAULT tier in that multi-tier design.**
 
 ## Decision
 
 1. **Backend = self-hosted EU Postgres (SOVEREIGN).** The default onboarding graph store is the
    host-managed, credential-free Postgres spine that reuses the dashboard's own `DATABASE_URL`.
-   Custody stays Restormel-side; no secret is surfaced. A managed sub-tier (e.g. Neon-for-Platforms)
-   is a possible **future** option — explicitly **OUT of scope** here. This ADR creates **no Neon/US
-   dependency**.
+   Custody stays Restormel-side; no secret is surfaced. The managed **Neon quick-start tier** (a
+   separate, labelled non-sovereign tier pursued via the OSS programme, specified in REC-ADR-009) is
+   a deliberate sibling tier — **out of scope here, but not legacy debt**. This ADR is the
+   EU-sovereign DEFAULT tier and creates **no Neon/US dependency**.
 
 2. **This is a RETRIEVAL / STARTER tier, not the graph-native engine.** The Postgres spine is a
    relational retrieval store, **not** the graph-native beam-traversal reasoning engine. It is the
