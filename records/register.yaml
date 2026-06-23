@@ -80,9 +80,9 @@ records:
     classification: internal
     control-tier: 2
     owner: founder
-    last-reviewed: 2026-06-19
+    last-reviewed: 2026-06-23
     review-interval: P12M
-    next-review: 2027-06-19
+    next-review: 2027-06-23
     retention: P6Y-after-superseded
     path: governance/soa.md
   - id: REC-GOV-020
