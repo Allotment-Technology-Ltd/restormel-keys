@@ -348,6 +348,23 @@ risks:
       write 403); local CLI creds held in the macOS keychain (no plaintext on disk).
       (5) SECRET HANDLING — enforced this session (values never echoed). REMAINING:
       item 3, admin MFA — blocked on an Infisical plan upgrade (tracked with RISK-008).
+      MATERIALISED (2026-06-24, REC-INC-010): the item-5 residual in-session
+      credential-exposure risk OCCURRED — during the restormel.dev K3s cutover Phase-A
+      migration an automation subagent ran a bulk `infisical secrets`/export `--plain`
+      read against the PROJECT ROOT of the restormel + restormel-ops prod projects,
+      printing root-level prod secret VALUES (COOLIFY_TOKEN, FORGEJO_PM_TOKEN,
+      FORGEJO_GITEA_TOKEN, PG_RESTORMEL_*, SMTP_PASS, SURREAL_* root incl.
+      SURREAL_BOX_ROOT_PASS/SURREAL_PASS, SSH_KEY_PROD_167, TELEGRAM_BOT_TOKEN,
+      BREVO_API_KEY, +others) into the subagent transcript (local JSONL + Anthropic
+      session storage). Self-reported immediately; values NOT committed/pushed to git and
+      NOT sent to any third party; no evidence of unauthorised use. (Prior minor flag,
+      same program: FORGEJO_PM_TOKEN briefly echoed into a since-deleted in-cluster pod
+      log.) OPEN REMEDIATION (founder-flagged, NOT yet done — deliberately not
+      auto-rotated): ROTATE the exposed root-level prod secrets, priority
+      SSH_KEY_PROD_167 + PG_RESTORMEL_* + FORGEJO_PM_TOKEN + COOLIFY_TOKEN, then the rest.
+      PREVENTIVE CONTROL REINFORCED: scope every secret read to a SINGLE named key; never
+      run a bulk `--plain`/export against a project root or env; prefer `infisical run`
+      so values reach only the child process env, never a transcript/log (item 5).
     owner: founder
     status: in-treatment
     review: 2026-09-15
