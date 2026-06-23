@@ -37,7 +37,7 @@ records:
     next-review: 2027-06-15
     retention: ""
     path: docs/decisions/oss-gateway-migration.md
-  - id: REC-ADR-007
+  - id: REC-ADR-008
     title: "ADR: Host-managed Postgres graph store as the default onboarding tier, provider-abstracted"
     class: decision
     status: draft

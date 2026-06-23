@@ -1,5 +1,5 @@
 ---
-id: REC-ADR-007
+id: REC-ADR-008
 title: "ADR: Host-managed Postgres graph store as the default onboarding tier, provider-abstracted"
 class: decision
 owner: founder
