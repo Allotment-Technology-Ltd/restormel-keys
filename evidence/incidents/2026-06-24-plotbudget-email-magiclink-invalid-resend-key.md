@@ -3,7 +3,7 @@ id: REC-INC-017
 title: "Incident — PlotBudget email magic-link send fails (GoTrue 500 'hook 502'; invalid Resend API key)"
 class: evidence
 owner: founder
-status: open
+status: closed
 classification: internal
 control-tier: 3
 created: 2026-06-24
@@ -145,3 +145,44 @@ stays OPEN. This is a founder action that must be completed at Resend itself.**
   value is not usable.
 
 - **Status:** **OPEN** — `.env.local` key invalid; founder must provision a live Resend key. **Closed:** `<pending>`
+
+---
+
+## Resolution — CONFIRMED 2026-06-24 (append-only)
+
+**RESOLVED.** The founder provisioned a **genuinely valid** Resend API key (issued from the Resend
+account that owns the `plotbudget.com` sending domain) and rotated it in Infisical project
+`plotbudget`, env `prod`, key `RESEND_API_KEY` — replacing both the original invalid 21-char value
+and the stale `.env.local` candidate that earlier failed validation. The transactional auth-email
+path on PlotBudget self-hosted Supabase is **restored**.
+
+- **Founder action (the fix that could not be fabricated):** rotated `RESEND_API_KEY` in Infisical
+  (`plotbudget`/`prod`) to a live `re_…` key on the account that verifies the `plotbudget.com`
+  sending domain.
+- **Verified VALID against the Resend API** (key never printed):
+  - `GET https://api.resend.com/domains` → **HTTP 200**, with `plotbudget.com` showing
+    **`status: verified`** (so Resend will accept sends from the function's default from-address
+    `PLOT <hello@plotbudget.com>`).
+  - `GET https://api.resend.com/api-keys` → **HTTP 200** (the key authenticates and can enumerate
+    keys on the owning account). Both calls returning 200 confirm a live, correctly-scoped
+    credential — unlike the prior 400 `"API key is invalid"` rejections of the old key and the
+    `.env.local` key.
+- **Propagation done:** External Secrets Operator re-rendered the `supabase/supabase-auth` Secret
+  from the rotated Infisical value (forced re-sync, no 1h wait). The real Resend consumer — the
+  in-cluster **`send-resend-email`** hook handler (the GoTrue Send-Email webhook target), **NOT**
+  GoTrue itself, which uses a noop internal mailer — was **restarted** to load the new key, so the
+  `send-resend-email` function now calls Resend with the valid credential instead of returning 502.
+- **Outcome:** the GoTrue Send-Email hook path (`POST /auth/v1/otp` → `send-resend-email` → Resend)
+  no longer fails with `500 "Unexpected status code returned from hook: 502"`; transactional auth
+  email (magic-link, signup confirm, recovery, invite, email-change, security notifications) is
+  back. Google SSO was unaffected throughout.
+- **Follow-ups carried forward (not closed by this fix — they are preventive):**
+  - [OPS] Add a synthetic monitor for the email-send path (periodic `resend /domains` 200 check, or
+    an OTP-send canary) so an invalid/expired key is caught proactively, not at a user sign-in.
+  - [OPS] Validate Resend key shape (`re_` prefix) at ESO-sync / deploy time to fail fast on a
+    malformed key.
+
+- **Status:** **CLOSED** — 2026-06-24. Founder rotated `RESEND_API_KEY` in Infisical
+  `plotbudget`/`prod`; verified VALID against Resend (`GET /domains` + `GET /api-keys` → 200,
+  `plotbudget.com` = verified); ESO re-rendered `supabase/supabase-auth`; the `send-resend-email`
+  hook handler restarted to load the new key; transactional auth-email path restored.
