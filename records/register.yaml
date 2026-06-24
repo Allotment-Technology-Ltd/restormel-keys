@@ -769,6 +769,18 @@ records:
     next-review: 2026-09-24
     retention: review-only
     path: planning/horizon-scanning/README.md
+  - id: REC-PLAN-021
+    title: "Family-jewels off-cluster DR — decommission .150, replace standby compute with a storage target"
+    class: planning
+    status: draft
+    classification: internal
+    control-tier: 1
+    owner: founder
+    last-reviewed: 2026-06-24
+    review-interval: P6M
+    next-review: 2026-12-24
+    retention: review-only
+    path: planning/family-jewels-offcluster-dr.md
   - id: REC-POL-001
     title: Information Security Policy
     class: governance
