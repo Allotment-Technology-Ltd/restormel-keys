@@ -10,12 +10,18 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { InMemoryCatalogueRepository } from "./repository";
+import { resolveSeedPath } from "./seed-path";
 import type { CatalogueModel } from "./types";
 
-const SEED_URL = new URL("../../../../data/model-catalog-seed.json", import.meta.url);
+// Module-relative path: correct in source / under prerender, but OVERSHOOTS in the bundled
+// adapter-node build (drops the `dashboard/` segment → ENOENT). `resolveSeedPath` prefers it
+// when present, else walks up from cwd to the workspace root for the canonical seed location.
+const SEED_PATH = resolveSeedPath(
+  fileURLToPath(new URL("../../../../data/model-catalog-seed.json", import.meta.url)),
+);
 
 export function loadSeedModels(): CatalogueModel[] {
-  const raw = readFileSync(fileURLToPath(SEED_URL), "utf8");
+  const raw = readFileSync(SEED_PATH, "utf8");
   const seed = JSON.parse(raw) as { models?: CatalogueModel[] };
   return seed.models ?? [];
 }

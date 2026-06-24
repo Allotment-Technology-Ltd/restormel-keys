@@ -192,6 +192,27 @@ jobs:
             .
           echo "::endgroup::"
 
+  bundled-asset-guard:
+    name: Bundled asset-read guard (import.meta.url overshoot)
+    runs-on: docker
+    # Required PR check. Fails when a NEW server module under
+    # apps/dashboard/src/lib/server/ reads a shipped data asset via a fixed
+    # import.meta.url-relative climb (or sibling-dir read) — the bundled
+    # adapter-node prod runtime emits the module at a different depth, so the
+    # path overshoots/misses → ENOENT → HTTP 500 (RISK-014 / REC-INC-008; 3 prior
+    # prod instances: 112b8c99, #276, #282). Dependency-free — plain `node`,
+    # no workspace install. See docs/engineering/server-data-assets.md for the
+    # canonical pattern (module-import preferred; resolveRepoRoot / resolveSeedPath
+    # fallback).
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+      - name: Unit-test the guard classifier
+        run: node --test scripts/ci/check-bundled-asset-reads.test.mjs
+      - name: Check for fixed-climb bundled asset reads
+        run: node scripts/ci/check-bundled-asset-reads.mjs
+
   apply-migrations:
     name: Apply dashboard migrations (Forgejo DB)
     runs-on: docker

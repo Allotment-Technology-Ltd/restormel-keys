@@ -1,0 +1,156 @@
+# Forgejo CI — GitHub→Forgejo pull-mirror freshness / deploy-lag alert (#249).
+# ---------------------------------------------------------------------------------
+# WHY: plotbudget-v2 and sophia are GitHub-canonical. Argo CD does NOT track their
+# GitHub repos directly — it tracks an 8h Forgejo PULL-mirror (the GitHub repos are
+# private; Argo wires to git.allotmentology.tech via argocd-repo-creds-forgejo). So a
+# merge to GitHub `main` can sit up to ~8h before the Forgejo mirror pulls the new SHA,
+# and only then can Argo (or an operator manual-sync) deploy it. During that window the
+# post-rollout health probe reads "not OK yet" with NO signal distinguishing lag from a
+# real failure — the same silent-staleness class of gap as REC-INC-006, one hop upstream.
+#
+# WHAT: every 2h, compare each repo's GitHub `main` HEAD SHA against its Forgejo mirror
+# HEAD SHA. If they diverge AND the GitHub commit is older than the staleness threshold
+# (the mirror has had time to pull but hasn't), post a Telegram ops alert so the lag is
+# noticed and an operator can force a mirror-sync (Forgejo repo → Settings → Mirror →
+# "Synchronize Now", or POST /api/v1/repos/{owner}/{repo}/mirror-sync).
+#
+# ADDITIVE & SAFE: read-only (GitHub + Forgejo HEAD-SHA reads + a Telegram POST). Never
+# touches a deploy, never dials an on-box control-plane API (REC-INC-006 compliant —
+# outbound-only to the public GitHub, Forgejo, and Telegram APIs). No-ops cleanly when
+# any required secret is unset (GitHub mirror of THIS repo / forks / first-time setup).
+#
+# SECRETS / VARIABLES (Forgejo Actions — sourced from Infisical, never committed):
+#   secrets.TELEGRAM_BOT_TOKEN / secrets.TELEGRAM_CHAT_ID — ops alert channel.
+#   secrets.MIRROR_LAG_GH_TOKEN — GitHub read token (repo:read) for the PRIVATE
+#       plotbudget-v2 / sophia repos' commits API. Absent ⇒ those repos are skipped.
+#   secrets.FORGEJO_TOKEN — read token for the Forgejo mirror repos' branch HEAD.
+#   vars.MIRROR_LAG_STALE_MIN — minutes a GitHub HEAD must exceed before a divergence
+#       counts as lag (default 600 = 10h; > the 8h pull interval + slack). Optional.
+#   vars.MIRROR_LAG_REPOS — newline/space list of "ghOwner/ghRepo=>forgejoOwner/forgejoRepo"
+#       pairs to override the default map below. Optional.
+
+name: Mirror lag alert (GitHub→Forgejo)
+
+on:
+  schedule:
+    # Every 2 hours — frequent enough to catch an 8h-interval mirror that has stalled,
+    # cheap enough not to be noise. Forgejo cron uses standard 5-field syntax.
+    - cron: "17 */2 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: mirror-lag-alert
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check GitHub→Forgejo mirror freshness
+    runs-on: docker
+    steps:
+      - name: Compare GitHub main HEAD vs Forgejo mirror HEAD
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.MIRROR_LAG_GH_TOKEN }}
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STALE_MIN: ${{ vars.MIRROR_LAG_STALE_MIN }}
+          REPOS_OVERRIDE: ${{ vars.MIRROR_LAG_REPOS }}
+        run: |
+          set -uo pipefail
+          command -v jq >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends jq >/dev/null; }
+
+          STALE_MIN="${STALE_MIN:-600}"
+          FORGEJO_API="https://git.allotmentology.tech/api/v1"
+
+          # Default repo map: space/newline-separated "ghOwner/ghRepo=>forgejoOwner/forgejoRepo".
+          DEFAULT_MAP="Allotment-Technology-Ltd/plotbudget-v2=>Allotment-Technology-Ltd/plotbudget-v2 Allotment-Technology-Ltd/sophia=>Allotment-Technology-Ltd/sophia"
+          MAP="${REPOS_OVERRIDE:-$DEFAULT_MAP}"
+
+          if [ -z "${TG_TOKEN:-}" ] || [ -z "${TG_CHAT:-}" ]; then
+            echo "Telegram secrets unset — cannot alert; skipping (expected on the GitHub mirror / forks)."
+            exit 0
+          fi
+
+          alert() {
+            local msg="$1"
+            curl -s -m 15 -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+              -d chat_id="${TG_CHAT}" --data-urlencode "text=${msg}" >/dev/null \
+              && echo "  → Telegram alert sent." \
+              || echo "::warning::Telegram alert POST failed (non-fatal)."
+          }
+
+          now_epoch=$(date -u +%s)
+          any_checked=0
+
+          # Iterate words (works for space- OR newline-separated maps).
+          for line in $MAP; do
+            line="$(printf '%s' "$line" | tr -d '[:space:]')"
+            [ -z "$line" ] && continue
+            gh_full="${line%%=>*}"
+            fj_full="${line##*=>}"
+            [ -z "$gh_full" ] || [ -z "$fj_full" ] && continue
+            any_checked=1
+            echo "Checking ${gh_full} (GitHub) → ${fj_full} (Forgejo mirror)…"
+
+            if [ -z "${GH_TOKEN:-}" ]; then
+              echo "  MIRROR_LAG_GH_TOKEN unset — skipping ${gh_full} (private repo, no read access)."
+              continue
+            fi
+
+            # GitHub main HEAD: SHA + commit timestamp.
+            gh_json="$(curl -s -m 20 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${gh_full}/commits/main")" || gh_json=""
+            gh_sha="$(printf '%s' "$gh_json" | jq -r '.sha // empty' 2>/dev/null)"
+            gh_date="$(printf '%s' "$gh_json" | jq -r '.commit.committer.date // empty' 2>/dev/null)"
+            if [ -z "$gh_sha" ]; then
+              echo "::warning::Could not read GitHub HEAD for ${gh_full} (auth/rate-limit?) — skipping (non-fatal)."
+              continue
+            fi
+
+            # Forgejo mirror main HEAD SHA.
+            fj_auth=()
+            [ -n "${FORGEJO_TOKEN:-}" ] && fj_auth=(-H "Authorization: token ${FORGEJO_TOKEN}")
+            fj_sha="$(curl -s -m 20 "${fj_auth[@]}" \
+              "${FORGEJO_API}/repos/${fj_full}/branches/main" \
+              | jq -r '.commit.id // empty' 2>/dev/null)"
+            if [ -z "$fj_sha" ]; then
+              echo "::warning::Could not read Forgejo mirror HEAD for ${fj_full} — skipping (non-fatal)."
+              continue
+            fi
+
+            if [ "$gh_sha" = "$fj_sha" ]; then
+              echo "  IN SYNC (${gh_sha:0:8})."
+              continue
+            fi
+
+            # Diverged. Only alert if the GitHub commit is older than the threshold —
+            # i.e. the mirror has had time to pull but still hasn't (real lag, not a
+            # merge that landed seconds ago).
+            commit_epoch=0
+            if [ -n "$gh_date" ]; then
+              commit_epoch="$(date -u -d "$gh_date" +%s 2>/dev/null || echo 0)"
+            fi
+            age_min=$(( (now_epoch - commit_epoch) / 60 ))
+            if [ "$commit_epoch" -gt 0 ] && [ "$age_min" -lt "$STALE_MIN" ]; then
+              echo "  Diverged but GitHub HEAD is only ${age_min}m old (< ${STALE_MIN}m) — within normal pull window, no alert."
+              continue
+            fi
+
+            echo "  STALE MIRROR — GitHub ${gh_sha:0:8} (~${age_min}m old) ≠ Forgejo mirror ${fj_sha:0:8}."
+            msg="$(printf '%s\n' \
+              "⏳ MIRROR LAG — ${gh_full}" \
+              "GitHub main: ${gh_sha:0:8} (~${age_min}m old)" \
+              "Forgejo mirror (${fj_full}): ${fj_sha:0:8}" \
+              "" \
+              "The 8h GitHub→Forgejo pull-mirror is stale, so Argo CD is deploying an OLD commit (or an operator manual-sync can't see the new SHA yet). Force a sync: Forgejo → ${fj_full} → Settings → Mirror → Synchronize Now (or POST ${FORGEJO_API}/repos/${fj_full}/mirror-sync). See restormel-infra-alert-response.")"
+            alert "${msg}"
+          done
+
+          if [ "$any_checked" = "0" ]; then
+            echo "No repos configured (vars.MIRROR_LAG_REPOS empty + default map empty) — nothing to check."
+          fi
+          # Read-only monitor: never fail the workflow itself.
+          exit 0

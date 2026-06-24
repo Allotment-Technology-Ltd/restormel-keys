@@ -3,9 +3,9 @@
  * Idempotent — safe to call before route setup so 2026 models appear in the route builder.
  */
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { catalogSeedEpochMs } from "$lib/server/catalog-seed-epoch";
+import { resolveSeedPath } from "$lib/server/catalogue/seed-path";
 import { getSql } from "$lib/server/neon";
 
 type SeedVariant = {
@@ -44,8 +44,13 @@ type SeedModel = {
 
 type SeedFile = { models: SeedModel[]; lastUpdated?: string | null };
 
-/** Resolved from module path so sync works regardless of process cwd (Vite dev, Vercel, workers). */
-const SEED_PATH = join(
+/**
+ * Resolved robustly at runtime. The module-relative path is correct in source / under
+ * prerender, but OVERSHOOTS in the bundled adapter-node build (drops the `dashboard/`
+ * segment → ENOENT). `resolveSeedPath` prefers the module-relative path when it exists,
+ * else walks up from cwd to the workspace root and resolves the canonical seed location.
+ */
+const SEED_PATH = resolveSeedPath(
   fileURLToPath(new URL("../../../../data/model-catalog-seed.json", import.meta.url)),
 );
 
