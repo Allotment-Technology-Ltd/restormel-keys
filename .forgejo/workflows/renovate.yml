@@ -11,17 +11,25 @@
 #                     The PAT must belong to a bot user or the repo owner.
 #                     Create at: https://git.allotmentology.tech/user/settings/applications
 #
-# Auto-merge policy (encoded in renovate.json):
-#   - patch/minor devDependencies   → auto-merge on green CI
+# Auto-merge policy (encoded in renovate.json — this header MUST stay in sync with it):
+#   - patch/minor devDependencies   → auto-merge on green CI (squash)
 #   - major bumps                   → PR for human review, never auto-merge
 #   - runtime-critical packages     → PR for human review, never auto-merge
+#     (@auth/pg-adapter, better-auth, drizzle-orm, postgres, @neondatabase/serverless,
+#      vite, svelte, @sveltejs/kit, @sveltejs/adapter-node, node)
 #   - vulnerability/security alerts → immediate PR, high priority, never auto-merge
+#   - github-actions                → pinned to digest (pinDigests), never auto-merge
 #
-# Schedule: weekly (Mon 03:00–06:00 Europe/London) + on-demand via workflow_dispatch.
-# This mirrors the GitHub-side Dependabot schedule; keep both in sync.
+# Two distinct schedules apply:
+#   - This WORKFLOW cron triggers a Renovate *run*: 03:30 UTC every Monday (cron below).
+#   - renovate.json `schedule` ("after 3am and before 6am on Monday", Europe/London) governs
+#     when Renovate is allowed to *open/update PRs*. Change both together if you retime.
+# Also runnable on-demand via workflow_dispatch (with optional dry-run).
 #
 # Note: Renovate is the PRIMARY auto-dependency-update engine on Forgejo.
-# GitHub-mirror Dependabot remains the secondary feed (do not disable it).
+# GitHub-mirror Dependabot is a SEPARATE secondary feed on its own schedule (06:00 UTC Monday,
+# weekly grouped — see .github/dependabot.yml); it is not time-synced with this job and must
+# not be disabled.
 
 name: Renovate
 

@@ -12,11 +12,14 @@
 # pnpm version must match root package.json "packageManager" (9.0.0).
 # Provenance is omitted: npm only accepts provenance for public GitHub repos (private repo = 422).
 # First-time @restormel/* package: npm org must allow creating the package name; use automation token with publish.
+# MIRROR DEDUPE (PBI #248): Forgejo is canonical CI/CD; GitHub is a push-only mirror.
+# The canonical publisher is .forgejo/workflows/publish.yml, which fires on the same
+# `keys-v*` tag. A mirror tag-push would otherwise re-fire this copy → double npm publish
+# / version-collision race. The `push: tags` trigger is removed so this file no longer
+# auto-fires on the mirror; `workflow_dispatch` is retained as a GitHub-side manual recovery.
 name: Publish
 on:
-  push:
-    tags:
-      - 'keys-v*'
+  workflow_dispatch: {}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'

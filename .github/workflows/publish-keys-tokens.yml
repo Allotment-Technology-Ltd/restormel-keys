@@ -1,11 +1,12 @@
 # Publish @restormel/keys-tokens to npm on tag tokens-v* (e.g. tokens-v0.1.1).
 # Source: packages/keys-tokens (merged from restormel-platform).
 # Provenance: omitted for private repos per Keys publish workflow notes.
+# MIRROR DEDUPE (PBI #248): canonical publisher is .forgejo/workflows/publish-keys-tokens.yml
+# (same `tokens-v*` tag). A mirror tag-push would re-fire this copy → double npm publish race.
+# `push: tags` removed so this no longer auto-fires on the mirror; dispatch kept for manual recovery.
 name: Publish tokens
 on:
-  push:
-    tags:
-      - "tokens-v*"
+  workflow_dispatch: {}
 
 permissions:
   contents: read

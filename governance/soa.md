@@ -7,19 +7,34 @@ status: approved
 classification: internal
 control-tier: 2
 created: 2026-06-15
-last-reviewed: 2026-06-19
+last-reviewed: 2026-06-23
 review-interval: P12M
 retention: P6Y-after-superseded
 approved-by: Adam Boon
-approved-on: 2026-06-19
+approved-on: 2026-06-23
 ---
 
 # Statement of Applicability (SoA)
 
 ISO 27001:2022 Annex A — all 93 controls. Scope: Allotment Technology Ltd in-scope products and
-shared infrastructure — Restormel (restormel.dev; Keys + Connect) and allotmentology.tech
-(founder-only company portal; planned contact/enquiry form). Plot and Sophia are out of scope
-until later phases. Organisation: Allotment Technology Ltd (sole director). ICO registration: ZC092549.
+shared infrastructure — Restormel (restormel.dev; Keys + Connect), allotmentology.tech
+(founder-only company portal; live contact/enquiry form), **PlotBudget (plotbudget.com)**, and
+**Sophia (usesophia.app)**, plus the shared **K3s sovereign cluster** (asset-inventory.yaml
+AST-022..028) on which PlotBudget and Sophia run. Organisation: Allotment Technology Ltd (sole
+director). ICO registration: ZC092549.
+
+> **SCOPE EXPANSION — 2026-06-23 (founder decision).** PlotBudget and Sophia were previously
+> declared *out of scope until later phases*. They now run **live on the shared, in-scope K3s
+> cluster**, sharing its node, etcd, External Secrets Operator, and backup plane (Phase-1 infra
+> ground-truth `docs/infra/infra-ground-truth-2026-06-23.md` §2/§5 D1/D7, §6 F3/F12). Out-of-scope
+> products sharing an in-scope blast radius is not a tenable position, so both are brought **formally
+> in scope**. This resolves/expands PBIs #230 (asset inventory), #237 (suppliers/ROPA), #239
+> (re-scope) and updates RISK-001 (blast radius). The control applicability rows below were assessed
+> for the prior Restormel + allotmentology.tech scope; they remain valid but PlotBudget/Sophia-specific
+> control evidence (DPIA per product, the in-cluster SurrealDB-backup gap, single-node SPOF, the
+> inference sub-processor DPAs) is being captured via filed follow-up PBIs — see the risk register
+> (RISK-001) and asset inventory (AST-022..028). A full per-control re-walk against the expanded
+> scope is itself a follow-up item.
 
 Per-control row: `control | title | applicable? | justification | status | evidence ref`
 

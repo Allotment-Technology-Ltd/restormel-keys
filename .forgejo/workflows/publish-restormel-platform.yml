@@ -63,7 +63,7 @@ jobs:
           pnpm --filter @restormel/graphrag-core test
           pnpm --filter @restormel/keys-tokens run build
           pnpm --filter @restormel/keys run build
-          pnpm --filter @restormel/aaif run build
+          pnpm --filter @restormel/dispatch run build
           pnpm --filter @restormel/connect-core run build
           pnpm --filter @restormel/connect-core test
           pnpm --filter @restormel/state run build

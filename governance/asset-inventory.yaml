@@ -6,14 +6,20 @@
 #   owner: founder
 #   status: approved
 #   approved-by: Adam Boon
-#   approved-on: 2026-06-19
-#   last-reviewed: 2026-06-19
+#   approved-on: 2026-06-23
+#   last-reviewed: 2026-06-23
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
-# ISMS scope: Allotment Technology Ltd — company-wide across in-scope products
-# (Restormel + allotmentology.tech) and their shared supporting infrastructure.
-# Plot (plotbudget.com) and Sophia (usesophia.app) remain OUT of scope until their phases.
+# ISMS scope: Allotment Technology Ltd — company-wide across all in-scope products
+# (Restormel + allotmentology.tech + PlotBudget + Sophia) and their shared supporting
+# infrastructure, INCLUDING the live K3s sovereign cluster.
+# SCOPE EXPANSION (2026-06-23, founder decision): PlotBudget (plotbudget.com) and Sophia
+# (usesophia.app) are now formally IN scope — they run live on the shared in-scope K3s HA
+# cluster (single-node today) sharing its node/etcd/ESO/backup plane, so they can no longer be
+# treated as out-of-scope. This supersedes the earlier "Plot/Sophia OUT of scope until their
+# phases" position. See Phase-1 infra ground-truth (docs/infra/infra-ground-truth-2026-06-23.md
+# §5 D1/D7, §6 F3/F12) and PBIs #230 / #239.
 # Per-asset scope is in the product: field.
 #
 # Last updated: 2026-06-17 — AST-003 notes updated to reflect in-execution split;
@@ -54,6 +60,20 @@
 #   AST-020/AST-021 (the two DNS zones); updated AST-005/AST-016 (registrar retained, DNS→Hetzner);
 #   extended the Hetzner supplier scope (suppliers.yaml); added RISK-013 (DNS SPOF/concentration,
 #   accepted). RoPA unchanged (same sub-processor Hetzner, same AVV; DNS holds no customer data).
+# 2026-06-23 (governance/isms-scope-expansion-plot-sophia): ISMS SCOPE EXPANSION — PlotBudget +
+#   Sophia + the live K3s sovereign cluster brought formally INTO scope (founder decision; Phase-1
+#   ground-truth §5 D1/D7 §6 F3/F12; PBIs #230, #239). Added AST-022 (K3s cluster + node
+#   restormel-sovereign-master1 cx43), AST-023 (3 CNPG Postgres clusters), AST-024 (SurrealDB
+#   in-cluster), AST-025 (self-hosted Supabase / PlotBudget stack), AST-026 (Sophia), AST-027
+#   (External Secrets Operator + Infisical ClusterSecretStores), AST-028 (kube-prometheus
+#   monitoring). AST-019 (S3 fsn1) scope confirmed in-scope for all CNPG clusters incl. PlotBudget.
+#   The dead Coolify-topology compute assets (AST-003 and per-box AST-009/AST-010/AST-018) are
+#   marked SUPERSEDED-IN-TRANSITION (NOT deleted — append-only): the live production data-plane is
+#   the K3s cluster (AST-022); the Coolify boxes are still running/billing (zombie legacy, F4) so
+#   they are retained until decommission (PBI: decommission legacy boxes, F4). Backup-record
+#   divergence (CNPG→S3 barman vs the older BX11/restic notes) flagged for follow-up (F6).
+#   New follow-up PBIs filed: DPIA for PlotBudget, DPIA for Sophia, sub-processor AVV/contract
+#   confirmation. last-reviewed → 2026-06-23 (founder re-approval via merge).
 
 assets:
   - id: AST-001
@@ -80,8 +100,18 @@ assets:
     type: infrastructure
     owner: founder
     product: shared
+    status: superseded-in-transition
     location: "Hetzner Cloud, Helsinki, FI (EU)"
     notes: >
+      SUPERSEDED-IN-TRANSITION by the K3s sovereign cluster (AST-022), 2026-06-23. The live
+      production data-plane has moved to K3s (Phase-1 ground-truth §1/§5 D2/D3); this Coolify
+      estate is the OLD topology. NOT decommissioned and NOT deleted (append-only): all three
+      boxes (AST-009/AST-010/AST-018) are still running and billing (zombie legacy, ground-truth
+      F4) and the Restormel product app itself is NOT yet migrated in-cluster (still on this
+      Coolify estate per F-note "Restormel NOT deployed in-cluster"). Retained as an in-scope
+      asset until formally decommissioned (follow-up PBI: decommission/document the 3 legacy
+      Coolify servers, ground-truth F4). The per-box detail below is RETAINED but historical for
+      role/topology; trust the Phase-1 ground-truth for the current live placement.
       Three Hetzner Cloud servers in Helsinki (hel1-dc2), managed together, form the primary
       compute plane: Box 1 (.150 / AST-010) is the Coolify control plane + Traefik, Forgejo,
       and shared services; Box 2 (.167 / AST-009) is the live production runtime
@@ -235,6 +265,10 @@ assets:
           restic-surreal no longer covers SurrealDB data. <!-- VERIFY post-Phase-2: confirm
           what .167 services are currently in scope for this backup job (Postgres, Hydra, etc.)
           and update this entry accordingly. -->
+          NOTE (2026-06-23, REC-INC-009 / PBI #229): the K3s sovereign-stack SurrealDB
+          (NS=main / DB=sophia) backup now targets Hetzner Object Storage S3 fsn1 (AST-029,
+          repo surreal-k3s), NOT this BX11 repo. This restic-surreal repo + its 6 historical
+          snapshots are PRESERVED (read-only) pending the BX11 decommission sign-off.
         - restic-buildops: Box B build/ops data → BX11:/restic-buildops (cron 02:00 UTC,
           Box B 77.42.125.150). Covers Forgejo, Coolify config, Box B Postgres, and SurrealDB
           (post-Phase-2 migration from .167 per AST-010/AST-014).
@@ -392,6 +426,12 @@ assets:
       Distinct from AST-012 (BX11 Storage Box, SFTP/restic): AST-019 is S3 for CNPG Barman;
       BX11 remains the restic cold-copy target (SurrealDB exports + PVCs). EU-sovereign,
       no third-party SaaS. Hetzner sub-processor: suppliers.yaml.
+      SCOPE CONFIRMED IN-SCOPE (2026-06-23): now the live backup target for ALL three CNPG
+      clusters on the K3s estate (AST-023) — pg-restormel, pg-platform, AND pg-plotbudget
+      (the PlotBudget/Supabase DB, now in scope). Phase-1 ground-truth §1/§5 confirms CNPG→S3
+      barman backups are healthy (30-day retention, PITR intact). NOTE (ground-truth F6): this
+      S3/barman path diverges from the older AST-012/restic backup notes — backup-record
+      reconciliation + a restore drill against the live path are tracked as a follow-up PBI.
 
   - id: AST-020
     asset: "restormel.dev DNS zone (Hetzner Cloud DNS)"
@@ -421,3 +461,153 @@ assets:
       (apex/www/coolify → .150; git.allotmentology.tech → Forgejo .150 — HARD invariant; Migadu
       mail-auth records; added CAA letsencrypt). A-records re-point to the K3s cluster at cutover.
       Availability concentration: RISK-013. Hetzner sub-processor: suppliers.yaml.
+
+  - id: AST-029
+    asset: "Hetzner Object Storage (S3, fsn1) — restic backup target"
+    type: backup/storage
+    owner: founder
+    product: shared
+    location: "Hetzner Object Storage, Falkenstein DE (EU) — fsn1.your-objectstorage.com, bucket restormel-restic-backups"
+    notes: >
+      Sovereign EU S3-compatible object storage adopted as the restic backup target for the
+      K3s sovereign stack, replacing the BX11 Storage Box (AST-012) as new repos are migrated.
+      Accessed via restic's NATIVE s3: backend (no rclone). Credentials = Infisical
+      `infrastructure`/prod keys HETZNER_S3_FSN1_ACCESS_KEY_ID / _SECRET_ACCESS_KEY (AST-013),
+      delivered into the K3s `data` plane via the External Secrets `infisical-infra` store.
+      Repos (restic-encrypted, same passphrase convention as AST-012):
+        - surreal-k3s: SurrealDB (NS=main / DB=sophia) hourly logical `surreal export` →
+          s3://restormel-restic-backups/surreal-k3s. Added 2026-06-23 (REC-INC-009 / PBI #229);
+          retention keep-hourly 24 / keep-daily 7 / keep-weekly 4 / keep-monthly 6; restore drill
+          verified 2026-06-23 (snapshot d19605b7). Replaces the dead BX11 restic-surreal write path.
+      EU-sovereign backup — Falkenstein DE, no third-party SaaS. Mitigating control for RISK-001
+      and RISK-009 (recoverability of the SurrealDB knowledge graph). The K3s GitOps source for
+      the backup CronJob is restormel-gitops cluster/surrealdb/ (Argo app cluster-addons).
+  # --- K3s SOVEREIGN CLUSTER (in scope 2026-06-23 — Phase-1 ground-truth §2; PBI #230) ---
+
+  - id: AST-022
+    asset: "K3s sovereign cluster + node restormel-sovereign-master1"
+    type: infrastructure
+    owner: founder
+    product: shared
+    location: >
+      Hetzner Cloud, Helsinki FI (EU) hel1-dc2. Node restormel-sovereign-master1 (id 143382025,
+      cx43 8 vCPU / 16 GB / 160 GB), public 135.181.25.76, private 172.16.0.5. Burst node group
+      restormel-sovereign-burst (CPX31, hel1) = 0 nodes / agents-only today.
+    notes: >
+      ADDED 2026-06-23 (ISMS scope expansion). The live PRODUCTION data-plane (Phase-1
+      ground-truth §1/§2, verified by kubectl + Hetzner API 2026-06-23). k3s v1.34.8, SINGLE
+      NODE carrying control-plane + etcd + all stateful workloads: Argo CD, Cilium + Hubble,
+      Traefik ingress, cert-manager, External Secrets Operator (AST-027), CNPG operator + the
+      3 CNPG Postgres clusters (AST-023), SurrealDB (AST-024), the self-hosted Supabase /
+      PlotBudget stack (AST-025), Sophia (AST-026), and kube-prometheus monitoring (AST-028).
+      CNPG backups → Hetzner Object Storage S3 fsn1 (AST-019). 16/16 Hetzner CSI volumes bound
+      to this one node = the hard per-node cap (forced Loki onto emptyDir).
+      CRITICAL FINDINGS carried as follow-up PBIs (NOT resolved here):
+        - SINGLE-NODE SPOF — node loss = total estate outage; control-plane + etcd + all data on
+          one cx43; burst group is agents-only/0 (ground-truth F1).
+        - SurrealDB has NO working backup (cronjob suspended; Argo sophia-surreal-backup Missing)
+          (ground-truth F2/D5).
+        - Single AZ (hel1) incl. the backup bucket; memory-limit overcommit 131% on the one node
+          (ground-truth F7/F9).
+      GitOps record: deploy/k3s/ manifests + Argo app-of-apps; some Argo apps Degraded/OutOfSync
+      and deploy/k3s/ was untracked in git at audit time (ground-truth D9/F11). Shares the
+      restormel-internal private network (AST-011) with the legacy Coolify boxes.
+
+  - id: AST-023
+    asset: "CNPG Postgres clusters (in-cluster) — pg-restormel / pg-platform / pg-plotbudget"
+    type: data-store
+    owner: founder
+    product: shared
+    location: "In-cluster on AST-022 (ns cnpg-system), Helsinki FI (EU); backups → S3 fsn1 (AST-019)"
+    notes: >
+      ADDED 2026-06-23. Three CloudNativePG Postgres 16.8 clusters managed by the CNPG operator:
+        - pg-restormel — DB restormel_ops (Restormel control-plane / ops).
+        - pg-platform  — DBs allotmentology, restormel_staging, usesophia (Sophia's relational
+          store, AST-026). product: shared (Restormel + allotmentology.tech + Sophia).
+        - pg-plotbudget — the PlotBudget self-hosted Supabase database (AST-025). NOW IN SCOPE.
+      Each cluster = 1 primary + 1 replica, but BOTH pods land on the single node (AST-022) — no
+      node-loss HA (ground-truth §1 F1). 10 GB data + 10 GB WAL PVC per cluster. Continuous
+      WAL + base backups (PITR) via barman-cloud → S3 fsn1 (AST-019), 30-day retention, chain
+      intact at audit (ground-truth §1/§5 D4). DATA STATE: app DBs are 7–19 MB empty/bootstrap
+      schemas pre-cutover; production data still on the legacy/Neon estate (ground-truth §1/F13).
+      Access: per-cluster credentials delivered via ESO (AST-027) from Infisical (AST-013).
+      Backup-record reconciliation + restore drill against the live S3/barman path: follow-up
+      PBI (ground-truth F6).
+
+  - id: AST-024
+    asset: "SurrealDB (in-cluster) — Sophia knowledge graph"
+    type: data-store
+    owner: founder
+    product: sophia
+    location: "In-cluster on AST-022 (ns data, STS surreal), Helsinki FI (EU)"
+    notes: >
+      ADDED 2026-06-23. SurrealDB v3.1.4, single replica surreal-0, 20 GB PVC (~76 MiB used),
+      NS main / DB sophia — backs Sophia (AST-026). No replication, no HA. DISTINCT from the
+      Restormel SurrealDB (AST-014, surreal.restormel.dev on the Coolify estate) — this is the
+      in-cluster Sophia graph store, brought in scope with Sophia.
+      CRITICAL: SurrealDB has NO working backup — the hourly backup CronJob is SUSPENDED, its one
+      run Failed (DeadlineExceeded), and the Argo app sophia-surreal-backup is Missing
+      (ground-truth §1 F2 / §5 D5). This 20 GB knowledge-graph store is currently UNPROTECTED.
+      Tracked as a critical follow-up PBI (restore SurrealDB backups on K3s).
+
+  - id: AST-025
+    asset: "Self-hosted Supabase stack — PlotBudget backend"
+    type: service/web-app
+    owner: founder
+    product: plotbudget
+    location: "In-cluster on AST-022 (ns supabase), Helsinki FI (EU); frontend on Vercel (US)"
+    notes: >
+      ADDED 2026-06-23 — NOW IN ISMS SCOPE (founder decision). The PlotBudget (plotbudget.com)
+      backend: a self-hosted Supabase deployment (9 running Deployments — kong gateway, auth/
+      gotrue, rest/postgrest, realtime, storage, imgproxy, meta, studio, and a send-resend-email
+      edge-runtime function → Resend). Application data in pg-plotbudget (AST-023); object/storage
+      in S3 bucket plotbudget-storage (fsn1). The PlotBudget FRONTEND is hosted on Vercel (US) at
+      plotbudget.com — Vercel scope now recorded in suppliers.yaml (was registrar-only). Email via
+      Resend (suppliers.yaml). Self-hosted Supabase LIVE at api.plotbudget.com (per founder memory:
+      data + RLS + realtime + email verified). PlotBudget processing activity: RoPA PROC-010.
+      DPIA owed (follow-up PBI — consumer financial/budget data).
+
+  - id: AST-026
+    asset: "Sophia application (in-cluster)"
+    type: service/web-app
+    owner: founder
+    product: sophia
+    location: "In-cluster on AST-022 (ns sophia, 2 replicas), Helsinki FI (EU)"
+    notes: >
+      ADDED 2026-06-23 — NOW IN ISMS SCOPE (founder decision). Sophia (usesophia.app), 2 replicas,
+      backed by SurrealDB (AST-024, NS main/DB sophia) + the usesophia DB in pg-platform (AST-023).
+      Runtime LLM/inference + billing sub-processors are wired in the sophia-app-env secret and are
+      now recorded in suppliers.yaml: AIZOLO gateway, Fireworks, Together, Voyage, ElevenLabs (LLM/
+      inference fleet); Paddle (billing); Resend (email). LEGACY WIRING STILL PRESENT (ground-truth
+      §2 / D8): Neon (NEON_API_KEY + Neon Auth) and Zuplo gateway refs remain in Sophia's env though
+      the K3s/CNPG estate is now the host — Neon decommission + Zuplo retirement not executed
+      (tracked in RISK-004 / suppliers.yaml). Sophia processing activity: RoPA PROC-011. DPIA owed
+      (follow-up PBI — Sophia is an LLM product; assess data categories + AI processing).
+
+  - id: AST-027
+    asset: "External Secrets Operator + Infisical ClusterSecretStores (in-cluster)"
+    type: secrets
+    owner: founder
+    product: shared
+    location: "In-cluster on AST-022 (ESO controller/webhook/cert-controller), Helsinki FI (EU)"
+    notes: >
+      ADDED 2026-06-23. External Secrets Operator (ESO) materialises in-cluster Kubernetes
+      Secrets from the self-hosted Infisical store (AST-013) via 5 Infisical ClusterSecretStores
+      feeding 32 ExternalSecrets (ground-truth §5 D6). This is a hard CLUSTER-WIDE bootstrap
+      dependency — an Infisical outage or identity revoke stalls secret materialisation
+      estate-wide (ground-truth F8). Extends the AST-013 / RISK-010 Infisical SPOF into the K3s
+      estate. Harden + document the Infisical+ESO bootstrap SPOF: follow-up PBI (F8).
+
+  - id: AST-028
+    asset: "kube-prometheus monitoring stack (in-cluster) — Ops Centre"
+    type: monitoring
+    owner: founder
+    product: shared
+    location: "In-cluster on AST-022 (Grafana/Prometheus/Loki/Alertmanager/Alloy), Helsinki FI (EU)"
+    notes: >
+      ADDED 2026-06-23. The Ops Centre observability stack (Grafana, Prometheus, Loki,
+      Alertmanager, Alloy) — grafana./argo.allotmentology.tech behind portal SSO. Loki is on
+      emptyDir (no PVC — log history lost on pod restart) because the node is at the 16/16 CSI
+      volume cap (ground-truth §1/F5) — an observability/forensics gap. metrics-server NOT
+      installed (live metrics via Prometheus/node-exporter). Move Loki off emptyDir + address the
+      volume cap: follow-up PBI (F5).
