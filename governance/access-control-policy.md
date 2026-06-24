@@ -73,7 +73,7 @@ order for remediation given the sensitivity of the data or access granted.
 |---|---|---|---|---|
 | Google Workspace (admin) | Email + admin | Yes | 1 — Urgent | ⚠ Pending — founder to enrol (runbook) |
 | Hetzner control panel | Compute host | Yes | 1 — Urgent | ⚠ Pending — founder to enrol (runbook) |
-| Coolify | App/infra control | Yes | 1 — Urgent | ⚠ Pending — founder to enrol (runbook) |
+| Coolify | App/infra control | Yes | 1 — Urgent | ⚠ Pending — founder to enrol (runbook) (compensating control: Coolify dashboard additionally gated by portal BetterAuth forwardAuth — portal MFA required to reach Coolify) |
 | Forgejo | Canonical repo | Yes | 1 — Urgent | ⚠ Pending — founder to enrol (runbook) |
 | Mettle | Business banking | Yes | 1 — Urgent | ⚠ Pending confirm — bank-enforced (PSD2 SCA), almost certainly already on |
 | Paddle | Billing / customer data | Yes | 1 — Urgent | ⚠ Pending — founder to enrol (runbook) |
@@ -83,6 +83,9 @@ order for remediation given the sensitivity of the data or access granted.
 | Sentry | Error tracking | Yes | 2 — High | ⚠ Pending — founder to enrol (runbook) |
 | Neon | Legacy DB (decommissioning) | Yes | 3 — Medium | ⚠ Pending — enrol if account still active (decommissioning) |
 | Notion | Internal tooling | Yes | 3 — Medium | ⚠ Pending — founder to enrol (runbook) |
+| allotmentology.tech portal / BetterAuth admin | Portal (magic-link auth) | Yes | 2 — High | ✅ Enabled (magic-link; founder-only) |
+| Migadu | Transactional/company email | Yes | 2 — High | ✅ Enabled |
+| Huly local admin (break-glass) | Self-hosted PM/tracker admin (AST-030) | n/a at the app — gated by portal forward-auth (portal MFA) + IP-allowlist on the break-glass host | 2 — High | ⚠ WS1 staged (restormel-gitops PR #6). Huly has no native MFA; the compensating controls are the portal forward-auth gate (portal MFA required to reach huly.allotmentology.tech) and, on the portal-bypassing break-glass host, a Traefik IP-allowlist. Credential in Infisical (`product_management` project, folder /huly) only; rotate on the access-review cadence. See §4 + RISK-015. |
 
 Mac login serves as a hardware second factor for SSH key-based access to the
 Coolify/Hetzner host. FileVault is confirmed enabled (2026-06-15).
@@ -101,6 +104,60 @@ and supplier register (REC-GOV-005).
 
 Remote access to the Coolify/Hetzner host is via SSH key only; password
 authentication is disabled on the server.
+
+**Secret access (per-project boundary).** Operational secrets live in the self-hosted
+Infisical manager (AST-013), partitioned into five dedicated projects — `infrastructure`
+(shared infra), `restormel`, `allotmentology`, and the Phase-B `sophia` / `plotbudget`.
+Access to secrets is granted **per project, on least privilege**, not estate-wide:
+
+- **Human access** is via the Infisical UI under the founder admin account, granted
+  per project. At the solo-founder stage the founder is admin on all five; the boundary
+  is enforced structurally so a future team member or external collaborator can be given
+  exactly the project(s) their role needs — e.g. a product contractor → that product's
+  project only, never `infrastructure`. There is **no external / third-party access** to
+  any project; sub-processors never receive Infisical credentials.
+- The `infrastructure` project (which holds the credentials that reach everything else)
+  carries the tightest boundary: founder plus the ESO machine identity only.
+- **In-cluster access** is via the External Secrets Operator (ESO), the only in-cluster
+  consumer of Infisical. ESO uses **one shared, read-only machine identity** added to all
+  five projects (READ on env `prod`) so it can render each workload's secrets into native
+  Kubernetes `Secret`s. That shared identity is used **only by ESO, only in-cluster** —
+  never by a human or external party — so it does not weaken the per-project human/external
+  boundary above. Its single bootstrap credential (`infisical-machine-identity` in
+  namespace `external-secrets`) is the one out-of-band secret, created by hand and excluded
+  from GitOps; its rotation and SPOF treatment are governed by REC-POL-004 (§5) and
+  RISK-010.
+
+The allotmentology.tech portal uses its own self-contained BetterAuth authentication and is
+currently founder-only. Coolify dashboard (coolify.allotmentology.tech) is published behind
+the allotmentology.tech portal's BetterAuth session via Traefik forwardAuth. All Coolify
+access requires an authenticated, approved portal session. This is a controlled forward-auth
+gate — not a federated identity protocol. Coolify's own local-auth login layer is retained as
+a second layer of protection. Note: this is a forward-auth gate, not SSO federation; if a
+true federated IdP (SAML/OIDC) is introduced later, this section and the risk register must
+be revisited (a shared auth service would carry cross-product blast radius).
+
+**Portal forward-auth gated hosts (same model).** The same Traefik forward-auth gate to the
+allotmentology.tech portal also fronts the in-cluster operator surfaces on the
+`.allotmentology.tech` apex — `grafana.` and `argo.` (Ops Centre / Argo CD), and as of WS1
+(restormel-gitops PR #6) `huly.` (Huly, AST-030). Reaching any of them requires an
+authenticated, approved portal session; each app then keeps its own local login as a second
+layer (two-layer auth — the portal gates the network, the app gates the account; Huly does NOT
+header-trust X-Forwarded-User into a session, so the operator still logs into Huly's own local
+account). Because they share the portal as the gate, the portal is a single point of failure
+for normal access — see the break-glass note below and RISK-015.
+
+**Huly break-glass admin — a standing privileged credential.** Huly (AST-030) runs with
+`disableSignup:true`, so the only way in is a seeded local admin account; that account is a
+standing privileged credential and is governed here. Owner: founder. Its password lives ONLY in
+Infisical (the `huly` project, key `HULY_BREAKGLASS_ADMIN_PASSWORD`, delivered into the cluster
+via ESO — never in git), and it is rotated on the quarterly access-review cadence (§6). Because
+the portal is a SPOF for the normal gated path, Huly has a deliberate portal-BYPASSING
+break-glass path: (1) the IP-allowlisted `huly-admin.allotmentology.tech` host — DEFERRED, it is
+fail-closed until the founder supplies the operator source `/32` (and the host DNS is created);
+and (2) a `kubectl port-forward` runbook needing only cluster API access (KUBECONFIG), which is
+the path WS1 deploys with. Both reach Huly's own account service directly, never the portal. The
+break-glass admin is in scope for the quarterly access review (§6).
 
 ## 5. Joiner / mover / leaver
 

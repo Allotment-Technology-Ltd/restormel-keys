@@ -700,3 +700,46 @@ assets:
       volume cap (ground-truth §1/F5) — an observability/forensics gap. metrics-server NOT
       installed (live metrics via Prometheus/node-exporter). Move Loki off emptyDir + address the
       volume cap: follow-up PBI (F5).
+
+  # --- HULY — self-hosted unified PM/tracker (WS1 deploy, restormel-gitops PR #6) ---
+  # NOTE: the gitops PR #6 body refers to "AST-018" for this asset — that id was written
+  # against an OLDER inventory and is now TAKEN (the .166 CI box). The Huly asset's real id
+  # is AST-030 (next free). Cross-reference both ways until the PR body is updated.
+
+  - id: AST-030
+    asset: "Huly — self-hosted unified project-management / issue tracker"
+    type: service/web-app
+    owner: founder
+    product: shared
+    location: "In-cluster on AST-022 (ns huly), Helsinki FI (EU) — huly.allotmentology.tech; object store → Hetzner Object Storage S3 fsn1 (AST-029)"
+    notes: >
+      ADDED 2026-06-24 (WS1 Deploy & SSO, restormel-gitops PR #6 — STAGED, not yet synced).
+      Self-hosted Huly (vendored Helm chart charts/huly @ app v0.7.423, hardcoreeng images
+      pinned, pulled direct from Docker Hub — D11 mirror-to-registry.allotmentology.tech still
+      open). Twelve Deployments / eleven Services behind a Traefik IngressRoute at
+      huly.allotmentology.tech, gated by the SAME portal forward-auth model as grafana./argo.
+      (Path A: Traefik Middleware → https://allotmentology.tech/api/forward-auth, fails closed;
+      Huly runs its OWN local accounts behind the gate, NO OIDC; disableSignup:true).
+      BUNDLED DATASTORES (single-node, in-namespace, 3 hcloud-volumes PVCs): CockroachDB
+      v24.2.5 (cockroach-data 10Gi, pgwire :26257), Elasticsearch 7.14.2 (elastic-data 10Gi),
+      Redpanda v24.3.6 (redpanda-data 5Gi). The bundled MinIO is DISABLED — blob storage is the
+      external Hetzner Object Storage S3 fsn1 (AST-029), dedicated bucket `huly-allotmentology`,
+      reusing the shared HETZNER_S3_FSN1_* credential pair (per-app S3 key = a console-only
+      hardening option, deferred). SECRETS: ESO-owned `huly-secret` rendered by the
+      `infisical-product-management` ClusterSecretStore (AST-027 ESO) from the EXISTING Infisical
+      `product_management` project (projectId fb4df07c-…, AST-013; D6 resolved 2026-06-24 — founder
+      reuses this project rather than a new `huly` one), env prod, folder /huly — NO values in git,
+      all HULY_* keys delivered via ESO; the shared ESO machine identity was granted READ on
+      product_management/prod.
+      SECURITY POSTURE: the bundled CockroachDB/Redpanda/Elastic run --insecure (unauthenticated
+      in-cluster); the compensating control is a default-deny + intra-namespace + Traefik-only
+      set of NetworkPolicies (applications/huly/50-networkpolicy.yaml). BREAK-GLASS: a portal-
+      bypassing path exists two ways — (1) the IP-allowlisted huly-admin.allotmentology.tech host
+      (DEFERRED: needs the founder operator /32 + DNS before sync; fail-closed until then), and
+      (2) the kubectl port-forward runbook (no ingress/portal — the deploy path for WS1). The
+      local Huly break-glass admin is a standing privileged credential — see access-control-policy
+      (REC-POL-002 §3/§4) + RISK-012. SYNC IS MANUAL (restormel-prod AppProject, no automated
+      syncPolicy) — a prod workload, rollout only on operator Argo sync. Backup of the Huly
+      datastores (Cockroach + ES + the S3 blobs) is a separate decision, NOT auto-enabled in WS1
+      (chart backup CronJob disabled) — follow-up. Shares the restormel-internal private network
+      (AST-011). [PLACEHOLDER — founder: confirm the break-glass admin email + the /32 allowlist.]

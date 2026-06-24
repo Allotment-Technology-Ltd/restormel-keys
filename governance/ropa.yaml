@@ -383,3 +383,38 @@ processing_activities:
       no-training/data-retention terms + prompt-handling controls in the DPIA.]
     privacy_notice_ref: "[PLACEHOLDER — confirm/publish a Sophia privacy notice URL (usesophia.app) covering AI/LLM processing + the inference sub-processor list]"
     product: sophia
+
+  # --- PROC-013 added 2026-06-24 (WS1 Huly deploy, restormel-gitops PR #6). INTERNAL staff tool —
+  #     low-risk processing over the operators' own data, not customers/third parties. ---
+
+  - id: PROC-013
+    purpose: >
+      Internal project / work tracking — the founder/operators record issues, projects, tasks and
+      working documents in the self-hosted Huly instance (AST-030). INTERNAL TOOL: data subjects are
+      the founder/operators themselves, not customers or external third parties.
+    lawful_basis: >
+      LI / legitimate organisational interest in running the company's internal work (Art 6(1)(f)).
+      As an internal staff tool over the operators' own data this is low-risk; no third-party data
+      subjects by default.
+    data_subjects: "Founder + any operators with a Huly local account (internal only)"
+    data_categories:
+      - "Huly local-account identity (email + hashed credential)"
+      - "Issue/project/task content + working documents the operators author (may incidentally contain personal data they type in)"
+    recipients:
+      - "Self-hosted in-cluster on AST-022 (Helsinki EU) — CockroachDB / Elasticsearch / Redpanda (AST-030)"
+      - "Hetzner Object Storage S3 fsn1 (Falkenstein EU, AST-029) — document/file blobs, bucket huly-allotmentology"
+      - "No external recipients; not exposed to customers (portal forward-auth gated, disableSignup:true)"
+    transfers: >
+      None — fully EU-resident (Helsinki compute + Falkenstein object storage), self-hosted, no
+      third-party SaaS in the data path. Secrets via ESO/Infisical (AST-027/013).
+    retention: >
+      Life of the company's internal use of Huly. Account credentials rotated on the access-review
+      cadence (REC-POL-002 §6). Datastore backup is a separate, not-yet-enabled decision (WS1 chart
+      backup CronJob disabled) — follow-up.
+    security_measures: >
+      Portal forward-auth SSO gate (fails closed) + Huly local login (two layers); disableSignup:true;
+      default-deny + intra-namespace + Traefik-only NetworkPolicies guarding the --insecure bundled
+      datastores (AST-030); TLS in transit (wildcard cert); ESO-owned secrets, none in git; break-glass
+      via IP-allowlisted host (deferred) or kubectl port-forward. See RISK-015.
+    privacy_notice_ref: "n/a — internal staff tool, not a public-facing processing activity. Revisit if Huly is ever opened to external collaborators or holds third-party personal data."
+    product: shared

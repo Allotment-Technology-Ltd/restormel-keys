@@ -507,3 +507,46 @@ risks:
     owner: founder
     status: open
     review: 2026-12-23
+
+  # --- RISK-015 added 2026-06-24 (WS1 Huly deploy, restormel-gitops PR #6). ---
+
+  - id: RISK-015
+    risk: >
+      Huly (AST-030) introduces three coupled exposures. (1) BUNDLED DATASTORES RUN UNAUTHENTICATED:
+      CockroachDB runs `start-single-node --insecure` (pgwire :26257 accepts unauthenticated
+      connections — the password baked into CR_DB_URL is IGNORED by the server), and Redpanda +
+      Elasticsearch are likewise unauthenticated in-cluster. Any pod that can route to those services
+      gets full read/write — the URL password gives a FALSE sense of auth. (2) SSO is a portal SPOF:
+      the huly.allotmentology.tech gate is Traefik forward-auth to the company portal (a separate
+      failure domain shared with grafana./argo.). If the portal is down, the gated host 302s to a dead
+      sign-in and Huly is unreachable via the normal path. (3) A STANDING PRIVILEGED CREDENTIAL: the
+      local Huly break-glass admin is a long-lived admin account (disableSignup:true → it is the
+      privileged way in) — an unrotated/over-scoped standing credential is a classic ISMS finding.
+    asset: "AST-030 (Huly); AST-022 (K3s cluster); DAT-014/PROC-013; AST-029 (S3 blobs)"
+    product: shared
+    likelihood: L
+    impact: M
+    rating: Low
+    treatment_type: mitigate
+    treatment: >
+      (1) UNAUTHENTICATED DATASTORES — compensating control = NetworkPolicies
+      (applications/huly/50-networkpolicy.yaml): default-deny ingress for ns huly, then allow only
+      intra-namespace pod-to-pod (so the --insecure ports are reachable ONLY by Huly's own pods) and
+      Traefik→frontends. The Traefik-ns selector was a placeholder (kube-system) and is FIXED to the
+      live `traefik` namespace this WS1 (else the allow-rule would silently leave the frontends
+      unreachable). RESIDUAL: egress is left open (frontends must reach external S3 + ESO→Infisical);
+      pinning egress is a later hardening item. Datastore-level auth (Cockroach secure mode) is a
+      future hardening option but out of WS1 scope. (2) PORTAL SPOF — break-glass path that does NOT
+      traverse the portal: the IP-allowlisted huly-admin.allotmentology.tech host (DEFERRED — needs the
+      founder operator /32 + DNS; fail-closed until then) AND the kubectl port-forward runbook
+      (KUBECONFIG only — the WS1 deploy path). appUrls.relative=true keeps the SPA's API calls on the
+      serving host so break-glass actually works. (3) STANDING CREDENTIAL — the break-glass admin is
+      named in the Access Control Policy (REC-POL-002 §3/§4) with owner=founder, MFA expectation,
+      rotation, and quarterly access review; the credential lives only in Infisical
+      (`product_management` project, folder /huly, key HULY_BREAKGLASS_ADMIN_PASSWORD) delivered via
+      ESO, never in git. Backup of the Huly datastores
+      is a separate, not-yet-enabled decision (WS1 chart backup CronJob disabled) — follow-up.
+    treatment_status: "In-treatment — NetworkPolicy compensating control authored + Traefik-ns fixed (live-verified); ESO secret plumbing staged; SYNC IS MANUAL + GATED (not yet applied). DEFERRED: break-glass /32 allowlist + huly-admin DNS (port-forward break-glass covers WS1). Datastore backup + egress-pinning = follow-ups."
+    owner: founder
+    status: in-treatment
+    review: 2026-09-24
