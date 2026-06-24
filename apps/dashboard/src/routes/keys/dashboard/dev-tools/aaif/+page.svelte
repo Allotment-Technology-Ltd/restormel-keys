@@ -2,9 +2,9 @@
   import EmptyState from "$lib/components/EmptyState.svelte";
 </script>
 
-<h1 class="page-title">AAIF</h1>
+<h1 class="page-title">Dispatch</h1>
 <p class="page-desc">
-  Agent-to-Agent Interaction Format — a structured request/response contract for predictable AI interactions.
+  A structured request/response contract for predictable AI interactions.
   View request logs, routing explanations, and cost outputs.
 </p>
 
@@ -39,7 +39,7 @@
 <section class="section" aria-labelledby="mapping-heading">
   <h2 id="mapping-heading" class="section-title">Core use-cases</h2>
   <p class="docs-p">
-    Use AAIF to standardise how agents request work with explicit routing and spend constraints. The
+    Use Dispatch to standardise how agents request work with explicit routing and spend constraints. The
     runtime helper resolves <strong>provider/model</strong> and estimates cost via
     <code class="inline-code">@restormel/keys</code>.
   </p>
@@ -54,10 +54,10 @@
 <section class="section" aria-labelledby="logs-heading">
   <h2 id="logs-heading" class="section-title">Request logs</h2>
   <EmptyState
-    title="No AAIF requests yet"
-    description="AAIF request logs with routing explanations and cost outputs will appear here."
+    title="No Dispatch requests yet"
+    description="Dispatch request logs with routing explanations and cost outputs will appear here."
   >
-    <a href="/keys/docs/integrations/aaif" class="btn-link">AAIF documentation</a>
+    <a href="/keys/docs/integrations/aaif" class="btn-link">Dispatch documentation</a>
   </EmptyState>
 </section>
 

@@ -51,7 +51,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@restormel/aaif": "workspace:*",
+    "@restormel/dispatch": "workspace:*",
     "@restormel/contracts": "workspace:*",
     "@restormel/keys": "workspace:*"
   },

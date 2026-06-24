@@ -9,7 +9,7 @@
  *   - env/workspace guard rails,
  *   - the happy path passing through results/summary/provenance transparently,
  *   - non-200 upstream mapping (429 rate limit with retry_after_seconds; auth),
- *   - suite-tool-names registration (AAIF single source of truth).
+ *   - suite-tool-names registration (Dispatch single source of truth).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -247,7 +247,7 @@ describe("connect.memory.write handler", () => {
     expect(sc.upstreamStatus).toBe(503);
   });
 
-  it("is part of the AAIF suite tool name list and gated by the connect flag", async () => {
+  it("is part of the Dispatch suite tool name list and gated by the connect flag", async () => {
     const { RESTORMEL_SUITE_TOOL_NAMES, getEnabledSuiteToolNames } = await import(
       "./suite-tool-names.js"
     );

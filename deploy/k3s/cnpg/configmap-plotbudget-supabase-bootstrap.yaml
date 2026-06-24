@@ -1,0 +1,126 @@
+apiVersion: v1
+data:
+  bootstrap.sql: |
+    -- =============================================================================
+    -- PlotBudget · self-hosted Supabase — Postgres BOOTSTRAP (roles + schemas + grants)
+    -- =============================================================================
+    -- DESIGN ARTEFACT ONLY — not applied. Runs ONCE, at CNPG initdb, in the
+    -- `plotbudget` application database, as superuser, via the cluster's
+    -- `bootstrap.initdb.postInitApplicationSQLRefs` (see cluster-pg-plotbudget.yaml).
+    --
+    -- WHY THIS EXISTS
+    --   The managed Supabase platform ships a "Supabase-flavoured" Postgres image that
+    --   pre-creates the standard roles/schemas/grants the platform services
+    --   (GoTrue / PostgREST / Storage / Realtime) connect against. We run STOCK
+    --   CloudNativePG Postgres, so we recreate that contract here.
+    --
+    -- WHY NOT A CUSTOM IMAGE (overrides the #186 audit's "custom image" flag)
+    --   PlotBudget's own schema uses ONLY `uuid-ossp` (verified: zero references to
+    --   pgjwt / pg_graphql / pgvector across all migrations + config.toml, 2026-06-20).
+    --   pgcrypto + uuid-ossp BOTH ship in the stock `ghcr.io/cloudnative-pg/postgresql`
+    --   image, so NO custom image is needed for PlotBudget. `pg_graphql` is only
+    --   required if the GraphQL endpoint is exposed — PlotBudget does not use it, so
+    --   `graphql_public` is dropped from PGRST_DB_SCHEMAS (20-config.yaml). If GraphQL
+    --   is ever wanted, that is the ONE thing that would reintroduce a custom image.
+    --
+    -- PASSWORDS: the four LOGIN roles below are created here WITHOUT a password; their
+    --   passwords are set declaratively by CNPG `spec.managed.roles` from ESO-delivered
+    --   Secrets (never in SQL, never in git). The NOLOGIN group roles need no password.
+    --
+    -- ⚠ APPLY-TIME VERIFICATION (cannot be settled until the rehearsal — see README):
+    --   1. Re-check each pinned service image's BUNDLED migrations for any extra
+    --      `CREATE EXTENSION` / role / schema expectation (GoTrue v2.189, Storage
+    --      v1.60.4, Realtime v2.102.3, PostgREST v14.12). Versions drift.
+    --   2. Realtime's publication model: it needs a `supabase_realtime` publication and
+    --      logical replication. We create an EMPTY publication here; whether
+    --      `supabase_admin` can ADD app tables to it without full superuser MUST be
+    --      proven against the pinned Realtime image (it may demand SUPERUSER — a
+    --      privilege the high-risk-security review has to sign off explicitly).
+    --   3. `extensions` schema placement: some GoTrue/Storage versions expect
+    --      pgcrypto in schema `extensions`; others in `public`. We make it reachable
+    --      from both via search_path grants; confirm at apply.
+    -- =============================================================================
+
+    -- ---------------------------------------------------------------------------
+    -- 0. Extensions (per-database → MUST live in this application-DB hook, NOT in
+    --    postInitSQL which runs in the `postgres` DB. The previous manifest created
+    --    them in the wrong database — fixed here.)
+    -- ---------------------------------------------------------------------------
+    CREATE SCHEMA IF NOT EXISTS extensions;
+    CREATE EXTENSION IF NOT EXISTS pgcrypto    WITH SCHEMA extensions;
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
+
+    -- ---------------------------------------------------------------------------
+    -- 1. PostgREST request roles (NOLOGIN groups; PostgREST SET ROLEs into them)
+    -- ---------------------------------------------------------------------------
+    CREATE ROLE anon          NOLOGIN NOINHERIT;
+    CREATE ROLE authenticated NOLOGIN NOINHERIT;
+    CREATE ROLE service_role  NOLOGIN NOINHERIT BYPASSRLS;   -- Supabase: service_role bypasses RLS
+
+    -- ---------------------------------------------------------------------------
+    -- 2. Login roles the services connect AS. Created here (so they can own schemas);
+    --    LOGIN + password are attached by CNPG managed.roles ← ESO. NOINHERIT on
+    --    authenticator is critical: it must NOT silently inherit anon/authenticated/
+    --    service_role — it may only reach them via an explicit SET ROLE.
+    -- ---------------------------------------------------------------------------
+    CREATE ROLE authenticator          NOINHERIT;            -- PostgREST connects as this
+    CREATE ROLE supabase_auth_admin    NOINHERIT;            -- GoTrue   (owns schema auth)
+    CREATE ROLE supabase_storage_admin NOINHERIT;            -- Storage  (owns schema storage)
+    CREATE ROLE supabase_admin;                              -- Realtime / admin (see §6 caveat)
+
+    -- authenticator may assume exactly the three request roles, nothing more.
+    GRANT anon, authenticated, service_role TO authenticator;
+
+    -- ---------------------------------------------------------------------------
+    -- 3. Platform schemas, each owned by its service's admin role so the service can
+    --    run its OWN bundled migrations (create tables, etc.) inside it.
+    -- ---------------------------------------------------------------------------
+    CREATE SCHEMA IF NOT EXISTS auth       AUTHORIZATION supabase_auth_admin;
+    CREATE SCHEMA IF NOT EXISTS storage    AUTHORIZATION supabase_storage_admin;
+    CREATE SCHEMA IF NOT EXISTS _realtime  AUTHORIZATION supabase_admin;
+
+    -- ---------------------------------------------------------------------------
+    -- 4. Usage / search-path grants
+    -- ---------------------------------------------------------------------------
+    GRANT USAGE ON SCHEMA public      TO anon, authenticated, service_role;
+    GRANT USAGE ON SCHEMA extensions  TO anon, authenticated, service_role;
+    -- PostgREST exposes `storage` (PGRST_DB_SCHEMAS=public,storage) → request roles need it.
+    GRANT USAGE ON SCHEMA storage     TO anon, authenticated, service_role;
+
+    -- Future objects in `public` (PlotBudget app tables, restored at cutover) should be
+    -- reachable by the request roles; the app's own migrations carry table-level GRANTs
+    -- and RLS, so we only set sane defaults here (RLS still gates row access).
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated, service_role;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+      GRANT SELECT ON TABLES TO anon;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+      GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated, service_role;
+
+    -- Let the admin roles see what they need cross-schema.
+    GRANT USAGE ON SCHEMA public TO supabase_auth_admin, supabase_storage_admin, supabase_admin;
+
+    -- ---------------------------------------------------------------------------
+    -- 5. Realtime change-feed publication (empty; Realtime ADDs tables per its config)
+    --    See apply-time caveat #2 — privilege to ADD app tables must be proven.
+    -- ---------------------------------------------------------------------------
+    CREATE PUBLICATION supabase_realtime;   -- no tables yet; Realtime manages membership
+
+    -- ---------------------------------------------------------------------------
+    -- 6. supabase_admin privileges (Realtime + admin tooling).
+    --    We grant the standard Supabase attribute set (CREATEDB/CREATEROLE/REPLICATION)
+    --    via managed.roles, NOT full SUPERUSER. If the pinned Realtime image genuinely
+    --    requires SUPERUSER to manage a FOR-ALL-TABLES publication, that is a deliberate
+    --    high-risk-security decision — do NOT silently widen it here.
+    -- ---------------------------------------------------------------------------
+    -- (attributes applied declaratively in cluster-pg-plotbudget.yaml spec.managed.roles)
+
+    -- ---------------------------------------------------------------------------
+    -- 7. GoTrue/Storage admin reachability into their own schemas is via ownership
+    --    (§3). Nothing else is granted to keep least-privilege; the services' bundled
+    --    migrations create their tables as the owning admin role.
+    -- ---------------------------------------------------------------------------
+kind: ConfigMap
+metadata:
+  name: pg-plotbudget-supabase-bootstrap
+  namespace: cnpg-system

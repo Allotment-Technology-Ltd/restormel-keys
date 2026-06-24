@@ -1,4 +1,4 @@
-import type { AAIFRequest } from "@restormel/aaif";
+import type { DispatchRequest } from "@restormel/dispatch";
 import type { ModelProvider } from "@restormel/contracts/providers";
 
 export type IngestionStage =
@@ -109,7 +109,7 @@ export interface IngestionPlanningContext {
 
 export interface IngestionStagePlan {
   stage: IngestionStage;
-  request: AAIFRequest;
+  request: DispatchRequest;
   routeId?: string;
   provider: string;
   model: string;
@@ -128,7 +128,7 @@ export type PipelinePhaseStage = "fetch" | IngestionStage;
 
 export interface IngestionStageUsageEstimate {
   stage: PipelinePhaseStage;
-  latency: import("@restormel/aaif").AAIFLatency;
+  latency: import("@restormel/dispatch").DispatchLatency;
   complexity: "low" | "medium" | "high";
   inputTokens: number;
   outputTokens: number;

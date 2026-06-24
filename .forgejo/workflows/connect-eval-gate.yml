@@ -11,6 +11,13 @@
 #     exists the comment works unchanged;
 #   - same warn-mode flip condition as the GitHub variant (see that file's header).
 name: Connect eval gate
+
+# Tier ① CI throughput (2026-06-24): cancel a superseded in-flight PR run when a
+# newer commit lands on the same branch; never collapse push runs (run_id-unique).
+concurrency:
+  group: connect-eval-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   push:
     paths:
@@ -21,7 +28,19 @@ on:
       - 'scripts/ci/connect-eval/**'
       - 'scripts/ci/check-efficacy-bars.*'
       - '.forgejo/workflows/connect-eval-gate.yml'
+  # This gate is NOT a required branch-protection context, so it is safe to skip
+  # entirely on PRs that touch none of the connect-eval inputs (no stuck check).
+  # Mirrors the push paths above so a docs/records-only PR no longer spins this
+  # package build on the runner.
   pull_request:
+    paths:
+      - 'packages/connect-core/**'
+      - 'packages/contracts/**'
+      - 'packages/cli/**'
+      - 'packages/connect-eval-github-action/**'
+      - 'scripts/ci/connect-eval/**'
+      - 'scripts/ci/check-efficacy-bars.*'
+      - '.forgejo/workflows/connect-eval-gate.yml'
 
 jobs:
   eval-gate:
@@ -35,7 +54,7 @@ jobs:
       - name: Build keys CLI + gate action
         run: |
           pnpm --filter @restormel/contracts run build
-          pnpm --filter @restormel/aaif run build
+          pnpm --filter @restormel/dispatch run build
           pnpm --filter @restormel/keys-tokens run build
           pnpm --filter @restormel/keys run build
           pnpm --filter @restormel/connect-core run build

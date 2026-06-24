@@ -30,7 +30,7 @@ export const TESTING_HUB_TABS: HubTab[] = [
 /**
  * Agents section tabs.
  * - Wiring: MCP agent setup (moved from /connect/mcp).
- * - Catalogs: CLI / MCP / AAIF tool catalogs (moved from /dev-tools/**).
+ * - Catalogs: CLI / MCP / Dispatch tool catalogs (moved from /dev-tools/**).
  */
 export const AGENTS_HUB_TABS: HubTab[] = [
   { href: DASHBOARD_BASE + "/agents/wiring", label: "Wiring", exact: false },

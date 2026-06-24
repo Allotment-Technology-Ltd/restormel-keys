@@ -1,9 +1,14 @@
 /**
  * First-graph onboarding: load Restormel-authored philosophy demo documents into a workspace.
+ *
+ * The manifest and the three markdown passages are imported as modules (JSON +
+ * Vite `?raw`) so Rollup inlines them into the server bundle. Reading them via
+ * `fs` at runtime relative to the compiled chunk does NOT work: the
+ * adapter-node / adapter-vercel build bundles the `.ts` module into
+ * `build/server/chunks/` but never copies the sibling `starter-corpus/` data
+ * directory, so `readFileSync(.../starter-corpus/manifest.json)` throws ENOENT
+ * in production. Importing keeps the data with the code regardless of adapter.
  */
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { chunkDocument } from "@restormel/connect-core";
 import type { ConnectSourceDocument } from "@restormel/contracts/connect";
@@ -13,8 +18,11 @@ import {
 } from "$lib/server/neon";
 import { SUGGESTED_GRAPH_DESIGNER_INTENT, STARTER_CORPUS_NAME_PREFIX } from "$lib/connect/first-graph-guide";
 import { sourceDocumentRecordToApi } from "$lib/server/connect/source-documents";
-
-const CORPUS_DIR = join(dirname(fileURLToPath(import.meta.url)), "starter-corpus");
+import manifest from "./starter-corpus/manifest.json";
+// Markdown passages bundled as raw strings (Vite `?raw`). Keyed by manifest `file`.
+import trolleyProblemDialogue from "./starter-corpus/01-trolley-problem-dialogue.md?raw";
+import knowledgeVsBelief from "./starter-corpus/02-knowledge-vs-belief.md?raw";
+import utilitarianObjection from "./starter-corpus/03-utilitarian-objection.md?raw";
 
 type ManifestDoc = { file: string; name: string };
 type StarterManifest = {
@@ -25,9 +33,25 @@ type StarterManifest = {
   documents: ManifestDoc[];
 };
 
+const STARTER_MANIFEST = manifest as StarterManifest;
+
+/** Bundled markdown bodies, keyed by the manifest `file` field. */
+const CORPUS_FILES: Record<string, string> = {
+  "01-trolley-problem-dialogue.md": trolleyProblemDialogue,
+  "02-knowledge-vs-belief.md": knowledgeVsBelief,
+  "03-utilitarian-objection.md": utilitarianObjection,
+};
+
 function loadManifest(): StarterManifest {
-  const raw = readFileSync(join(CORPUS_DIR, "manifest.json"), "utf8");
-  return JSON.parse(raw) as StarterManifest;
+  return STARTER_MANIFEST;
+}
+
+function loadCorpusFile(file: string): string {
+  const markdown = CORPUS_FILES[file];
+  if (markdown === undefined) {
+    throw new Error(`Starter corpus file not bundled: ${file}`);
+  }
+  return markdown;
 }
 
 export function isStarterCorpusDocumentName(name: string): boolean {
@@ -62,7 +86,7 @@ export async function loadStarterCorpus(
       continue;
     }
 
-    const markdown = readFileSync(join(CORPUS_DIR, entry.file), "utf8");
+    const markdown = loadCorpusFile(entry.file);
     const chunks = chunkDocument(markdown);
     const id = randomUUID();
     const rec = await insertConnectSourceDocument({

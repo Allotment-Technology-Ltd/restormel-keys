@@ -22,33 +22,111 @@
 #
 # Path filter: security runs on any code, repo-config, or script change.
 # Gate is intended to be a required status check on PRs to main (see plan A7).
+#
+# CI throughput (Tier ①, 2026-06-24):
+#   - concurrency.cancel-in-progress cancels a *superseded* PR run when a newer
+#     commit is pushed to the same branch — frees the (now capacity-3) runner
+#     instead of finishing a stale build. Keyed by ref so it ONLY collapses runs
+#     of the same PR/branch; push-to-main runs never cancel each other (each gets
+#     a run_id-unique group) so a deploy/migration run is never interrupted.
+#   - The `changes` job computes whether a PR touched real CODE. The two REQUIRED
+#     status checks ("Full build + connect-core/mcp tests" and "Security scan …")
+#     still RUN and REPORT on every PR — so branch protection is never left
+#     waiting on a skipped required context — but their EXPENSIVE steps (dashboard
+#     vite build, package tests, Trivy binary download + Dockerfile scans) are
+#     gated on code==true. A records/docs-only PR therefore turns both required
+#     checks green in seconds without spinning a heavy pnpm build. The secret
+#     scan (gitleaks, via the composite) still runs on docs PRs.
 name: CI
+
+# Cancel a superseded in-flight run when a newer commit lands on the same PR
+# branch; never collapse independent push-to-main runs (run_id makes each unique).
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   # Run on direct pushes to main only (post-merge sanity + the deploy/auto-tag gate).
   # Feature-branch commits are covered by the pull_request trigger below, so a PR
   # commit runs the job set ONCE instead of twice (push + pull_request). This halves
-  # CI load on the capacity-2 runner without weakening the merge gate — the required
+  # CI load on the capacity-3 runner without weakening the merge gate — the required
   # check remains "Security scan ... (pull_request)".
   push:
     branches: [main]
   pull_request:
 
 jobs:
+  # Dependency-free change detection (no third-party action — the Forgejo runner
+  # resolves actions from code.forgejo.org, not GitHub, so dorny/paths-filter is
+  # not reliably available here). Emits code=true when a PR touches buildable
+  # source; on push to main code is forced true (post-merge full verification).
+  changes:
+    runs-on: docker
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+          fetch-depth: 0
+      - id: filter
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          # Push to main (or any non-PR event) → always treat as code: full verify.
+          if [[ "${EVENT}" != "pull_request" ]]; then
+            echo "non-PR event (${EVENT}) → code=true (full verification)"
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags --depth=200 origin "${BASE_REF}" || git fetch --no-tags origin "${BASE_REF}"
+          MERGE_BASE="$(git merge-base "origin/${BASE_REF}" HEAD || echo '')"
+          if [[ -z "${MERGE_BASE}" ]]; then
+            echo "no merge-base resolved → fail safe to code=true"
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED="$(git diff --name-only "${MERGE_BASE}" HEAD)"
+          echo "::group::changed files"; echo "${CHANGED}"; echo "::endgroup::"
+          # CODE = anything that can change a build/test/dependency/runtime result.
+          # Everything NOT matched here (docs/, records/, governance/, evidence/,
+          # planning/, legal/, people/, *.md) is treated as non-code → heavy steps skip.
+          if echo "${CHANGED}" | grep -qE '^(packages/|platform/|apps/|examples/|scripts/|deploy/|\.forgejo/|Dockerfile|deploy/docker-compose|package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|tsconfig|\.trivyignore|vuln-allowlist)'; then
+            echo "code-affecting change detected → code=true"
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs/records-only change → code=false (heavy steps skip; required checks still report)"
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     runs-on: docker
+    needs: [changes]
     steps:
       - uses: https://code.forgejo.org/actions/checkout@v4
         with:
           # Job tokens 403 on private-repo http-git (filed); use the CI PAT.
           token: ${{ secrets.FORGEJO_TOKEN }}
       - uses: ./.forgejo/actions/pnpm-workspace-install
+        if: needs.changes.outputs.code == 'true'
       - name: Build platform packages
+        if: needs.changes.outputs.code == 'true'
         run: pnpm run build:platform-packages
+      - name: No-op (docs/records-only PR — nothing to build)
+        if: needs.changes.outputs.code != 'true'
+        run: echo "docs/records-only change — skipping platform package build."
 
   build-and-test:
     name: Full build + connect-core/mcp tests
     runs-on: docker
-    # Required PR check. Runs on every push and PR.
+    needs: [changes]
+    # Required PR check — this job always RUNS and REPORTS so branch protection
+    # never waits on a skipped required context. Its expensive steps (dashboard
+    # vite build + package tests) are gated on code==true; a docs/records-only PR
+    # turns this context green in seconds via the no-op step below.
     #
     # Why this job exists: the `build` job above only builds the platform
     # packages. It does NOT run the dashboard vite build, nor the
@@ -71,6 +149,7 @@ jobs:
           # Job tokens 403 on private-repo http-git (filed); use the CI PAT.
           token: ${{ secrets.FORGEJO_TOKEN }}
       - uses: ./.forgejo/actions/pnpm-workspace-install
+        if: needs.changes.outputs.code == 'true'
 
       # (a) Full dashboard vite build — the exact step that failed in prod.
       #     Its `prebuild` builds every workspace dependency's dist/ first.
@@ -89,6 +168,7 @@ jobs:
       #       (exit 134 / SIGABRT). This is exactly what happened on the
       #       self-hosted runner; Dockerfile.dashboard sets the same 4096MB cap.
       - name: Build dashboard (vite) + workspace deps
+        if: needs.changes.outputs.code == 'true'
         env:
           DEPLOY_TARGET: node
           NODE_OPTIONS: --max-old-space-size=4096
@@ -97,15 +177,25 @@ jobs:
       # (b) connect-core typecheck + tests (proxy/verify-envelope logic).
       #     dist/ for its deps already exists from the dashboard prebuild.
       - name: Typecheck @restormel/connect-core
+        if: needs.changes.outputs.code == 'true'
         run: pnpm --filter @restormel/connect-core run typecheck
       - name: Test @restormel/connect-core
+        if: needs.changes.outputs.code == 'true'
         run: pnpm --filter @restormel/connect-core test
 
       # (c) mcp tests (proxy client ↔ fixture upstream; suite tools).
       #     Resolves @restormel/connect-core + @restormel/testing-config from
       #     their built dist/ (produced by the dashboard prebuild above).
       - name: Test @restormel/mcp
+        if: needs.changes.outputs.code == 'true'
         run: pnpm --filter @restormel/mcp test
+
+      # Docs/records-only PR — no buildable change. The required "Full build …"
+      # context still reports success via this no-op so the PR can merge without
+      # waiting ~13 min on a heavy build that would verify nothing new.
+      - name: No-op (docs/records-only PR — nothing to build or test)
+        if: needs.changes.outputs.code != 'true'
+        run: echo "docs/records-only change — skipping dashboard build + package tests."
 
   security:
     name: Security scan (OSV + gitleaks + pnpm audit + Trivy)
@@ -191,6 +281,27 @@ jobs:
             --skip-dirs node_modules \
             .
           echo "::endgroup::"
+
+  bundled-asset-guard:
+    name: Bundled asset-read guard (import.meta.url overshoot)
+    runs-on: docker
+    # Required PR check. Fails when a NEW server module under
+    # apps/dashboard/src/lib/server/ reads a shipped data asset via a fixed
+    # import.meta.url-relative climb (or sibling-dir read) — the bundled
+    # adapter-node prod runtime emits the module at a different depth, so the
+    # path overshoots/misses → ENOENT → HTTP 500 (RISK-014 / REC-INC-008; 3 prior
+    # prod instances: 112b8c99, #276, #282). Dependency-free — plain `node`,
+    # no workspace install. See docs/engineering/server-data-assets.md for the
+    # canonical pattern (module-import preferred; resolveRepoRoot / resolveSeedPath
+    # fallback).
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          token: ${{ secrets.FORGEJO_TOKEN }}
+      - name: Unit-test the guard classifier
+        run: node --test scripts/ci/check-bundled-asset-reads.test.mjs
+      - name: Check for fixed-climb bundled asset reads
+        run: node scripts/ci/check-bundled-asset-reads.mjs
 
   apply-migrations:
     name: Apply dashboard migrations (Forgejo DB)

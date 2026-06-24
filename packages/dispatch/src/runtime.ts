@@ -1,26 +1,26 @@
 /**
- * AAIF runtime helpers:
+ * Dispatch runtime helpers:
  * - resolves provider/model via `@restormel/keys` routing
  * - estimates cost via `keys.estimateCost`
- * - returns an AAIFResponse shape
+ * - returns a DispatchResponse shape
  *
- * Note: AAIF runtime helpers here do not call the upstream model directly.
+ * Note: Dispatch runtime helpers here do not call the upstream model directly.
  * Instead, they provide deterministic routing + cost and let the host provide
  * the final `output` (optionally via `generate` callback).
  */
 import type { KeysInstance, ProviderId } from "@restormel/keys";
-import type { AAIFRequest, AAIFResponse } from "./types.js";
-import { isAAIFRequest } from "./validate.js";
+import type { DispatchRequest, DispatchResponse } from "./types.js";
+import { isDispatchRequest } from "./validate.js";
 
-export type AAIFGenerateOutput = (ctx: {
-  request: AAIFRequest;
+export type DispatchGenerateOutput = (ctx: {
+  request: DispatchRequest;
   provider: ProviderId;
   model: string;
   cost: number;
   routingReason: string;
 }) => Promise<string> | string;
 
-export interface ExecuteAAIFOptions {
+export interface ExecuteDispatchOptions {
   /**
    * Optional routing overrides for the runtime helper.
    * If provided, they will be reconciled with pricing-based provider selection.
@@ -34,9 +34,9 @@ export interface ExecuteAAIFOptions {
 
   /**
    * Optional callback for the host to produce the final `output`.
-   * This keeps secrets out of the AAIF package and avoids raw key logging.
+   * This keeps secrets out of the Dispatch package and avoids raw key logging.
    */
-  generate?: AAIFGenerateOutput;
+  generate?: DispatchGenerateOutput;
 
   /** Fallback output if `generate` is not provided. Default: `request.input`. */
   output?: string;
@@ -54,7 +54,7 @@ function nonNegativeNumber(value: unknown): number | null {
   return value;
 }
 
-function pickTokensM(req: AAIFRequest, opts: ExecuteAAIFOptions) {
+function pickTokensM(req: DispatchRequest, opts: ExecuteDispatchOptions) {
   const input =
     nonNegativeNumber(opts.inputTokensM) ??
     nonNegativeNumber(req.constraints?.tokens?.inputTokensM) ??
@@ -84,13 +84,13 @@ function buildRoutingReason(params: {
   return parts.join(" · ");
 }
 
-export async function executeAAIFRequest(
-  request: AAIFRequest,
+export async function executeDispatchRequest(
+  request: DispatchRequest,
   keys: KeysInstance,
-  options: ExecuteAAIFOptions = {},
-): Promise<AAIFResponse> {
-  if (!isAAIFRequest(request)) {
-    throw new Error("invalid_aaif_request");
+  options: ExecuteDispatchOptions = {},
+): Promise<DispatchResponse> {
+  if (!isDispatchRequest(request)) {
+    throw new Error("invalid_dispatch_request");
   }
 
   const modelId =
@@ -169,7 +169,7 @@ export async function executeAAIFRequest(
 
   const outputText = task === "embedding" ? undefined : output;
 
-  const response: AAIFResponse = {
+  const response: DispatchResponse = {
     output,
     ...(embedding ? { embedding } : {}),
     ...(outputText !== undefined ? { outputText } : {}),

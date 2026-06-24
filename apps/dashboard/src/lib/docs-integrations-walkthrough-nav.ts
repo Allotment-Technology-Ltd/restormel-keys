@@ -6,7 +6,7 @@ export const INTEGRATIONS_WALKTHROUGH_PHASES = [
   { slug: "phase-1-choose-workflow", title: "Phase 1 — Choose your workflow", step: 2 },
   { slug: "phase-2-cli", title: "Phase 2 — CLI", step: 3 },
   { slug: "phase-3-mcp", title: "Phase 3 — MCP", step: 4 },
-  { slug: "phase-4-aaif", title: "Phase 4 — AAIF", step: 5 },
+  { slug: "phase-4-aaif", title: "Phase 4 — Dispatch", step: 5 },
   { slug: "phase-5-dashboard-docs", title: "Phase 5 — Dashboard & docs", step: 6 },
   { slug: "phase-6-verify", title: "Phase 6 — Verify and go live", step: 7 },
   { slug: "prompt-index", title: "Prompt index", step: 8 },

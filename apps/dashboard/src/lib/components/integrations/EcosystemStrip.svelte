@@ -7,7 +7,7 @@
     STACK_LAYER_ORDER,
     type IntegrationCatalogEntry,
     type StackLayer,
-  } from "@restormel/aaif";
+  } from "@restormel/dispatch";
   import { integrationCatalogForFlags } from "$lib/integration-catalog-for-flags";
   import type { ModuleFlags } from "$lib/module-flags-types";
 

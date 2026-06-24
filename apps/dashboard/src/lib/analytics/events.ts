@@ -164,6 +164,41 @@ export interface AnalyticsEventMap {
     surface: string;
   };
 
+  // --- Connect journey spine (sources→answers funnel, decision 4) ----------
+  // The measured funnel that judges the journey redesign: door-choice →
+  // stage-advance (×5) → time-to-first-verified-answer → drop-off per stage.
+  // Payloads are flat enums/strings only — NO doc names, NO query text, NO PII.
+
+  /**
+   * A journey door was chosen on the stateful Home hub. The "quick" door only
+   * appears after ≥1 terminal-completed run (decision 7); a first-run / failed-
+   * only workspace can only emit "setup".
+   */
+  connect_door_choice: {
+    door: "quick" | "setup";
+  };
+
+  /**
+   * The user advanced from one spine stage to another by acting on a stage's
+   * primary CTA. `from`/`to` are the SHIPPED spine stage ids — never free text:
+   *   "connect" | "ingest" | "make_ready" | "review" | "go_live"
+   * plus the literal "hub" for `from` when the advance originates on the Home
+   * hub (which mounts the ledger with no active stage). These names match the
+   * on-screen stages 1:1 (connect-spine.ts STAGE_META) so the funnel measures
+   * the journey the UI actually presents — keep them STABLE (renaming breaks
+   * historical PostHog funnel analysis).
+   *
+   * NOTE: the founder-locked dossier intent is a source-first spine
+   * ("Add sources" as stage ①); the SHIPPED spine starts at "connect"
+   * (store · provider · routes). The taxonomy tracks what ships. If the spine
+   * is later reshaped to source-first (open founder decision), add a "sources"
+   * id here in lockstep with connect-spine.ts.
+   */
+  connect_stage_advance: {
+    from: "hub" | "connect" | "ingest" | "make_ready" | "review" | "go_live";
+    to: "connect" | "ingest" | "make_ready" | "review" | "go_live";
+  };
+
   // --- Engagement (emitted by global handlers in hooks.client.ts) ----------
   /** A scroll-depth milestone was reached on the current page. */
   scroll_depth: {
@@ -207,6 +242,8 @@ export const ANALYTICS_EVENTS = [
   "dashboard_onboarding_step",
   "dashboard_feature_interest",
   "verified_claim_source_span_opened",
+  "connect_door_choice",
+  "connect_stage_advance",
   "scroll_depth",
 ] as const satisfies readonly AnalyticsEventName[];
 

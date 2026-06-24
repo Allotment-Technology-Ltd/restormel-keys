@@ -1,11 +1,11 @@
 # Publish @restormel/contracts, @restormel/context-packs, @restormel/reasoning-core, @restormel/graphrag-core, @restormel/connect-core, @restormel/state, @restormel/observability, @restormel/graph-reasoning-extensions on tag platform-v*
 # Order: contracts → context-packs → reasoning-core → graphrag-core → connect-core → state → observability → graph-reasoning-extensions (pnpm rewrites workspace:* on publish).
 # graph-core / ui-graph-svelte use tag graph-v* (publish-graph.yml). Requires NPM_TOKEN.
+# MIRROR DEDUPE (PBI #248): canonical publisher is .forgejo/workflows/publish-restormel-platform.yml
+# (same `platform-v*` tag). `push: tags` removed so a mirror tag-push no longer re-fires this
+# copy → avoids the double npm publish race; workflow_dispatch retained for manual recovery.
 name: Publish Restormel platform packages
 on:
-  push:
-    tags:
-      - "platform-v*"
   workflow_dispatch:
     inputs:
       dry_run:
