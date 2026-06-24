@@ -173,8 +173,8 @@ importers:
         specifier: ^6.1.0
         version: 6.1.0
       nodemailer:
-        specifier: ^6.9.0
-        version: 6.10.1
+        specifier: ^9.0.0
+        version: 9.0.1
       pg:
         specifier: ^8.20.0
         version: 8.20.0
@@ -5847,8 +5847,8 @@ packages:
     resolution: {integrity: sha512-2YEOR5qlI1zUFbGMLKNfsrR5JUvFg9LxIRVE+xJe962pfVLH0rnItqLzv96XVs1Y1UIR8FxsXAuvX/lYAWZ2BQ==}
     engines: {node: '>=8'}
 
-  nodemailer@6.10.1:
-    resolution: {integrity: sha512-Z+iLaBGVaSjbIzQ4pX6XV41HrooLsQ10ZWPUehGmuantvzWoDVBnmsdUcOIDM1t+yPor5pDhVlDESgOMEGxhHA==}
+  nodemailer@9.0.1:
+    resolution: {integrity: sha512-Gwv8SQewT616ZM/URn0H54b8PWo/Wum7md3EW2aWy1lO27+WZCX+Xyak3J+NlmHUjDh5ME+uesJUDRbR3Ye8Bw==}
     engines: {node: '>=6.0.0'}
 
   nopt@8.1.0:
@@ -13019,7 +13019,7 @@ snapshots:
     dependencies:
       big-integer: 1.6.52
 
-  nodemailer@6.10.1: {}
+  nodemailer@9.0.1: {}
 
   nopt@8.1.0:
     dependencies:
