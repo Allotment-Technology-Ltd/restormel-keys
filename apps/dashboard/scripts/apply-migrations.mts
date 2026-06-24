@@ -18,6 +18,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runMigrations, type SqlFn } from "../src/lib/server/migration-runner.ts";
+import { withMigrationLock } from "../src/lib/server/migration-lock.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, "..", "migrations");
@@ -37,10 +38,18 @@ async function main() {
   console.log("Dashboard migration runner (Stage 1.7)");
   console.log(`Migrations dir: ${MIGRATIONS_DIR}`);
 
-  const { applied, skipped } = await runMigrations(
-    sql,
-    () => readdirSync(MIGRATIONS_DIR),
-    (name) => readFileSync(join(MIGRATIONS_DIR, name), "utf-8"),
+  // Multi-replica HA gate: serialise the WHOLE run behind a Postgres session advisory lock so
+  // that when >1 dashboard replica starts concurrently on a migration-carrying deploy, exactly
+  // ONE applies migrations and the other(s) block, then proceed to a clean no-op (all already
+  // applied). Uses the SAME DATABASE_URL the migrator's getDb() uses. Real migration errors
+  // still propagate (fail-closed); the lock is always released. neon-http (CI/Neon) runs
+  // unguarded — see migration-lock.ts. (Unblocks dashboard replicas 1→2.)
+  const { applied, skipped } = await withMigrationLock(dbUrl, () =>
+    runMigrations(
+      sql,
+      () => readdirSync(MIGRATIONS_DIR),
+      (name) => readFileSync(join(MIGRATIONS_DIR, name), "utf-8"),
+    ),
   );
 
   if (skipped.length > 0) {
