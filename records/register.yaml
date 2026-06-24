@@ -313,7 +313,7 @@ records:
     next-review: 2027-06-24
     retention: P6Y
     path: evidence/incidents/2026-06-24-k3s-apiserver-public-ip-advertise.md
-  - id: REC-INC-014
+  - id: REC-INC-018
     title: Incident — Infisical CLI printed secret values to the agent transcript during the allotmentology.tech secret load
     class: evidence
     status: open

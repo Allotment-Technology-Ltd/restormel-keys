@@ -1,5 +1,5 @@
 ---
-id: REC-INC-014
+id: REC-INC-018
 title: "Incident — Infisical CLI printed secret values to the agent transcript during the allotmentology.tech secret load"
 class: evidence
 owner: founder

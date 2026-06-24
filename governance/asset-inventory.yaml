@@ -97,7 +97,7 @@
 #   first image built in-cluster (buildkit) + pushed to Forgejo registry; production data (incl. 13 BYOK
 #   user_ai_provider_keys rows + BetterAuth) migrated pg17→16 into CNPG pg-platform.allotmentology +
 #   K3s smoke-verified. Coolify .150 stays LIVE + warm-rollback; merge/Argo-sync/apex-DNS-flip are
-#   founder-gated and NOT done. Filed REC-INC-014 (Infisical CLI value-leak to transcript during the
+#   founder-gated and NOT done. Filed REC-INC-018 (Infisical CLI value-leak to transcript during the
 #   load → precautionary rotation) + flagged BYOK plaintext-at-rest as a pre-existing app issue.
 #   last-reviewed UNCHANGED (founder re-approval on merge); history above is append-only.
 
@@ -433,13 +433,13 @@ assets:
             was migrated by plain-SQL pg_dump (pg17→16) from the Coolify allotmentology-postgres
             `neondb` into CNPG pg-platform.allotmentology, and smoke-verified (/api/health 200,
             db connected) on K3s in an isolated namespace. See evidence: the migration is filed
-            with this work; the secret-exposure during the load is REC-INC-014.
+            with this work; the secret-exposure during the load is REC-INC-018.
       GATED (founder/operator, NOT done here): merge PR #22/#10, the manual Argo `app sync
       allotmentology-prod`, and the irreversible apex DNS flip (77.42.125.150 → 135.181.25.76).
       Operational secrets (e.g. RECORDS_FEED_TOKEN) also canonical in Infisical restormel-ops/prod.
       Pre-existing app design issue surfaced by the migration: BYOK provider keys
       (user_ai_provider_keys.api_key_stored) are stored PLAINTEXT, not ciphertext — raised under
-      REC-INC-014 follow-ups for encryption-at-rest remediation.
+      REC-INC-018 follow-ups for encryption-at-rest remediation.
 
   - id: AST-018
     asset: "Box 3 — dedicated CI build runner (204.168.216.166)"
