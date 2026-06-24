@@ -4,6 +4,13 @@
 # RECORDS_ENFORCE=1 on the relevant steps. Lives in .forgejo/workflows (overrides .github
 # on the mirror); Forgejo is primary CI. Scripts are dependency-free — plain `node`.
 name: Records governance (warn-only)
+
+# Tier ① CI throughput (2026-06-24): cancel a superseded in-flight PR run when a
+# newer commit lands on the same branch; never collapse push runs (run_id-unique).
+concurrency:
+  group: records-governance-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   push:
     paths:
@@ -17,7 +24,22 @@ on:
       - 'CODEOWNERS'
       - 'scripts/records/**'
       - '.forgejo/workflows/records-governance.yml'
+  # WARN-ONLY / advisory (not a required branch-protection context), so it is safe
+  # to scope the PR trigger to the records surface — mirrors the push paths so a
+  # pure-code PR no longer spins the governance scripts on the runner. Records/docs
+  # PRs (its actual purpose) still trigger it.
   pull_request:
+    paths:
+      - 'docs/**'
+      - 'records/**'
+      - 'governance/**'
+      - 'evidence/**'
+      - 'planning/**'
+      - 'legal/**'
+      - 'people/**'
+      - 'CODEOWNERS'
+      - 'scripts/records/**'
+      - '.forgejo/workflows/records-governance.yml'
 
 jobs:
   records-governance:
