@@ -1,5 +1,5 @@
 ---
-id: "[PLACEHOLDER — assign per records/SCHEMA.md, e.g. REC-EVD-AR-2026-06-24-MFA]"
+id: REC-EVID-002
 title: "MFA remediation run — 2026-06-24 (RISK-008)"
 class: evidence
 owner: founder
