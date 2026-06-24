@@ -93,3 +93,23 @@ related: [REC-TPL-004, AST-012, AST-029, AST-014, RISK-001, RISK-009]
 
 - **Closed:** 2026-06-23 — one good backup in S3 (snapshot `d19605b7`), restore verified, durable fix in
   PR #4, live CronJob fixed + un-suspended + a self-produced verifying snapshot (`27d20347`).
+
+- **Follow-up resolution (2026-06-24, append-only):** A subsequent infra report re-flagged the Surreal
+  backup CronJob as "suspended"; re-investigation found this **STALE** — PR #4's fix is merged to gitops
+  `main` (commit `785d7f1`) and live (`suspend: false`), Argo reports `CronJob/data/surreal-backup`
+  **Synced** (no drift), so the selfHeal-revert risk in the first follow-up above is **resolved**.
+  Re-verified the backup end-to-end (read-only + one manual run): `kubectl -n data create job
+  --from=cronjob/surreal-backup` → export OK, restic ship OK, retention prune OK,
+  `restic check --read-data-subset=5%` → **no errors**; an independent restic pod listed **20 snapshots in
+  S3 fsn1**, incl. the fresh manual snapshot **`4bd579bc` (2026-06-24 15:56:45)**; schedule active
+  (last success 15:56:56Z). restormel.dev stayed **HTTP 200**; StatefulSet `surreal` 1/1, `surreal-0`
+  0 restarts (live StatefulSet undisturbed). Two of the open follow-ups are now **actioned** in
+  **restormel-gitops PR #17** (founder-gated): the duplicate **`sophia-surreal-backup`** Argo app is
+  **retired** (removed from `applications/workloads/sophia.yaml`; it was `Missing` with no live resources,
+  so the `root` app-of-apps prunes it cleanly — no orphaned data), and two backup alerts that could
+  **never fire** (`SurrealExportStale`, `SurrealBackupJobAbsent` — both selected the non-existent
+  `surreal-export.*` cronjob name instead of `surreal-backup`) are repointed + de-BX11'd. The SurrealDB
+  **single-node HA gap** (single-replica STS, no clustering — a larger architecture change, not attempted)
+  is documented under **RISK-001** as sub-gap **F2b**. Still owed: an S3-backup dead-man's-switch alert
+  (K3s parity with the BX11 push monitor). No new REC-INC opened — the original DR-gap window is already
+  captured by this record; no data was lost (DB near-empty pending Sophia corpus migration).
