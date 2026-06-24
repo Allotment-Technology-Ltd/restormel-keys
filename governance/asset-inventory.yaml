@@ -580,8 +580,13 @@ assets:
         - pg-platform  — DBs allotmentology, restormel_staging, usesophia (Sophia's relational
           store, AST-026). product: shared (Restormel + allotmentology.tech + Sophia).
         - pg-plotbudget — the PlotBudget self-hosted Supabase database (AST-025). NOW IN SCOPE.
-      Each cluster = 1 primary + 1 replica, but BOTH pods land on the single node (AST-022) — no
-      node-loss HA (ground-truth §1 F1). 10 GB data + 10 GB WAL PVC per cluster. Continuous
+      Each cluster = 1 primary + 1 replica. NODE-LOSS HA COMPLETE (2026-06-24, gitops PR #15/#16,
+      REC-INC-013): all 3 clusters now carry REQUIRED pod anti-affinity (topologyKey hostname) and
+      were rescheduled so primary + standby sit on DISTINCT nodes (node2 + node3, none on master1) —
+      each cluster is single-node-failure-safe; replication streaming/async/zero-lag, primary identity
+      stable. (Previously both pods packed onto the single master1 node — ground-truth §1 F1; the
+      spread had been BLOCKED by the apiserver public-IP advertise defect fixed in REC-INC-013.)
+      10 GB data + 10 GB WAL PVC per cluster. Continuous
       WAL + base backups (PITR) via barman-cloud → S3 fsn1 (AST-019), 30-day retention, chain
       intact at audit (ground-truth §1/§5 D4). DATA STATE: app DBs are 7–19 MB empty/bootstrap
       schemas pre-cutover; production data still on the legacy/Neon estate (ground-truth §1/F13).

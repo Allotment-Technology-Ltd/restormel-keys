@@ -92,14 +92,30 @@ risks:
       both CNPG pods on one node) before a node loss is survivable end-to-end. Single-AZ (hel1) region
       risk (F9) is UNCHANGED by intra-AZ HA. SurrealDB-backup (F2), CNPG restore drill (F6),
       overcommit (F7) and volume-cap (F5) remain outstanding follow-up PBIs.
+      K3s HA UPDATE (2026-06-24, REC-INC-013 + gitops PR #15/#16): node3 join COMPLETE — all 3 nodes
+      (master1 + node2 + node3) Ready, 3-member etcd quorum healthy (tolerates one node loss). A
+      control-plane DEFECT was found and fixed in the process: node2/node3 advertised PUBLIC IPs as the
+      `kubernetes` apiserver endpoints (missing `--advertise-address`), causing in-cluster apiserver
+      i/o-timeouts that flapped Argo and had BLOCKED the data-plane spread — see REC-INC-013; endpoints
+      now all-private (172.16.0.3/.4/.5), Argo i/o-timeouts cleared. The DATA-PLANE HALF of F1 is now
+      COMPLETE: all 3 CNPG clusters (pg-platform, pg-restormel, pg-plotbudget — AST-023) carry REQUIRED
+      pod anti-affinity and were rescheduled so primary + standby sit on DISTINCT nodes (node2 + node3,
+      none co-located on master1) — each prod DB is single-node-failure-safe, replication
+      streaming/zero-lag, primary identity stable, prod healthy throughout. STILL OUTSTANDING:
+      SurrealDB STS spread + backup (F2), CNPG restore drill (F6), overcommit (F7), volume-cap (F5),
+      cross-region/AZ DR (F9).
     treatment_status: >
       In-treatment — legacy box-split (REC-PLAN-012) done for the OLD topology; restic backups active
-      on the legacy boxes (AST-012). K3s control-plane/etcd HA IN PROGRESS (2026-06-24): 3-node etcd
-      quorum being applied (master1 + node2 joined, node3 pending) — partially treats the single-node
-      SPOF (F1, control-plane/etcd layer). STILL OUTSTANDING: data-plane workload spread/anti-affinity,
-      SurrealDB backup, CNPG restore drill, overcommit, volume cap, cross-region/AZ DR — tracked as
-      follow-up PBIs from Phase-1 ground-truth F1/F2/F5/F6/F7/F9. Rating stays High pending node3 +
-      data-plane HA. [PLACEHOLDER — founder: confirm node3 joined + etcd quorum stable; re-rate after.]
+      on the legacy boxes (AST-012). K3s control-plane/etcd HA COMPLETE (2026-06-24): 3-node etcd
+      quorum healthy (master1 + node2 + node3 all Ready, tolerates one node loss); the apiserver
+      public-IP advertise defect that flapped the control plane is fixed (REC-INC-013, endpoints
+      all-private). CNPG DATA-PLANE HA COMPLETE (2026-06-24, gitops PR #15/#16): all 3 prod DB clusters
+      (AST-023) spread primary+standby onto distinct nodes (node2/node3) via REQUIRED anti-affinity —
+      single-node-failure-safe, replication healthy. STILL OUTSTANDING: SurrealDB STS spread + backup
+      (F2), CNPG restore drill (F6), overcommit (F7), volume cap (F5), cross-region/AZ DR (F9) —
+      tracked as follow-up PBIs from Phase-1 ground-truth. Rating stays High pending SurrealDB
+      backup/spread + restore drill + cross-AZ DR. [PLACEHOLDER — founder: confirm + re-rate; CP/etcd
+      and CNPG data-plane HA now verified done.]
     owner: founder
     status: open
     review: 2026-12-15
