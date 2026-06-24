@@ -8,7 +8,11 @@
 #   commit/branch references #N  ->  status/in-progress   (from triage|ready|none)
 #   PR opened referencing #N     ->  status/in-review      (from triage|ready|in-progress)
 #   PR merged to main            ->  status/ready-deploy   (from in-review|in-progress)
-#   Coolify deploy success       ->  status/deployed + close   (see lifecycle/deploy-callback.sh)
+#
+# The final status/ready-deploy -> status/deployed + close transition is NOT handled here.
+# It is owned by the Argo CD prod PostSync hook Job (deploy/k3s/gitops, #184) which fires on
+# the operator's prod Sync success — see deploy/k3s/gitops/DEPLOY-PIPELINE.md §4/§5. The
+# Coolify-era post-deploy callback (lifecycle/deploy-callback.sh) was retired with that cutover.
 #
 # IMPORTANT: for items you want tracked through deploy, reference the issue with `Ref #N`
 # (not `Closes #N`) so the merge doesn't auto-close it before it's deployed. Use `Closes #N`
