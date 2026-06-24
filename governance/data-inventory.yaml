@@ -183,3 +183,21 @@ data:
       enquirers). The consent ledger is OUR Postgres (sovereign source of truth, re-platformable);
       Brevo holds only the operational send list. Every marketing email carries RFC-8058 one-click
       unsubscribe. Public privacy notice section gated to Phase 2 launch (publish-when-live).
+
+  - id: DAT-014
+    data: "Huly workspace data — issues/projects/documents + local Huly account identities"
+    categories: "internal operational records, account identity"
+    classification: confidential
+    store: "In-cluster on AST-022/AST-030 (ns huly): CockroachDB (transactional/account data) + Elasticsearch (full-text index) + Redpanda (event stream); document/file blobs in Hetzner Object Storage S3 fsn1 (AST-029), bucket huly-allotmentology — all EU (Helsinki + Falkenstein)."
+    contains_personal_data: "yes (LIMITED) — Huly local-account identities (email + hashed credential) of the founder/operators; plus whatever personal data the founder chooses to type into issues/docs. NOT a customer/end-user data store — internal company use only."
+    retention: "Life of the company's internal use of Huly; account credentials rotated on the access-review cadence. Datastore backup is a separate decision (not auto-enabled in WS1)."
+    product: shared
+    notes: >
+      ADDED 2026-06-24 (WS1, restormel-gitops PR #6). Huly (AST-030) is an INTERNAL tool — its
+      data subjects are the founder/operators, not customers, so it is not a data-controller
+      processing activity over third parties by default. Personal data is minimal: local Huly
+      account identities behind the portal forward-auth gate (disableSignup:true → no open
+      registration). If Huly is ever opened to external collaborators or used to hold third-party
+      personal data, REVISIT this row, add a RoPA processing entry, and reassess the access policy.
+      Blobs live in the dedicated S3 bucket (no MinIO). Access is gated by portal SSO + Huly local
+      login; the bundled datastores are protected in-cluster by NetworkPolicy (AST-030).
