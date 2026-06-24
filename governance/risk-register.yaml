@@ -82,11 +82,24 @@ risks:
       (F9). These are FILED as follow-up PBIs (referenced from the ground-truth findings) — NOT
       resolved by this scope-expansion PR. Net effect of the expansion on this risk: rating stays
       High; the affected-asset set widens to the whole in-scope estate; mitigation owed grows.
+      K3s HA IN PROGRESS (2026-06-24, governance/k3s-ha-asset-reconcile): the single-K3s-node SPOF
+      (ground-truth F1) is now being ACTIVELY REMEDIATED — the cluster (AST-022) is moving from one
+      node to a 3-node control-plane + embedded-etcd HA topology (master1 + restormel-node2 joined;
+      node3 join pending, applied live single-threaded). A 3-member etcd quorum TOLERATES ONE NODE
+      LOSS for the control-plane/etcd layer once node3 is in and quorum is stable. PARTIAL ONLY: this
+      treats the control-plane/etcd half of F1; the DATA-PLANE half remains — CNPG pods, the SurrealDB
+      STS, and Supabase must still be spread across nodes with anti-affinity (AST-023 still records
+      both CNPG pods on one node) before a node loss is survivable end-to-end. Single-AZ (hel1) region
+      risk (F9) is UNCHANGED by intra-AZ HA. SurrealDB-backup (F2), CNPG restore drill (F6),
+      overcommit (F7) and volume-cap (F5) remain outstanding follow-up PBIs.
     treatment_status: >
       In-treatment — legacy box-split (REC-PLAN-012) done for the OLD topology; restic backups active
-      on the legacy boxes (AST-012). NEW (2026-06-23) K3s-estate mitigations OUTSTANDING (HA, SurrealDB
-      backup, CNPG restore drill, overcommit, volume cap, cross-region DR) — tracked as follow-up PBIs
-      from Phase-1 ground-truth F1/F2/F5/F6/F7/F9. Blast radius now = single in-scope K3s node + legacy boxes.
+      on the legacy boxes (AST-012). K3s control-plane/etcd HA IN PROGRESS (2026-06-24): 3-node etcd
+      quorum being applied (master1 + node2 joined, node3 pending) — partially treats the single-node
+      SPOF (F1, control-plane/etcd layer). STILL OUTSTANDING: data-plane workload spread/anti-affinity,
+      SurrealDB backup, CNPG restore drill, overcommit, volume cap, cross-region/AZ DR — tracked as
+      follow-up PBIs from Phase-1 ground-truth F1/F2/F5/F6/F7/F9. Rating stays High pending node3 +
+      data-plane HA. [PLACEHOLDER — founder: confirm node3 joined + etcd quorum stable; re-rate after.]
     owner: founder
     status: open
     review: 2026-12-15

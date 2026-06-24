@@ -74,6 +74,23 @@
 #   divergence (CNPG→S3 barman vs the older BX11/restic notes) flagged for follow-up (F6).
 #   New follow-up PBIs filed: DPIA for PlotBudget, DPIA for Sophia, sub-processor AVV/contract
 #   confirmation. last-reviewed → 2026-06-23 (founder re-approval via merge).
+# 2026-06-24 (governance/k3s-ha-asset-reconcile): K3s HA TOPOLOGY RECONCILE. AST-022 updated from
+#   SINGLE-NODE to a 3-node control-plane + embedded-etcd HA cluster as the HA build is applied live
+#   (operator-led, single-threaded): restormel-sovereign-master1 + restormel-node2 (joined
+#   control-plane+etcd, private 172.16.0.4 = former .166 box) + node3 (.167, join PENDING at time of
+#   writing). Recorded the 3-member etcd quorum (tolerates one node loss) that RESOLVES the
+#   single-K3s-node SPOF previously carried as AST-022 ground-truth F1 / RISK-001. RISK-001 treatment
+#   + treatment_status updated to reflect HA-in-progress (residual rating unchanged pending node3 +
+#   workload spread). suppliers.yaml Hetzner entry: clarifying note that the K3s nodes are additional
+#   Hetzner Cloud servers under the SAME sub-processor + SAME AVV (no new sub-processor, no Art 28
+#   notification). NOT-yet-confirmed facts carried as [PLACEHOLDER — founder]: (a) whether master1
+#   (the temp CX43 bootstrap node) is RETAINED as a permanent 3rd member or retired in favour of the
+#   .167/.150/.166 fold-in per the design doc (deploy/k3s/cluster/nodes-target.md); the LIVE cluster
+#   diverges from that design — master1 is present and node2=.166 has joined; (b) node3 join +
+#   etcd-quorum-stable confirmation; (c) per-node role labels + workload anti-affinity spread.
+#   Reconciled READ-ONLY against the live cluster (kubectl get nodes, 2026-06-24) DURING the etcd
+#   member change — no cluster mutation by this record. last-reviewed UNCHANGED (founder re-approval
+#   on merge); the asset history above is append-only (no prior line deleted).
 
 assets:
   - id: AST-001
@@ -180,6 +197,13 @@ assets:
       Box 2 / .167 (172.16.0.3), Box 3 / .166 (172.16.0.4). Used for: Coolify (.150)
       deploying to .167; dashboard (.167) → SurrealDB (.150); CI runner (.166) pulling from
       Forgejo (.150); SSH/management private-only once public SSH is hardened. No egress cost
+      K3s CLUSTER on this network (2026-06-24): the K3s nodes (AST-022) live on the SAME
+      restormel-internal private network — restormel-sovereign-master1 at 172.16.0.5 (a private
+      IP not previously listed here, the temp bootstrap node), and restormel-node2 at 172.16.0.4.
+      172.16.0.4 is the same private address recorded for the .166 box (AST-018) — consistent with
+      the .166 CI box being repurposed/folded in as a K3s control-plane node. [PLACEHOLDER —
+      founder: confirm the live private-IP ↔ box mapping for all K3s nodes (master1/node2/node3)
+      and whether AST-018's .166 runner role is retired now that 172.16.0.4 serves the cluster.]
       intra-zone. Created as part of REC-PLAN-012 Phase 1; Box 3 joined on provisioning
       (AST-018, 2026-06-19).
 
@@ -404,6 +428,12 @@ assets:
       Coolify image-build relocation is a follow-up. Stateless runner (re-registerable) — not in
       restic scope. Right-sized from an initial ccx23 to cx43 (shared vCPU adequate for bursty
       builds; ~€15.99/mo). Connected to private network AST-011 (172.16.0.4).
+      K3s FOLD-IN (2026-06-24): the live K3s node restormel-node2 (AST-022) is at private
+      172.16.0.4 — the same address as this box — consistent with this .166 CX43 being repurposed
+      as a K3s control-plane + etcd member (the nodes-target.md design folds .166 in first). If so,
+      the dedicated-CI-runner role here is being subsumed by the cluster. [PLACEHOLDER — founder:
+      confirm whether this box is now node2 in the K3s cluster and whether the standalone
+      hetzner-build CI runner role is retired or coexists.]
 
   - id: AST-019
     asset: "Hetzner Object Storage (S3) — CNPG Postgres backup bucket"
@@ -485,30 +515,55 @@ assets:
   # --- K3s SOVEREIGN CLUSTER (in scope 2026-06-23 — Phase-1 ground-truth §2; PBI #230) ---
 
   - id: AST-022
-    asset: "K3s sovereign cluster + node restormel-sovereign-master1"
+    asset: "K3s sovereign cluster (3-node control-plane + embedded-etcd HA)"
     type: infrastructure
     owner: founder
     product: shared
     location: >
-      Hetzner Cloud, Helsinki FI (EU) hel1-dc2. Node restormel-sovereign-master1 (id 143382025,
-      cx43 8 vCPU / 16 GB / 160 GB), public 135.181.25.76, private 172.16.0.5. Burst node group
-      restormel-sovereign-burst (CPX31, hel1) = 0 nodes / agents-only today.
+      Hetzner Cloud, Helsinki FI (EU) hel1-dc2. 3-node control-plane + embedded-etcd cluster
+      (HA build in progress 2026-06-24):
+        - restormel-sovereign-master1 (Hetzner id 143382025, cx43 8 vCPU / 16 GB / 160 GB),
+          public 135.181.25.76, private 172.16.0.5 — control-plane + etcd. Originally the temp
+          CX43 cluster-init bootstrap node (deploy/k3s/cluster/nodes-target.md).
+        - restormel-node2 — control-plane + etcd, private 172.16.0.4 (joined 2026-06-24; this
+          private IP is the former Box 3 / .166 CI build runner, AST-018 — repurposed/folded in).
+        - node3 — control-plane + etcd, [PLACEHOLDER — founder: confirm node name + private IP;
+          intended to be the .167 box per nodes-target.md] — JOIN PENDING (being added live,
+          single-threaded, at time of writing).
+      Burst node group restormel-sovereign-burst (CPX31, hel1) = 0 nodes / agents-only today.
     notes: >
       ADDED 2026-06-23 (ISMS scope expansion). The live PRODUCTION data-plane (Phase-1
-      ground-truth §1/§2, verified by kubectl + Hetzner API 2026-06-23). k3s v1.34.8, SINGLE
-      NODE carrying control-plane + etcd + all stateful workloads: Argo CD, Cilium + Hubble,
-      Traefik ingress, cert-manager, External Secrets Operator (AST-027), CNPG operator + the
-      3 CNPG Postgres clusters (AST-023), SurrealDB (AST-024), the self-hosted Supabase /
-      PlotBudget stack (AST-025), Sophia (AST-026), and kube-prometheus monitoring (AST-028).
-      CNPG backups → Hetzner Object Storage S3 fsn1 (AST-019). 16/16 Hetzner CSI volumes bound
-      to this one node = the hard per-node cap (forced Loki onto emptyDir).
-      CRITICAL FINDINGS carried as follow-up PBIs (NOT resolved here):
-        - SINGLE-NODE SPOF — node loss = total estate outage; control-plane + etcd + all data on
-          one cx43; burst group is agents-only/0 (ground-truth F1).
+      ground-truth §1/§2, verified by kubectl + Hetzner API 2026-06-23). k3s v1.34.8. Carries
+      the control-plane + etcd + all stateful workloads of every in-scope product: Argo CD,
+      Cilium + Hubble, Traefik ingress, cert-manager, External Secrets Operator (AST-027), CNPG
+      operator + the 3 CNPG Postgres clusters (AST-023), SurrealDB (AST-024), the self-hosted
+      Supabase / PlotBudget stack (AST-025), Sophia (AST-026), and kube-prometheus monitoring
+      (AST-028). CNPG backups → Hetzner Object Storage S3 fsn1 (AST-019).
+      HA RECONCILE (2026-06-24, this PR): the cluster is being moved from SINGLE-NODE to a 3-node
+      control-plane + embedded-etcd HA topology (master1 + node2 joined; node3 join pending),
+      verified read-only against the live cluster (kubectl get nodes) during the etcd member
+      change. A 3-member embedded-etcd quorum TOLERATES ONE NODE LOSS for the control-plane/etcd
+      layer — this DIRECTLY TREATS the single-K3s-node SPOF previously carried below as F1 /
+      RISK-001. NOTE: the LIVE node set diverges from the design (deploy/k3s/cluster/nodes-target.md,
+      which targets the .167/.150/.166 boxes and deletes the temp node) — master1 (the temp CX43)
+      is present and node2 = the .166 box has joined. [PLACEHOLDER — founder: confirm the FINAL
+      3-member set — is master1 retained permanently, or retired once .150/.167 fold in? — and
+      whether 16 GB master1 + 8 GB boxes meets the per-node memory headroom.]
+      CRITICAL FINDINGS — status updated 2026-06-24:
+        - SINGLE-NODE SPOF (control-plane/etcd) — IN REMEDIATION via this 3-node etcd HA build;
+          control-plane + etcd quorum tolerates one node loss once node3 joins and quorum is
+          stable. RESIDUAL: stateful workloads (CNPG pods, SurrealDB STS, Supabase) must still be
+          SPREAD across nodes with anti-affinity to gain data-plane node-loss HA — not yet done
+          (ground-truth F1; AST-023 still notes both CNPG pods on one node). [PLACEHOLDER —
+          founder: confirm node3 joined + etcd quorum stable + role labels/anti-affinity applied.]
         - SurrealDB has NO working backup (cronjob suspended; Argo sophia-surreal-backup Missing)
-          (ground-truth F2/D5).
-        - Single AZ (hel1) incl. the backup bucket; memory-limit overcommit 131% on the one node
-          (ground-truth F7/F9).
+          (ground-truth F2/D5) — UNCHANGED; tracked on AST-024 (note: AST-029 surreal-k3s restic
+          repo added 2026-06-23 — reconcile against the suspended-cronjob finding, follow-up PBI).
+        - Single AZ (hel1) incl. the backup bucket; memory-limit overcommit on the bootstrap node
+          (ground-truth F7/F9) — UNCHANGED; HA within one AZ does not remove the region-loss risk.
+        - 16/16 Hetzner CSI volume cap was a per-(single-)node limit; additional nodes raise the
+          cluster-wide CSI headroom (ground-truth F5 / AST-028 Loki-on-emptyDir) — revisit once HA
+          is stable. [PLACEHOLDER — founder: confirm volume rebalance after node3.]
       GitOps record: deploy/k3s/ manifests + Argo app-of-apps; some Argo apps Degraded/OutOfSync
       and deploy/k3s/ was untracked in git at audit time (ground-truth D9/F11). Shares the
       restormel-internal private network (AST-011) with the legacy Coolify boxes.
