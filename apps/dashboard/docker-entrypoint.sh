@@ -19,16 +19,14 @@
 # each in its own transaction. Running it on every container start is safe — already-applied
 # migrations are skipped. This is a once-per-deploy step (entrypoint), not per request.
 #
-# CONCURRENCY CAVEAT (multi-replica): the runner does NOT take a Postgres advisory lock.
-# If two dashboard replicas ever start concurrently they could both attempt the same
-# pending migration. Each migration is atomic (transaction) and the schema_migrations
-# insert is ON CONFLICT DO NOTHING, so the worst case is one replica's transaction failing
-# on a duplicate object (e.g. CREATE TABLE without IF NOT EXISTS) and that replica exiting
-# non-zero — fail-closed, not data corruption. The dashboard is deployed as a SINGLE
-# container on Coolify today (no horizontal scaling), so this cannot occur. If/when the
-# dashboard is scaled to >1 replica, gate this step behind a Postgres advisory lock
-# (pg_advisory_lock) in the runner, or run migrations as a separate one-shot deploy job
-# instead of in the per-replica entrypoint. See docs/runbooks/dashboard-postgres-migrations.md.
+# MULTI-REPLICA SAFE: the runner gates the whole migration run behind a Postgres SESSION
+# advisory lock (pg_advisory_lock — see src/lib/server/migration-lock.ts). When >1 dashboard
+# replica starts concurrently on a migration-carrying deploy, exactly ONE replica runs
+# migrations; the other(s) block on the lock, then proceed and find every migration already
+# applied → a clean no-op. The fail-closed contract above is preserved: a real migration error
+# still exits non-zero and aborts container startup; the lock is always released. The lock is
+# taken on the pg (CNPG) driver — the >1-replica HA target; the neon-http (CI/Neon) path is a
+# single-runner/CI step and runs unguarded. See docs/runbooks/dashboard-postgres-migrations.md.
 set -e
 
 echo "[entrypoint] Applying pending dashboard DB migrations before server start..."
