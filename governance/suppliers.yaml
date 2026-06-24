@@ -57,6 +57,14 @@ suppliers:
       onboard, no new Art 28 notification beyond this register entry). DNS holds only public
       zone records, below the application/customer-data path. Sovereignty-positive: restormel.dev
       DNS moved off US Vercel DNS to EU Hetzner. Availability concentration tracked as RISK-013.
+      K3s SOVEREIGN CLUSTER (cross-check 2026-06-24): the live K3s cluster (AST-022) and its nodes —
+      restormel-sovereign-master1 + restormel-node2 + node3 (3-node etcd HA, build in progress) — are
+      additional Hetzner Cloud servers in the SAME Helsinki (hel1) region under the SAME legal entity +
+      SAME AVV as the boxes above. No new sub-processor and no new Art 28 notification beyond this
+      register entry (compute already in scope here; CNPG backups → the existing fsn1 Object Storage,
+      AST-019). The "three Helsinki servers" list in `provides` above reflects the LEGACY Coolify
+      topology (AST-003, now superseded-in-transition); the K3s nodes are the current live compute. The
+      Hetzner AVV acceptance flagged in `dpa` covers all of this Hetzner estate — still to be confirmed.
 
   - name: Neon
     provides: "Postgres (legacy — Restormel backup decommissioning; STILL WIRED in Sophia)"
