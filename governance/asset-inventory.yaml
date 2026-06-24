@@ -91,6 +91,15 @@
 #   Reconciled READ-ONLY against the live cluster (kubectl get nodes, 2026-06-24) DURING the etcd
 #   member change — no cluster mutation by this record. last-reviewed UNCHANGED (founder re-approval
 #   on merge); the asset history above is append-only (no prior line deleted).
+# 2026-06-24 (records/allotmentology-k3s-migration): AST-017 — allotmentology.tech portal Coolify→K3s
+#   migration STAGED (gitops PR #22 / app PR #10). Agent-layer milestones done: 16 app-config secrets
+#   loaded into Infisical `allotmentology`/prod (resolves the app-config-in-Coolify residual of RISK-002);
+#   first image built in-cluster (buildkit) + pushed to Forgejo registry; production data (incl. 13 BYOK
+#   user_ai_provider_keys rows + BetterAuth) migrated pg17→16 into CNPG pg-platform.allotmentology +
+#   K3s smoke-verified. Coolify .150 stays LIVE + warm-rollback; merge/Argo-sync/apex-DNS-flip are
+#   founder-gated and NOT done. Filed REC-INC-018 (Infisical CLI value-leak to transcript during the
+#   load → precautionary rotation) + flagged BYOK plaintext-at-rest as a pre-existing app issue.
+#   last-reviewed UNCHANGED (founder re-approval on merge); history above is append-only.
 
 assets:
   - id: AST-001
@@ -397,9 +406,9 @@ assets:
     type: service/web-app
     owner: founder
     product: allotmentology.tech
-    location: "Self-hosted on AST-003 (Coolify), allotmentology.tech"
+    location: "LIVE on AST-003 (Coolify, Box B .150), allotmentology.tech. MIGRATION IN PROGRESS → K3s estate (AST-023): deploy staged as namespace allotmentology-prod, DB on CNPG pg-platform (AST-023, db allotmentology). Coolify stays the live serving path + warm rollback until the founder-gated apex DNS flip."
     notes: >
-      Next.js company portal with self-contained BetterAuth auth. Founder-only.
+      Next.js 16 company portal with self-contained BetterAuth auth. Founder-only.
       Public surface includes a contact/enquiry form — LIVE as of 2026-06-19 (RoPA PROC-008;
       privacy notice v1.1 at allotmentology.tech/privacy).
       Auth email (magic-link, security alerts) via Migadu — in production.
@@ -407,10 +416,30 @@ assets:
       Coolify admin dashboard (coolify.allotmentology.tech) is published behind this portal's
       BetterAuth session via Traefik forwardAuth — portal login is required before Coolify
       becomes reachable. Two-layer protection: portal BetterAuth + Coolify's own local login.
-      App secrets held in Coolify environment (Coolify project allotmentology-pilot); some
-      operational secrets (e.g. RECORDS_FEED_TOKEN) are canonical in Infisical project
-      restormel-ops/prod. App-wide Infisical sourcing for allotmentology.tech remains deferred
-      (most secrets live in Coolify env, not Infisical). Residual location tracked under RISK-002.
+      2026-06-24 (Coolify→K3s migration, gitops PR #22 / app PR #10): the K3s deploy is
+      STAGED, not cut over. Three migration milestones completed at the agent layer:
+        (1) the 16 app-config secrets (BETTER_AUTH_*, SMTP_*, AUTH_*, NEON_AUTH_*,
+            RESTORMEL_KEYS_RECORDS_*) were copied from the live Coolify env into Infisical
+            project `allotmentology` (prod, root) — ESO renders them in-cluster (was empty).
+            This RESOLVES the prior "app-config secrets in Coolify env, not Infisical" residual
+            for allotmentology.tech (RISK-002): app-config is now canonical in Infisical. DB
+            creds (PG_PLATFORM_ALLOTMENTOLOGY_*) and DATABASE_URL are composed in-cluster, one
+            source of truth with the CNPG cluster.
+        (2) the first container image was built in-cluster (buildkit) from app PR #10 and pushed
+            to the Forgejo registry (git.allotmentology.tech/.../allotmentology-web:a91bacde9cc7),
+            replacing the Coolify Nixpacks build.
+        (3) the production DATA (23 public base tables + drizzle/neon_auth schemas; 13 BYOK
+            user_ai_provider_keys rows; BetterAuth sessions/users; 18 applied drizzle migrations)
+            was migrated by plain-SQL pg_dump (pg17→16) from the Coolify allotmentology-postgres
+            `neondb` into CNPG pg-platform.allotmentology, and smoke-verified (/api/health 200,
+            db connected) on K3s in an isolated namespace. See evidence: the migration is filed
+            with this work; the secret-exposure during the load is REC-INC-018.
+      GATED (founder/operator, NOT done here): merge PR #22/#10, the manual Argo `app sync
+      allotmentology-prod`, and the irreversible apex DNS flip (77.42.125.150 → 135.181.25.76).
+      Operational secrets (e.g. RECORDS_FEED_TOKEN) also canonical in Infisical restormel-ops/prod.
+      Pre-existing app design issue surfaced by the migration: BYOK provider keys
+      (user_ai_provider_keys.api_key_stored) are stored PLAINTEXT, not ciphertext — raised under
+      REC-INC-018 follow-ups for encryption-at-rest remediation.
 
   - id: AST-018
     asset: "Box 3 — dedicated CI build runner (204.168.216.166)"
@@ -671,3 +700,46 @@ assets:
       volume cap (ground-truth §1/F5) — an observability/forensics gap. metrics-server NOT
       installed (live metrics via Prometheus/node-exporter). Move Loki off emptyDir + address the
       volume cap: follow-up PBI (F5).
+
+  # --- HULY — self-hosted unified PM/tracker (WS1 deploy, restormel-gitops PR #6) ---
+  # NOTE: the gitops PR #6 body refers to "AST-018" for this asset — that id was written
+  # against an OLDER inventory and is now TAKEN (the .166 CI box). The Huly asset's real id
+  # is AST-030 (next free). Cross-reference both ways until the PR body is updated.
+
+  - id: AST-030
+    asset: "Huly — self-hosted unified project-management / issue tracker"
+    type: service/web-app
+    owner: founder
+    product: shared
+    location: "In-cluster on AST-022 (ns huly), Helsinki FI (EU) — huly.allotmentology.tech; object store → Hetzner Object Storage S3 fsn1 (AST-029)"
+    notes: >
+      ADDED 2026-06-24 (WS1 Deploy & SSO, restormel-gitops PR #6 — STAGED, not yet synced).
+      Self-hosted Huly (vendored Helm chart charts/huly @ app v0.7.423, hardcoreeng images
+      pinned, pulled direct from Docker Hub — D11 mirror-to-registry.allotmentology.tech still
+      open). Twelve Deployments / eleven Services behind a Traefik IngressRoute at
+      huly.allotmentology.tech, gated by the SAME portal forward-auth model as grafana./argo.
+      (Path A: Traefik Middleware → https://allotmentology.tech/api/forward-auth, fails closed;
+      Huly runs its OWN local accounts behind the gate, NO OIDC; disableSignup:true).
+      BUNDLED DATASTORES (single-node, in-namespace, 3 hcloud-volumes PVCs): CockroachDB
+      v24.2.5 (cockroach-data 10Gi, pgwire :26257), Elasticsearch 7.14.2 (elastic-data 10Gi),
+      Redpanda v24.3.6 (redpanda-data 5Gi). The bundled MinIO is DISABLED — blob storage is the
+      external Hetzner Object Storage S3 fsn1 (AST-029), dedicated bucket `huly-allotmentology`,
+      reusing the shared HETZNER_S3_FSN1_* credential pair (per-app S3 key = a console-only
+      hardening option, deferred). SECRETS: ESO-owned `huly-secret` rendered by the
+      `infisical-product-management` ClusterSecretStore (AST-027 ESO) from the EXISTING Infisical
+      `product_management` project (projectId fb4df07c-…, AST-013; D6 resolved 2026-06-24 — founder
+      reuses this project rather than a new `huly` one), env prod, folder /huly — NO values in git,
+      all HULY_* keys delivered via ESO; the shared ESO machine identity was granted READ on
+      product_management/prod.
+      SECURITY POSTURE: the bundled CockroachDB/Redpanda/Elastic run --insecure (unauthenticated
+      in-cluster); the compensating control is a default-deny + intra-namespace + Traefik-only
+      set of NetworkPolicies (applications/huly/50-networkpolicy.yaml). BREAK-GLASS: a portal-
+      bypassing path exists two ways — (1) the IP-allowlisted huly-admin.allotmentology.tech host
+      (DEFERRED: needs the founder operator /32 + DNS before sync; fail-closed until then), and
+      (2) the kubectl port-forward runbook (no ingress/portal — the deploy path for WS1). The
+      local Huly break-glass admin is a standing privileged credential — see access-control-policy
+      (REC-POL-002 §3/§4) + RISK-012. SYNC IS MANUAL (restormel-prod AppProject, no automated
+      syncPolicy) — a prod workload, rollout only on operator Argo sync. Backup of the Huly
+      datastores (Cockroach + ES + the S3 blobs) is a separate decision, NOT auto-enabled in WS1
+      (chart backup CronJob disabled) — follow-up. Shares the restormel-internal private network
+      (AST-011). [PLACEHOLDER — founder: confirm the break-glass admin email + the /32 allowlist.]
