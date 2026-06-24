@@ -542,8 +542,9 @@ risks:
       (KUBECONFIG only — the WS1 deploy path). appUrls.relative=true keeps the SPA's API calls on the
       serving host so break-glass actually works. (3) STANDING CREDENTIAL — the break-glass admin is
       named in the Access Control Policy (REC-POL-002 §3/§4) with owner=founder, MFA expectation,
-      rotation, and quarterly access review; the credential lives only in Infisical (huly project,
-      HULY_BREAKGLASS_ADMIN_PASSWORD) delivered via ESO, never in git. Backup of the Huly datastores
+      rotation, and quarterly access review; the credential lives only in Infisical
+      (`product_management` project, folder /huly, key HULY_BREAKGLASS_ADMIN_PASSWORD) delivered via
+      ESO, never in git. Backup of the Huly datastores
       is a separate, not-yet-enabled decision (WS1 chart backup CronJob disabled) — follow-up.
     treatment_status: "In-treatment — NetworkPolicy compensating control authored + Traefik-ns fixed (live-verified); ESO secret plumbing staged; SYNC IS MANUAL + GATED (not yet applied). DEFERRED: break-glass /32 allowlist + huly-admin DNS (port-forward break-glass covers WS1). Datastore backup + egress-pinning = follow-ups."
     owner: founder

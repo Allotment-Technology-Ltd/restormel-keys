@@ -97,7 +97,7 @@ order for remediation given the sensitivity of the data or access granted.
 | Notion | Internal tooling | Yes | 3 — Medium | ⚠ Confirm enabled |
 | allotmentology.tech portal / BetterAuth admin | Portal (magic-link auth) | Yes | 2 — High | ✅ Enabled (magic-link; founder-only) |
 | Migadu | Transactional/company email | Yes | 2 — High | ✅ Enabled |
-| Huly local admin (break-glass) | Self-hosted PM/tracker admin (AST-030) | n/a at the app — gated by portal forward-auth (portal MFA) + IP-allowlist on the break-glass host | 2 — High | ⚠ WS1 staged (restormel-gitops PR #6). Huly has no native MFA; the compensating controls are the portal forward-auth gate (portal MFA required to reach huly.allotmentology.tech) and, on the portal-bypassing break-glass host, a Traefik IP-allowlist. Credential in Infisical (huly project) only; rotate on the access-review cadence. See §4 + RISK-015. |
+| Huly local admin (break-glass) | Self-hosted PM/tracker admin (AST-030) | n/a at the app — gated by portal forward-auth (portal MFA) + IP-allowlist on the break-glass host | 2 — High | ⚠ WS1 staged (restormel-gitops PR #6). Huly has no native MFA; the compensating controls are the portal forward-auth gate (portal MFA required to reach huly.allotmentology.tech) and, on the portal-bypassing break-glass host, a Traefik IP-allowlist. Credential in Infisical (`product_management` project, folder /huly) only; rotate on the access-review cadence. See §4 + RISK-015. |
 
 Mac login serves as a hardware second factor for SSH key-based access to the
 Coolify/Hetzner host. FileVault is confirmed enabled (2026-06-15).

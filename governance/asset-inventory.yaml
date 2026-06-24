@@ -697,8 +697,11 @@ assets:
       external Hetzner Object Storage S3 fsn1 (AST-029), dedicated bucket `huly-allotmentology`,
       reusing the shared HETZNER_S3_FSN1_* credential pair (per-app S3 key = a console-only
       hardening option, deferred). SECRETS: ESO-owned `huly-secret` rendered by the
-      `infisical-huly` ClusterSecretStore (AST-027 ESO) from a DEDICATED Infisical `huly` project
-      (AST-013), env prod, folder /huly — NO values in git, all HULY_* keys delivered via ESO.
+      `infisical-product-management` ClusterSecretStore (AST-027 ESO) from the EXISTING Infisical
+      `product_management` project (projectId fb4df07c-…, AST-013; D6 resolved 2026-06-24 — founder
+      reuses this project rather than a new `huly` one), env prod, folder /huly — NO values in git,
+      all HULY_* keys delivered via ESO; the shared ESO machine identity was granted READ on
+      product_management/prod.
       SECURITY POSTURE: the bundled CockroachDB/Redpanda/Elastic run --insecure (unauthenticated
       in-cluster); the compensating control is a default-deny + intra-namespace + Traefik-only
       set of NetworkPolicies (applications/huly/50-networkpolicy.yaml). BREAK-GLASS: a portal-
