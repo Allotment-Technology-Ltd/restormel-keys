@@ -91,9 +91,6 @@ importers:
       '@neondatabase/serverless':
         specifier: ^1.0.2
         version: 1.0.2
-      '@restormel/aaif':
-        specifier: workspace:*
-        version: link:../../packages/aaif
       '@restormel/connect-core':
         specifier: workspace:*
         version: link:../../packages/connect-core
@@ -103,6 +100,9 @@ importers:
       '@restormel/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@restormel/dispatch':
+        specifier: workspace:*
+        version: link:../../packages/dispatch
       '@restormel/graph-core':
         specifier: workspace:*
         version: link:../../packages/graph-core
@@ -393,25 +393,6 @@ importers:
 
   examples/testing-github-actions: {}
 
-  packages/aaif:
-    dependencies:
-      '@restormel/keys':
-        specifier: '>=0.1.0'
-        version: 0.2.5
-    devDependencies:
-      '@restormel/mcp':
-        specifier: workspace:*
-        version: link:../mcp
-      '@types/node':
-        specifier: ^25.5.0
-        version: 25.5.0
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
-      vitest:
-        specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
-
   packages/cli:
     dependencies:
       '@restormel/connect-core':
@@ -454,12 +435,12 @@ importers:
 
   packages/connect-core:
     dependencies:
-      '@restormel/aaif':
-        specifier: workspace:*
-        version: link:../aaif
       '@restormel/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@restormel/dispatch':
+        specifier: workspace:*
+        version: link:../dispatch
       '@restormel/keys':
         specifier: workspace:*
         version: link:../core
@@ -515,6 +496,25 @@ importers:
         version: 25.5.0
       typescript:
         specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.0
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/dispatch:
+    dependencies:
+      '@restormel/keys':
+        specifier: '>=0.1.0'
+        version: 0.2.5
+    devDependencies:
+      '@restormel/mcp':
+        specifier: workspace:*
+        version: link:../mcp
+      '@types/node':
+        specifier: ^25.5.0
+        version: 25.5.0
+      typescript:
+        specifier: ^5.4.0
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
@@ -656,15 +656,15 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.3.6)
-      '@restormel/aaif':
-        specifier: workspace:*
-        version: link:../aaif
       '@restormel/connect-core':
         specifier: workspace:*
         version: link:../connect-core
       '@restormel/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@restormel/dispatch':
+        specifier: workspace:*
+        version: link:../dispatch
       '@restormel/keys':
         specifier: workspace:*
         version: link:../core

@@ -47,7 +47,7 @@ export const ROUTING_CAPABILITIES = {
     "fallback_chain.set",
   ],
   aaif: {
-    package: "@restormel/aaif",
-    note: "AAIF carries request/response types; use @restormel/keys dashboard resolve() for full stepChain before executing AAIF-shaped calls.",
+    package: "@restormel/dispatch",
+    note: "Dispatch (formerly @restormel/aaif) carries request/response types; use @restormel/keys dashboard resolve() for full stepChain before executing Dispatch-shaped calls.",
   },
 } as const;

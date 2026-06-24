@@ -1,8 +1,8 @@
 /**
  * Filter integration catalog + stack wizard presets for Keys MVP module flags.
  */
-import type { IntegrationCatalogEntry } from "@restormel/aaif";
-import { INTEGRATION_CATALOG, INTEGRATION_STACK_TEMPLATES, STACK_LAYER_ORDER } from "@restormel/aaif";
+import type { IntegrationCatalogEntry } from "@restormel/dispatch";
+import { INTEGRATION_CATALOG, INTEGRATION_STACK_TEMPLATES, STACK_LAYER_ORDER } from "@restormel/dispatch";
 import type { ModuleFlags } from "$lib/module-flags-types";
 
 const GATEWAY_CATALOG_IDS = new Set(["openrouter", "portkey", "zuplo", "vercel"]);

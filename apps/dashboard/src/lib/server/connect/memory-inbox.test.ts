@@ -142,7 +142,7 @@ describe("connect/memory +page.server load", async () => {
 // ---------------------------------------------------------------------------
 
 describe("MCP catalog completeness (W2.4 — FUNC P2-7)", async () => {
-  const { RESTORMEL_SUITE_TOOL_NAMES } = await import("@restormel/aaif");
+  const { RESTORMEL_SUITE_TOOL_NAMES } = await import("@restormel/dispatch");
   const { CATALOG_ENTRIES } = await import("@restormel/mcp");
 
   it("includes every RESTORMEL_SUITE_TOOL_NAME in CATALOG_ENTRIES", () => {

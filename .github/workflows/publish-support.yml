@@ -1,9 +1,9 @@
 # Publish @restormel/support to npm (tag support-v* or manual dispatch).
+# MIRROR DEDUPE (PBI #248): canonical publisher is .forgejo/workflows/publish-support.yml
+# (same `support-v*` tag). `push: tags` removed so a mirror tag-push no longer re-fires this
+# copy → avoids the double npm publish race; workflow_dispatch retained for manual recovery.
 name: Publish Restormel Support
 on:
-  push:
-    tags:
-      - "support-v*"
   workflow_dispatch:
 
 permissions:

@@ -40,7 +40,7 @@ export const USER_MODE_OPTIONS: UserModeOption[] = [
   {
     value: "cli_agent",
     label: "Working in CLI / agent / IDE",
-    description: "MCP, CLI, AAIF, and CI/CD workflows",
+    description: "MCP, CLI, Dispatch, and CI/CD workflows",
     icon: "🛠️",
   },
   {

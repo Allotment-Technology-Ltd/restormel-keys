@@ -1,7 +1,7 @@
 /**
  * Horizon suite MCP tool names — the SINGLE SOURCE OF TRUTH (Stage 5B / I10).
  *
- * `@restormel/aaif` has zero runtime dependencies, so it is the safe home for the canonical tool
+ * `@restormel/dispatch` has zero runtime dependencies, so it is the safe home for the canonical tool
  * name list. `@restormel/mcp` re-exports these (see `packages/mcp/src/suite-tool-names.ts`) rather
  * than maintaining its own copy. Keep `registerHorizonSuiteTools` in `@restormel/mcp` in sync with
  * this list.

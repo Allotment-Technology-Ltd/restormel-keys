@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { createKeys, openaiProvider } from "@restormel/keys";
 import type { KeysConfig } from "@restormel/keys";
-import type { AAIFRequest } from "./types.js";
-import { executeAAIFRequest } from "./runtime.js";
-import { isAAIFRequest } from "./validate.js";
+import type { DispatchRequest } from "./types.js";
+import { executeDispatchRequest } from "./runtime.js";
+import { isDispatchRequest } from "./validate.js";
 
-describe("AAIF runtime helpers", () => {
+describe("Dispatch runtime helpers", () => {
   function makeKeys(): ReturnType<typeof createKeys> {
     const config: KeysConfig = {
       routing: { defaultProvider: "openai" },
@@ -17,14 +17,14 @@ describe("AAIF runtime helpers", () => {
   it("computes cost from token-volume hints and resolves routing", async () => {
     const keys = makeKeys();
 
-    const req: AAIFRequest = {
+    const req: DispatchRequest = {
       input: "hello",
       task: "chat",
       routing: { model: "gpt-4o-mini" },
       constraints: { tokens: { inputTokensM: 2, outputTokensM: 3 }, latency: "balanced", maxCost: 999 },
     };
 
-    const res = await executeAAIFRequest(req, keys);
+    const res = await executeDispatchRequest(req, keys);
     expect(res.provider).toBe("openai");
     expect(res.model).toBe("gpt-4o-mini");
     // gpt-4o-mini: input $0.15/M, output $0.6/M → 2*0.15 + 3*0.6 = 2.1
@@ -36,27 +36,27 @@ describe("AAIF runtime helpers", () => {
   it("throws when maxCost is exceeded", async () => {
     const keys = makeKeys();
 
-    const req: AAIFRequest = {
+    const req: DispatchRequest = {
       input: "hello",
       task: "chat",
       routing: { model: "gpt-4o-mini" },
       constraints: { tokens: { inputTokensM: 2, outputTokensM: 3 }, maxCost: 1 },
     };
 
-    await expect(executeAAIFRequest(req, keys)).rejects.toThrow(/max_cost_exceeded/);
+    await expect(executeDispatchRequest(req, keys)).rejects.toThrow(/max_cost_exceeded/);
   });
 
   it("allows host-provided output generation callback", async () => {
     const keys = makeKeys();
 
-    const req: AAIFRequest = {
+    const req: DispatchRequest = {
       input: "hello",
       task: "chat",
       routing: { model: "gpt-4o-mini" },
       constraints: { tokens: { inputTokensM: 1, outputTokensM: 1 } },
     };
 
-    const res = await executeAAIFRequest(req, keys, {
+    const res = await executeDispatchRequest(req, keys, {
       generate: ({ cost }) => `out(cost=${cost.toFixed(2)})`,
     });
 
@@ -66,7 +66,7 @@ describe("AAIF runtime helpers", () => {
   it("returns typed embedding when options.embedding is set", async () => {
     const keys = makeKeys();
 
-    const req: AAIFRequest = {
+    const req: DispatchRequest = {
       input: "noop",
       task: "embedding",
       routing: { model: "gpt-4o-mini" },
@@ -74,7 +74,7 @@ describe("AAIF runtime helpers", () => {
     };
 
     const vec = [0.1, 0.2, 0.3];
-    const res = await executeAAIFRequest(req, keys, { embedding: vec });
+    const res = await executeDispatchRequest(req, keys, { embedding: vec });
 
     expect(res.embedding).toEqual(vec);
     expect(res.output).toContain("0.1");
@@ -84,30 +84,30 @@ describe("AAIF runtime helpers", () => {
   it("sets outputText for chat tasks", async () => {
     const keys = makeKeys();
 
-    const req: AAIFRequest = {
+    const req: DispatchRequest = {
       input: "hello",
       task: "chat",
       routing: { model: "gpt-4o-mini" },
       constraints: { tokens: { inputTokensM: 1, outputTokensM: 1 }, maxCost: 999 },
     };
 
-    const res = await executeAAIFRequest(req, keys);
+    const res = await executeDispatchRequest(req, keys);
     expect(res.outputText).toBe("hello");
   });
 
-  it("isAAIFRequest accepts optional routingPlan object", () => {
+  it("isDispatchRequest accepts optional routingPlan object", () => {
     expect(
-      isAAIFRequest({
+      isDispatchRequest({
         input: "x",
         routingPlan: { stepChain: [] },
       }),
     ).toBe(true);
-    expect(isAAIFRequest({ input: "x", routingPlan: "bad" })).toBe(false);
+    expect(isDispatchRequest({ input: "x", routingPlan: "bad" })).toBe(false);
   });
 
-  it("isAAIFRequest accepts valid integrationStack", () => {
+  it("isDispatchRequest accepts valid integrationStack", () => {
     expect(
-      isAAIFRequest({
+      isDispatchRequest({
         input: "x",
         integrationStack: {
           schemaVersion: "1",
@@ -118,9 +118,9 @@ describe("AAIF runtime helpers", () => {
     ).toBe(true);
   });
 
-  it("isAAIFRequest rejects integrationStack with unknown component id", () => {
+  it("isDispatchRequest rejects integrationStack with unknown component id", () => {
     expect(
-      isAAIFRequest({
+      isDispatchRequest({
         input: "x",
         integrationStack: {
           schemaVersion: "1",
@@ -130,18 +130,18 @@ describe("AAIF runtime helpers", () => {
     ).toBe(false);
   });
 
-  it("isAAIFRequest rejects integrationStack with wrong schemaVersion", () => {
+  it("isDispatchRequest rejects integrationStack with wrong schemaVersion", () => {
     expect(
-      isAAIFRequest({
+      isDispatchRequest({
         input: "x",
         integrationStack: { schemaVersion: "2", components: [{ id: "neon" }] },
       }),
     ).toBe(false);
   });
 
-  it("isAAIFRequest rejects integrationStack with invalid templateId", () => {
+  it("isDispatchRequest rejects integrationStack with invalid templateId", () => {
     expect(
-      isAAIFRequest({
+      isDispatchRequest({
         input: "x",
         integrationStack: {
           schemaVersion: "1",

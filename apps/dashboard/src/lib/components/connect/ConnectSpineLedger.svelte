@@ -19,10 +19,53 @@
     type ConnectSpineStageState,
   } from "$lib/connect/connect-spine";
   import { HOME_HREF } from "$lib/nav-config";
+  import { track } from "$lib/analytics/track";
 
   export let spine: ConnectSpine | null;
-  /** Which surface is mounting this — used only to mark the active surface, never to change state. */
+  /**
+   * Which surface is mounting this — used only to mark the active surface, never
+   * to change state. `null` means the Home hub (the ledger's home surface, where
+   * the journey's quick-vs-setup door fork lives); a concrete id means a
+   * mid-journey surface (runs / claims / ingestion routes).
+   */
   export let activeStageId: ConnectSpineStage["id"] | null = null;
+
+  /**
+   * Decision 4 — the measured sources→answers funnel. The funnel stage ids are
+   * the SHIPPED spine stage ids 1:1 (events.ts `connect_stage_advance`), so the
+   * funnel measures the journey the UI actually presents. No remapping/collapse:
+   * a `review → make_ready` move is a real transition, not a no-op. Keep these
+   * names STABLE — they are the spine stage ids in connect-spine.ts.
+   */
+
+  /**
+   * A user acted on a spine stage's primary CTA. Two distinct funnel signals,
+   * emitted on the right boundaries:
+   *  - DOOR CHOICE (decision 7): only on the Home HUB (`activeStageId === null`),
+   *    only on the current-stage CTA — the single guided "Set up / do this next"
+   *    door. (The Quick-run door is Phase 3.) Not emitted on mid-journey surfaces
+   *    so it stays a true hub door-choice signal, not a stage-CTA-click signal.
+   *  - STAGE ADVANCE (drop-off measure): only when acting on the CURRENT stage
+   *    (genuine forward motion) and the click moves to a DIFFERENT stage than the
+   *    surface we're on. Acting on an already-`done` stage (e.g. "Review setup",
+   *    "Open last run") is inspection, not advance — it is NOT counted.
+   * No-ops in SSR (track() is browser-guarded) and never throws.
+   */
+  function onStageCta(stage: ConnectSpineStage): void {
+    // Only the current stage represents the journey's forward door.
+    if (!stage.isCurrent) {
+      return;
+    }
+    // Door choice is the hub-only quick-vs-setup fork (decision 7).
+    if (activeStageId === null) {
+      track("connect_door_choice", { door: "setup" });
+    }
+    const to = stage.id;
+    const from = activeStageId ?? "hub";
+    if (from !== to) {
+      track("connect_stage_advance", { from, to });
+    }
+  }
 
   function glyph(state: ConnectSpineStageState): string {
     switch (state) {
@@ -113,6 +156,7 @@
                 class="spine-cta brut-focus brut-pressable"
                 class:spine-cta--primary={stage.isCurrent}
                 href={stage.cta.href}
+                on:click={() => onStageCta(stage)}
               >
                 {stage.cta.label} →
               </a>

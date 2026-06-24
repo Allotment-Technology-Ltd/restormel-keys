@@ -10,7 +10,7 @@ export const MVP_PUBLIC_PACKAGES = {
   doctor: "@restormel/doctor",
   validate: "@restormel/validate",
   mcp: "@restormel/mcp",
-  aaif: "@restormel/aaif",
+  aaif: "@restormel/dispatch",
   /** Graph embed (SOPHIA / preview module only) */
   graphElements: "@restormel/graph-elements",
   graphCore: "@restormel/graph-core",

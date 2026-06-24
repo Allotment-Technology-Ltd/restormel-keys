@@ -1,9 +1,9 @@
 import type {
-  AAIFRequest,
-  AAIFResponse,
-  AAIFVerifiedClaimEnvelope,
-  AAIFVerifiedContextInput,
-  AAIFVerifiedContextOutput,
+  DispatchRequest,
+  DispatchResponse,
+  DispatchVerifiedClaimEnvelope,
+  DispatchVerifiedContextInput,
+  DispatchVerifiedContextOutput,
 } from "./types.js";
 import {
   INTEGRATION_STACK_SCHEMA_VERSION,
@@ -28,7 +28,7 @@ const VALID_CLAIM_STATES = new Set([
 
 const VALID_EVIDENCE_MATCHES = new Set(["exact", "normalized", "fuzzy"]);
 
-function isValidVerifiedClaimEnvelope(value: unknown): value is AAIFVerifiedClaimEnvelope {
+function isValidVerifiedClaimEnvelope(value: unknown): value is DispatchVerifiedClaimEnvelope {
   if (typeof value !== "object" || value === null) return false;
   const env = value as Record<string, unknown>;
 
@@ -75,7 +75,7 @@ function isValidVerifiedClaimEnvelope(value: unknown): value is AAIFVerifiedClai
   return true;
 }
 
-function isValidVerifiedContextInput(value: unknown): value is AAIFVerifiedContextInput {
+function isValidVerifiedContextInput(value: unknown): value is DispatchVerifiedContextInput {
   if (typeof value !== "object" || value === null) return false;
   const ctx = value as Record<string, unknown>;
   if (!Array.isArray(ctx.claims)) return false;
@@ -86,7 +86,7 @@ function isValidVerifiedContextInput(value: unknown): value is AAIFVerifiedConte
   return true;
 }
 
-function isValidVerifiedContextOutput(value: unknown): value is AAIFVerifiedContextOutput {
+function isValidVerifiedContextOutput(value: unknown): value is DispatchVerifiedContextOutput {
   if (typeof value !== "object" || value === null) return false;
   const ctx = value as Record<string, unknown>;
   if (!Array.isArray(ctx.claims)) return false;
@@ -105,24 +105,24 @@ function isValidVerifiedContextOutput(value: unknown): value is AAIFVerifiedCont
 }
 
 /**
- * Type guard for a single AAIFVerifiedClaimEnvelope.
+ * Type guard for a single DispatchVerifiedClaimEnvelope.
  * Use when consuming individual claim envelopes from Connect v1 or the MCP tool.
  */
-export function isAAIFVerifiedClaimEnvelope(value: unknown): value is AAIFVerifiedClaimEnvelope {
+export function isDispatchVerifiedClaimEnvelope(value: unknown): value is DispatchVerifiedClaimEnvelope {
   return isValidVerifiedClaimEnvelope(value);
 }
 
 /**
- * Type guard for AAIFVerifiedContextInput (on AAIFRequest).
+ * Type guard for DispatchVerifiedContextInput (on DispatchRequest).
  */
-export function isAAIFVerifiedContextInput(value: unknown): value is AAIFVerifiedContextInput {
+export function isDispatchVerifiedContextInput(value: unknown): value is DispatchVerifiedContextInput {
   return isValidVerifiedContextInput(value);
 }
 
 /**
- * Type guard for AAIFVerifiedContextOutput (on AAIFResponse).
+ * Type guard for DispatchVerifiedContextOutput (on DispatchResponse).
  */
-export function isAAIFVerifiedContextOutput(value: unknown): value is AAIFVerifiedContextOutput {
+export function isDispatchVerifiedContextOutput(value: unknown): value is DispatchVerifiedContextOutput {
   return isValidVerifiedContextOutput(value);
 }
 
@@ -150,7 +150,7 @@ function isValidIntegrationStack(value: unknown): boolean {
   return true;
 }
 
-export function isAAIFRequest(value: unknown): value is AAIFRequest {
+export function isDispatchRequest(value: unknown): value is DispatchRequest {
   if (typeof value !== "object" || value === null) return false;
   const obj = value as Record<string, unknown>;
   if (typeof obj.input !== "string") return false;
@@ -202,7 +202,7 @@ export function isAAIFRequest(value: unknown): value is AAIFRequest {
   return true;
 }
 
-export function isAAIFResponse(value: unknown): value is AAIFResponse {
+export function isDispatchResponse(value: unknown): value is DispatchResponse {
   if (typeof value !== "object" || value === null) return false;
   const obj = value as Record<string, unknown>;
   if (typeof obj.output !== "string") return false;

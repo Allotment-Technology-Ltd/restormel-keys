@@ -165,8 +165,8 @@
     if (path.startsWith(base + "/dev-tools/aaif")) {
       return {
         text: flags.guardrails
-          ? "Define routes and guard rails first so AAIF calls land on governed model paths."
-          : "Define routes first so AAIF calls land on consistent model paths.",
+          ? "Define routes and guard rails first so Dispatch calls land on governed model paths."
+          : "Define routes first so Dispatch calls land on consistent model paths.",
         cta: "Routes",
         href: `${base}/routes`,
       };

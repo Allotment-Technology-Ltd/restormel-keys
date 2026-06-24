@@ -60,7 +60,7 @@ export const keysDocsNavBlocks: DocsNavBlock[] = [
     items: [
       { href: "/keys/docs/tutorials", label: "All tutorials" },
       { href: "/keys/docs/walkthrough", label: "Keys integration walkthrough" },
-      { href: "/keys/docs/integrations-walkthrough", label: "Integrations: CLI / MCP / AAIF" },
+      { href: "/keys/docs/integrations-walkthrough", label: "Integrations: CLI / MCP / Dispatch" },
     ],
   },
   { kind: "divider" },
@@ -78,7 +78,7 @@ export const keysDocsNavBlocks: DocsNavBlock[] = [
       { href: "/keys/docs/guides/portkey", label: "Portkey" },
       { href: "/keys/docs/guides/vercel-ai-gateway", label: "Vercel AI Gateway" },
       { href: "/keys/docs/integrations/mcp", label: "MCP" },
-      { href: "/keys/docs/integrations/aaif", label: "AAIF" },
+      { href: "/keys/docs/integrations/aaif", label: "Dispatch" },
     ],
   },
 ];

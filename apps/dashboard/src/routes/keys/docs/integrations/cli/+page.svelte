@@ -64,7 +64,7 @@
 </p>
 <ul class="docs-links">
   <li><a href="/keys/docs/integrations/mcp">MCP setup</a> — connect to agent workflows</li>
-  <li><a href="/keys/docs/integrations/aaif">AAIF overview</a> — structured AI interaction contract</li>
+  <li><a href="/keys/docs/integrations/aaif">Dispatch overview</a> — structured AI interaction contract</li>
   <li><a href="/keys/docs/integrations">All integrations</a></li>
 </ul>
 

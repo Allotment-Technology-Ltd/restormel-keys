@@ -1,6 +1,6 @@
 <svelte:head>
   <title>Integrations — Docs — Restormel Keys</title>
-  <meta name="description" content="Developer integrations for Restormel Keys: CLI, MCP, and AAIF." />
+  <meta name="description" content="Developer integrations for Restormel Keys: CLI, MCP, and Dispatch." />
 </svelte:head>
 
 <h1 class="docs-h1">Integrations</h1>
@@ -26,9 +26,9 @@
   </a>
 
   <a href="/keys/docs/integrations/aaif" class="integration-card">
-    <h2 class="card-title">AAIF</h2>
+    <h2 class="card-title">Dispatch</h2>
     <p class="card-desc">Structured request/response contract for predictable AI interactions.</p>
-    <span class="card-link">AAIF overview &rarr;</span>
+    <span class="card-link">Dispatch overview &rarr;</span>
   </a>
 </div>
 

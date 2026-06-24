@@ -1,0 +1,14 @@
+# Declarative database for pg-platform (CNPG Database CRD).
+# Replaces the unsupported inline `spec.managed.databases` on this CNPG version.
+# usesophia DB is Phase B (created when the sophia store + role land).
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: restormel-staging
+  namespace: cnpg-system
+spec:
+  name: restormel_staging
+  owner: restormel_staging_app          # created by pg-platform spec.managed.roles
+  cluster:
+    name: pg-platform
+  ensure: present

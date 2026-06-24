@@ -383,7 +383,7 @@ describe("connect.retrieve_verified handler", () => {
 });
 
 // ---------------------------------------------------------------------------
-// AAIF tool-name registration
+// Dispatch tool-name registration
 // ---------------------------------------------------------------------------
 
 describe("connect.retrieve_verified registration", () => {

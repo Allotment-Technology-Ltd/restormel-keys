@@ -1,0 +1,15 @@
+# Declarative database for pg-platform — UseSophia app DB (CNPG Database CRD).
+# PHASE B: do NOT apply until Sophia's DB migration off Firestore AND the sophia
+# Infisical store exists (the usesophia_app role's password renders from it). Kept
+# here for canonical completeness alongside database-restormel-staging.yaml.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: usesophia
+  namespace: cnpg-system
+spec:
+  name: usesophia
+  owner: usesophia_app                    # pg-platform spec.managed.roles (Phase B)
+  cluster:
+    name: pg-platform
+  ensure: present

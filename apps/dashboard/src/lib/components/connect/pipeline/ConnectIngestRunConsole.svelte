@@ -821,15 +821,19 @@
               <a class="btn btn-outline btn-sm" href={AGENTS_HREF}>Set up agent →</a>
             </li>
           {:else}
+            <!-- Spine retarget (journey Phase 1): the run is MID-journey, not a
+                 terminus. The primary forward action is stage ③ → ④ "Make ready"
+                 (link · embed · validate), not "explore the graph" — exploring is
+                 a sideways move, making ready is the next step toward go-live. -->
             <li class="run-next-item run-next-item-primary">
               <span class="run-next-num">1</span>
-              <span class="run-next-text">Explore what was captured</span>
-              <a class="btn btn-primary btn-sm" href={CLAIMS_HREF}>View graph →</a>
+              <span class="run-next-text">Make your graph ready — link, embed, validate</span>
+              <a class="btn btn-primary btn-sm" href={CLAIMS_HREF + "?workspace=tools"}>Make your graph ready →</a>
             </li>
             <li class="run-next-item">
               <span class="run-next-num">2</span>
-              <span class="run-next-text">Connect an agent to start querying</span>
-              <a class="btn btn-outline btn-sm" href={AGENTS_HREF}>Set up agent →</a>
+              <span class="run-next-text">Explore what was captured</span>
+              <a class="btn btn-outline btn-sm" href={CLAIMS_HREF}>View graph →</a>
             </li>
             <li class="run-next-item">
               <span class="run-next-num">3</span>
