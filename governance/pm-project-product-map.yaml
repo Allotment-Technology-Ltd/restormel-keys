@@ -1,0 +1,96 @@
+# record:
+#   id: REC-GOV-008
+#   title: Huly PM project ↔ ISMS product-tag map (CIS Control 1 cross-reference)
+#   class: governance
+#   control-tier: 2
+#   owner: founder
+#   status: approved
+#   approved-by: Adam Boon
+#   approved-on: 2026-06-25
+#   last-reviewed: 2026-06-25
+#   classification: internal
+#   retention: P6Y-after-superseded
+#
+# PURPOSE
+# Huly (AST-030) is now the product-management SYSTEM OF RECORD for Allotment Technology Ltd,
+# replacing Forgejo Projects for the *tracker* (Forgejo stays canonical for git + CI + the ISMS
+# records). Each Huly Tracker PROJECT corresponds to exactly one in-scope product, identified by
+# its canonical ISMS `product:` tag (the same tag used across asset-inventory.yaml / data-inventory.yaml
+# / ropa.yaml / risk-register.yaml / suppliers.yaml). This file is the ISMS-anchored copy of that
+# mapping so the asset register, the data register, and the access model all resolve a Huly project
+# to a governed product and back.
+#
+# RELATIONSHIP TO THE PRODUCT-OPS COPY
+# The product-ops pipeline keeps an operational routing copy at
+# `product-ops/forgejo-pack/repo-project-map.yaml` (in the restormel-ops repo) that ALSO maps each
+# Forgejo repo → Huly project → ISMS product tag, for status-event routing. THIS file is the
+# governance source of truth for the project↔product correspondence; the product-ops copy is the
+# operational routing copy and must agree with this one. If they diverge, this register wins and the
+# product-ops copy is corrected.
+#
+# SCOPE NOTE
+# `product:` tags currently in governance use: restormel, allotmentology.tech, plotbudget, sophia,
+# shared. PlotBudget + Sophia are IN ISMS scope as of 2026-06-23 (asset-inventory.yaml scope note).
+# Huly itself is INFRASTRUCTURE (AST-030, product: shared) — it is the tool that hosts the projects,
+# not a product project of its own.
+#
+# Added 2026-06-25 (WS5 — Governance & product-ops of the Huly PM migration). Sources: AST-030
+# (asset-inventory.yaml), the Huly migration decision doc (product-ops/HULY-MIGRATION.md), and the
+# product-ops routing copy repo-project-map.yaml (enumerated 2026-06-25 against the live Forgejo org
+# + Argo applications). Project membership facts (which projects exist vs. are to-be-created in Huly)
+# are operational and tracked in the product-ops copy; the governed fact here is the
+# project ↔ ISMS-product correspondence.
+
+# Each entry: a Huly Tracker project, its identifier, the ISMS product tag it governs, and the
+# in-scope asset(s)/repos that route to it. `status` distinguishes a live Huly project from one
+# still to be created.
+huly_projects:
+
+  - huly_project: "Restormel"
+    identifier: RES
+    isms_product: restormel
+    status: live            # exists in Huly (allotment-pm workspace; 90 issues migrated from Forgejo)
+    forgejo_repos: [restormel-keys, restormel-ops, restormel-gitops]
+    notes: >
+      Primary product PM plane. restormel-keys (AST-001, git + CI + canonical ISMS records),
+      restormel-ops (AST-002, operator cockpit), and restormel-gitops (GitOps source) all route their
+      backlog into Restormel [RES]. restormel-gitops is shared infra but its PM routes here; its
+      product tag remains `shared` in the asset register.
+
+  - huly_project: "Allotmentology"
+    identifier: ALOT
+    isms_product: allotmentology.tech
+    status: to-create       # [PLACEHOLDER — founder/operator: confirm created in Huly]
+    forgejo_repos: [allotmentology.tech]
+    notes: >
+      Company portal (AST-017). The single forward-auth issue imported as RES-90 moves here on
+      project creation.
+
+  - huly_project: "PlotBudget"
+    identifier: PLOT
+    isms_product: plotbudget
+    status: to-create       # [PLACEHOLDER — founder/operator: confirm created in Huly]
+    forgejo_repos: [plotbudget-v2]
+    notes: >
+      PlotBudget (plotbudget.com; self-hosted Supabase backend AST-025). In ISMS scope since
+      2026-06-23. Forgejo repo is a pull-mirror of GitHub.
+
+  - huly_project: "Sophia"
+    identifier: SOPH
+    isms_product: sophia
+    status: to-create       # [PLACEHOLDER — founder/operator: confirm created in Huly]
+    forgejo_repos: [sophia]
+    notes: >
+      Sophia (usesophia.app; in-cluster app AST-026, SurrealDB AST-024). In ISMS scope since
+      2026-06-23. Forgejo repo is a pull-mirror of GitHub.
+
+# Systems that deliberately have NO Huly project:
+not_mapped:
+  - system: "Huly itself (AST-030)"
+    reason: >
+      Huly is the infrastructure hosting the projects (product: shared), not a product with its own
+      backlog. Its own operational work is tracked under Restormel [RES] / shared infra.
+  - system: "intonature"
+    reason: >
+      Named in an early draft but has NO Forgejo repo and NO Argo application anywhere (404). NOT
+      onboarded. Add a project + a row here if/when a repo appears.
