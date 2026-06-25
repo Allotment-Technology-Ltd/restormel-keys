@@ -100,8 +100,16 @@
 #   founder-gated and NOT done. Filed REC-INC-018 (Infisical CLI value-leak to transcript during the
 #   load → precautionary rotation) + flagged BYOK plaintext-at-rest as a pre-existing app issue.
 #   last-reviewed UNCHANGED (founder re-approval on merge); history above is append-only.
-
-assets:
+# 2026-06-25 (feat/huly-ws5-governance — WS5 Governance & product-ops of the Huly PM migration):
+#   AST-030 — corrected one stale cross-reference in the notes ("RISK-012" → "RISK-015"; the Huly
+#   risk landed as RISK-015, RISK-012 being email-deliverability). Added REC-GOV-008
+#   (governance/pm-project-product-map.yaml) — the ISMS-anchored Huly-project ↔ ISMS product-tag map
+#   that WS5 requires (Restormel[RES]→restormel, Allotmentology[ALOT]→allotmentology.tech,
+#   PlotBudget[PLOT]→plotbudget, Sophia[SOPH]→sophia); AST-030 now cross-references it. No other
+#   AST body text changed; the asset history above is append-only. last-reviewed UNCHANGED (founder
+#   re-approval on merge). [PLACEHOLDER — founder: confirm the Huly break-glass admin Infisical
+#   project name — AST-030 / RISK-015 / PROC-013 / DAT-014 say `product_management`; the
+#   access-control-policy break-glass paragraph still says `huly`. They must agree.]
   - id: AST-001
     asset: "restormel-keys repo"
     type: code/records
@@ -738,8 +746,13 @@ assets:
       (DEFERRED: needs the founder operator /32 + DNS before sync; fail-closed until then), and
       (2) the kubectl port-forward runbook (no ingress/portal — the deploy path for WS1). The
       local Huly break-glass admin is a standing privileged credential — see access-control-policy
-      (REC-POL-002 §3/§4) + RISK-012. SYNC IS MANUAL (restormel-prod AppProject, no automated
+      (REC-POL-002 §3/§4) + RISK-015. SYNC IS MANUAL (restormel-prod AppProject, no automated
       syncPolicy) — a prod workload, rollout only on operator Argo sync. Backup of the Huly
       datastores (Cockroach + ES + the S3 blobs) is a separate decision, NOT auto-enabled in WS1
       (chart backup CronJob disabled) — follow-up. Shares the restormel-internal private network
       (AST-011). [PLACEHOLDER — founder: confirm the break-glass admin email + the /32 allowlist.]
+      PM SYSTEM OF RECORD: Huly is now the product-management system of record (replacing Forgejo
+      Projects for the tracker; Forgejo stays canonical for git + CI + the ISMS records). The Huly
+      Tracker projects map to the in-scope products via REC-GOV-008
+      (governance/pm-project-product-map.yaml): Restormel[RES]→restormel, Allotmentology[ALOT]→
+      allotmentology.tech, PlotBudget[PLOT]→plotbudget, Sophia[SOPH]→sophia.

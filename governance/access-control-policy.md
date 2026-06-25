@@ -150,8 +150,13 @@ for normal access — see the break-glass note below and RISK-015.
 **Huly break-glass admin — a standing privileged credential.** Huly (AST-030) runs with
 `disableSignup:true`, so the only way in is a seeded local admin account; that account is a
 standing privileged credential and is governed here. Owner: founder. Its password lives ONLY in
-Infisical (the `huly` project, key `HULY_BREAKGLASS_ADMIN_PASSWORD`, delivered into the cluster
-via ESO — never in git), and it is rotated on the quarterly access-review cadence (§6). Because
+Infisical (key `HULY_BREAKGLASS_ADMIN_PASSWORD`, delivered into the cluster
+via ESO — never in git), and it is rotated on the quarterly access-review cadence (§6).
+[PLACEHOLDER — founder: confirm the Infisical PROJECT that holds this key. This paragraph
+originally said the `huly` project, but AST-030, RISK-015, PROC-013 and DAT-014 all record the
+`product_management` project (D6 resolved 2026-06-24 — founder reuses that project rather than a
+new `huly` one). The four agree on `product_management`; reconcile this reference to match.]
+Because
 the portal is a SPOF for the normal gated path, Huly has a deliberate portal-BYPASSING
 break-glass path: (1) the IP-allowlisted `huly-admin.allotmentology.tech` host — DEFERRED, it is
 fail-closed until the founder supplies the operator source `/32` (and the host DNS is created);
