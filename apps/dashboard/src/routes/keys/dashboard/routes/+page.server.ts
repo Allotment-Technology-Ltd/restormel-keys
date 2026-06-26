@@ -7,6 +7,7 @@ import {
   listProjects,
   listRequestLogs,
   listRoutes,
+  listRouteStepsByProject,
   listModels,
   listProviderModelVariants,
 } from "$lib/server/db";
@@ -33,11 +34,19 @@ export const load: PageServerLoad = async ({ locals }) => {
     const [projectDetails, policies, logs24h, modelRows] = await Promise.all([
       Promise.all(
         projects.map(async (project) => {
-          const [environments, routes] = await Promise.all([
+          const [environments, routes, steps] = await Promise.all([
             listEnvironments(project.id, userId),
             listRoutes(project.id, userId),
+            listRouteStepsByProject(project.id, userId).catch(() => []),
           ]);
-          return { projectId: project.id, environments, routes };
+          // Group steps by route so route cards render correctly on SSR. The
+          // client lazy-fetch is now only a refresh, not the sole data source —
+          // fixes the "No providers configured yet" empty-state on the list page.
+          const routeStepsByRoute: Record<string, typeof steps> = {};
+          for (const step of steps) {
+            (routeStepsByRoute[step.routeId] ??= []).push(step);
+          }
+          return { projectId: project.id, environments, routes, routeStepsByRoute };
         })
       ),
       listPolicies(workspace.id),
@@ -79,7 +88,7 @@ export const load: PageServerLoad = async ({ locals }) => {
         {
           environments: detail.environments,
           routes: detail.routes,
-          routeStepsByRoute: {},
+          routeStepsByRoute: detail.routeStepsByRoute,
         },
       ])
     );

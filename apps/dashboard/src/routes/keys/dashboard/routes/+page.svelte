@@ -101,10 +101,14 @@
   $: selectedProject = data.projects.find((project) => project.id === selectedProjectId) ?? null;
   $: selectedEnvironments = data.routesByProject[selectedProjectId]?.environments ?? [];
   $: selectedRoutes = data.routesByProject[selectedProjectId]?.routes ?? [];
-  $: selectedRouteStepsByRoute =
-    lazyRouteStepsByProject[selectedProjectId] ??
-    data.routesByProject[selectedProjectId]?.routeStepsByRoute ??
-    {};
+  // Prefer the client lazy-fetch only when it has content; otherwise fall back to
+  // the SSR-loaded steps. Prevents an empty {} from a racey/failed fetch from
+  // clobbering correct server-rendered data (the "No providers configured yet" bug).
+  $: selectedRouteStepsByRoute = (() => {
+    const lazy = lazyRouteStepsByProject[selectedProjectId];
+    if (lazy && Object.keys(lazy).length > 0) return lazy;
+    return data.routesByProject[selectedProjectId]?.routeStepsByRoute ?? {};
+  })();
   $: duplicateRouteNames = new Set(
     Object.entries(
       selectedRoutes.reduce((acc, route) => {
