@@ -110,6 +110,16 @@
 #   re-approval on merge). [PLACEHOLDER — founder: confirm the Huly break-glass admin Infisical
 #   project name — AST-030 / RISK-015 / PROC-013 / DAT-014 say `product_management`; the
 #   access-control-policy break-glass paragraph still says `huly`. They must agree.]
+# 2026-06-26 (chore/decommission-bx11-150): BX11 Storage Box (AST-012) DECOMMISSIONED — founder
+#   cancelled it via Hetzner Robot. Non-lossy: the crown-jewels DR programme (REC-PLAN-021) moved
+#   every backup lane to Hetzner Object Storage S3 (fsn1, AST-019) — forgejo-data-k3s, CNPG Barman
+#   (pg-* clusters), surreal-k3s, etcd snapshots, registry mirror, age escrow — and the push-button
+#   cold-start restore drill (Stage C) passed GREEN restoring every jewel from fsn1 ALONE. Box 1 / .150
+#   (AST-010) set DECOMMISSIONING — every stateful service verified migrated/superseded into the K3s
+#   cluster (AST-022); full-disk Hetzner snapshot (image 401960703, 24 GB) retained as insurance;
+#   restic→BX11 cron drained. Awaiting founder removal of Cloud server 138350520. suppliers.yaml
+#   Hetzner entry annotated (Storage Box backups → Object Storage only). last-reviewed UNCHANGED
+#   (founder re-approval on merge); the asset history above is append-only (no prior line deleted).
   - id: AST-001
     asset: "restormel-keys repo"
     type: code/records
@@ -186,6 +196,7 @@
     type: infrastructure
     owner: founder
     product: shared
+    status: decommissioning
     location: "Hetzner CX33 (4 vCPU / 8 GB / 80 GB), Helsinki FI (EU) hel1-dc2 — public IP 77.42.125.150, private 172.16.0.2 — ~€8.49/mo"
     notes: >
       VERIFIED 2026-06-19 (Hetzner API + Coolify API). Coolify control plane + Traefik
@@ -202,6 +213,19 @@
       Actions CI runner previously ran on this box but has moved to Box 3 (AST-018); the
       runner on this box is stopped. Backup: restic cron 02:00 daily → BX11 repo
       restic-buildops (AST-012). deploy@ is the SSH user.
+      DECOMMISSIONING 2026-06-26 (chore/decommission-bx11-150): every stateful service on this box
+      verified migrated/superseded into the K3s cluster (AST-022) — Forgejo → pg-forgejo + forgejo-0
+      (git.allotmentology.tech; PR merged to it this day), restormel_ops → pg-restormel, allotmentology
+      DB → cluster CNPG (allotmentology-web live), SurrealDB → surreal-0 (data ns), Infisical → cluster
+      infisical + pg-infisical (secrets.restormel.dev), monitoring (uptime-kuma/beszel) → Ops-Centre
+      blackbox + Prometheus + Alertmanager (probes cover restormel.dev / allotmentology.tech /
+      surreal.restormel.dev / git.allotmentology.tech). No cluster ConfigMap/Secret/pod-env references
+      .150 (one stale allotmentology BETTER_AUTH_TRUSTED_ORIGINS allow-list entry aside, tracked for
+      cleanup); all .150 Postgres showed LOCAL-ONLY connections (no cross-box consumer). Full-disk
+      Hetzner snapshot taken as recoverable insurance (image 401960703, 24 GB, 2026-06-26); restic→BX11
+      backup cron disabled. Pending founder removal of Cloud server id 138350520. staging/preview
+      .restormel.dev DNS still resolve here (apps already exited) — to be dropped at removal. Coolify
+      control plane retired with this box (cluster uses Argo CD, AST-022). Entry retained append-only.
 
   - id: AST-011
     asset: "Private network — restormel-internal"
@@ -295,6 +319,7 @@
     type: backup/storage
     owner: founder
     product: shared
+    status: decommissioned
     location: "Hetzner Storage Box BX11, Falkenstein DE (EU) — u613941.your-storagebox.de"
     notes: >
       Hetzner BX11 (1 TB) used as the offsite backup target for all Restormel
@@ -322,6 +347,15 @@
       allotmentology.tech) — covers self-hosted Postgres dumps and Infisical backups. This
       is the asset the Phase-2 spec called "Hetzner Storage Box (STORAGE_BOX_ID)" — mapped
       to the existing AST-012, NOT duplicated.
+      DECOMMISSIONED 2026-06-26 (chore/decommission-bx11-150): the founder cancelled the Hetzner
+      Storage Box BX11 via Hetzner Robot. Both restic repos (restic-surreal, restic-buildops) and
+      their snapshots are gone with the box. This is NON-LOSSY: the crown-jewels DR programme
+      (REC-PLAN-021) moved every backup lane to Hetzner Object Storage S3 (fsn1, AST-019) — forgejo-
+      data-k3s, CNPG Barman for the pg-* clusters, surreal-k3s, etcd snapshots, registry mirror, and
+      the age escrow — and the push-button cold-start restore drill (Stage C) passed GREEN restoring
+      every jewel from fsn1 ALONE. The Box-B (.150) restic cron that wrote restic-buildops was drained
+      the same day. AST-012 retained (append-only) as decommissioned history; mitigating-control
+      references for RISK-001/RISK-009 now point at AST-019 (fsn1 Object Storage) + the Stage-C drill.
 
   - id: AST-013
     asset: "Infisical — self-hosted secret manager"
