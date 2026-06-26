@@ -7,7 +7,7 @@ status: approved
 classification: internal
 control-tier: 2
 created: 2026-06-15
-last-reviewed: 2026-06-23
+last-reviewed: 2026-06-26
 review-interval: P12M
 retention: P6Y-after-superseded
 approved-by: Adam Boon
@@ -35,6 +35,29 @@ director). ICO registration: ZC092549.
 > inference sub-processor DPAs) is being captured via filed follow-up PBIs — see the risk register
 > (RISK-001) and asset inventory (AST-022..028). A full per-control re-walk against the expanded
 > scope is itself a follow-up item.
+
+> **SHARED-TENANCY BLAST RADIUS — 2026-06-26 (RES-65 / PBI #239 / orig issue #239).** Re-scoping the
+> ISMS for the shared cluster surfaced that *scope membership alone does not bound the blast radius*.
+> The in-scope products (Restormel, allotmentology.tech, PlotBudget, Sophia) **and the self-hosted
+> Supabase / PlotBudget backend (AST-025)** all co-reside on the SAME K3s node(s), share ONE
+> embedded-etcd control plane (AST-022), ONE External Secrets Operator + Infisical ClusterSecretStores
+> secret machinery holding every product's secrets (AST-027), and ONE backup plane (etcd snapshots +
+> CNPG/restic into the single hel1 S3 bucket, AST-019) — with **no namespace NetworkPolicy isolation,
+> no per-product secret-store segregation, and no per-product backup-scope segregation** in force today.
+> The blast radius is therefore **wider than the availability-only SPOF originally captured in
+> RISK-001**: it spans **confidentiality and integrity as well as availability** — a fault,
+> resource-exhaustion, or *compromise* in ANY one co-resident product (including a product that was, or
+> a future product that is, nominally "out-of-scope-until-its-phase") can take down, or be taken down
+> with, the rest, and a compromise of the shared secret operator or backup plane exposes/poisons every
+> product at once. Bringing PlotBudget/Sophia formally in scope (2026-06-23) removed the "out-of-scope
+> product on an in-scope plane" framing but did **not** remove the shared-tenancy coupling itself; any
+> later product spun up on this cluster inherits the same coupling regardless of its declared scope
+> phase. **DECISION REQUIRED — founder (not decided here):** either *accept shared-tenancy as residual
+> risk*, or *commission workload isolation* (per-product namespaces + default-deny NetworkPolicy,
+> per-product ESO secret-store scoping, per-product backup scoping). Options + recommendation are
+> recorded provisionally in **REC-ADR-010** (`docs/decisions/shared-tenancy-cluster-isolation.md`); the
+> matching blast-radius update is in **RISK-001**. Asset inventory (AST-022..028) already records the
+> co-residence.
 
 Per-control row: `control | title | applicable? | justification | status | evidence ref`
 

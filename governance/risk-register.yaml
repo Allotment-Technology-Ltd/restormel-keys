@@ -7,7 +7,7 @@
 #   status: approved
 #   approved-by: Adam Boon
 #   approved-on: 2026-06-23
-#   last-reviewed: 2026-06-23
+#   last-reviewed: 2026-06-26
 #   classification: internal
 #   retention: P6Y-after-superseded
 #
@@ -49,6 +49,20 @@ risks:
       hosts the not-yet-migrated Restormel app, Forgejo, Infisical (AST-013) and BetterAuth, so
       the SPOF surface currently spans BOTH the K3s node and the legacy boxes. Single AZ (hel1)
       throughout, including the S3 backup bucket (AST-019).
+      SHARED-TENANCY BLAST RADIUS (2026-06-26, RES-65 / PBI #239): re-scoping for the shared cluster
+      shows the blast radius is not only an availability SPOF but a SHARED-TENANCY coupling spanning
+      CONFIDENTIALITY + INTEGRITY + AVAILABILITY. Every in-scope product PLUS the self-hosted Supabase /
+      PlotBudget backend (AST-025) co-resides with NO workload isolation: one shared embedded-etcd
+      control plane, ONE External Secrets Operator + Infisical ClusterSecretStores (AST-027) holding all
+      products' secrets, and ONE backup plane writing to the single hel1 S3 bucket (AST-019). There is
+      today no namespace NetworkPolicy isolation, no per-product ESO secret-store segregation, and no
+      per-product backup-scope segregation. Consequence: a fault, resource-exhaustion, or COMPROMISE in
+      any one co-resident product (including one nominally out-of-scope-until-its-phase, or any new
+      product later spun up on this cluster) can take down, or be taken down with, the in-scope estate,
+      and a compromise of the shared secret operator or backup plane exposes/poisons every product at
+      once. Formal in-scoping of PlotBudget/Sophia (2026-06-23) did NOT remove this coupling. This is a
+      DISTINCT residual exposure from the SPOF/HA work and is NOT mitigated by it — HA makes the shared
+      plane more available, not more isolated.
     asset: "AST-022 — K3s sovereign cluster (single node); AST-023/024/025/026/027 in-cluster systems; AST-003 — legacy Coolify compute (superseded-in-transition); AST-017 portal"
     product: shared
     likelihood: M
@@ -116,6 +130,14 @@ risks:
       tracked as follow-up PBIs from Phase-1 ground-truth. Rating stays High pending SurrealDB
       backup/spread + restore drill + cross-AZ DR. [PLACEHOLDER — founder: confirm + re-rate; CP/etcd
       and CNPG data-plane HA now verified done.]
+      SHARED-TENANCY DECISION REQUIRED (2026-06-26, RES-65): the shared-tenancy coupling added to the
+      risk above is a SEPARATE residual exposure that the HA/SPOF treatment does NOT address. [DECISION
+      REQUIRED — founder] either (a) ACCEPT shared-tenancy as residual risk (record the acceptance,
+      owner, and review date), OR (b) COMMISSION workload-isolation treatment — per-product namespaces +
+      default-deny NetworkPolicy, per-product ESO secret-store scoping (least-privilege ClusterSecretStore
+      → SecretStore split so one product's compromise can't read another's secrets), and per-product
+      backup scoping. Not decided here — options + recommendation recorded provisionally in REC-ADR-010
+      (docs/decisions/shared-tenancy-cluster-isolation.md). Rating left at High pending this decision.
     owner: founder
     status: open
     review: 2026-12-15
