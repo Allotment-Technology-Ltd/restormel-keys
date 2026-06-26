@@ -7,10 +7,10 @@ status: approved
 classification: public
 control-tier: 2
 created: 2026-03-18
-last-reviewed: 2026-06-15
+last-reviewed: 2026-06-26
 review-interval: P12M
 approved-by: founder
-approved-on: 2026-06-15
+approved-on: 2026-06-26
 retention: P6Y-after-superseded
 effective: 2026-06-15
 related: [REC-GOV-005, REC-GOV-007, REC-GOV-003]
@@ -56,7 +56,7 @@ We use **PostHog (EU region)** for product analytics. Events are **pseudonymous*
 
 ### Error tracking
 
-We use **Sentry** for error tracking. Error payloads are configured to contain **no personal data** (`sendDefaultPii` is off).
+We use **PostHog (EU region)** for error and exception tracking. Error and exception payloads are **redacted at source** so they contain **no personal data**.
 
 ### Email
 
@@ -71,11 +71,11 @@ We use **Google Workspace (Gmail)** for correspondence, which may include your n
 
 ## 5. Sharing and sub-processors
 
-We do **not** sell personal data. We share data with sub-processors only to provide the service. The current list — what each provides, its role, and its location — is at **[/legal/sub-processors](/legal/sub-processors)**; material changes are notified per our sub-processor change policy. The sub-processors that may handle data relevant to your use of the service include EU-hosted infrastructure (Hetzner), EU product analytics (PostHog), billing (Paddle, UK/EU), error tracking (Sentry), and email (Google Workspace).
+We do **not** sell personal data. We share data with sub-processors only to provide the service. The current list — what each provides, its role, and its location — is at **[/legal/sub-processors](/legal/sub-processors)**; material changes are notified per our sub-processor change policy. The sub-processors that may handle data relevant to your use of the service include EU-hosted infrastructure (Hetzner), EU product analytics and error tracking (PostHog, EU), billing (Paddle, UK/EU), and email (Google Workspace).
 
 ## 6. International transfers
 
-Restormel's infrastructure is in the **EU**. A small number of sub-processors operate outside the UK/EEA (for example Sentry and Google Workspace in the US, and an optional US-edge API gateway where enabled). Where personal data is involved, we rely on appropriate safeguards (such as Standard Contractual Clauses / the UK IDTA) made available by those providers. Error-tracking and the optional edge gateway are configured to keep personal data **off** those paths.
+Restormel's infrastructure is in the **EU**, and our product analytics and error tracking are **EU-hosted** (PostHog EU). A small number of sub-processors operate outside the UK/EEA (for example Google Workspace in the US, and an optional US-edge API gateway where enabled). Where personal data is involved, we rely on appropriate safeguards (such as Standard Contractual Clauses / the UK IDTA) made available by those providers. The optional edge gateway is configured to keep personal data **off** that path.
 
 ## 7. Retention
 
