@@ -1,0 +1,73 @@
+# Prod deploy-staleness guardrail (REC-INC-006 defence-in-depth).
+# ---------------------------------------------------------------------------------
+# REC-INC-006 was a SILENT failure: prod stayed old for ~14 merges and nobody knew.
+# deploy-k3s.yml now alerts when a deploy RUN fails. This workflow closes the other
+# half: it catches the case where prod silently never got a release at all — e.g. the
+# pipeline was never triggered, was disarmed, or failed before the alert leg.
+#
+# Signal (OUTBOUND-ONLY, two git facts — never touches the cluster):
+#   latest `dashboard-v*` release tag → its commit short-SHA   (the intended release)
+#   vs restormel-gitops applications/restormel-app-prod/20-dashboard-deployment.yaml
+#      image tag                                                (what prod declares)
+# If the prod manifest tag != the latest release tag's commit, the release never
+# reached prod's gitops → Telegram alert. (It compares the MANIFEST, not the live
+# pod, so it does not false-alarm during the operator's manual-sync window; Argo's own
+# OutOfSync surfacing covers "bumped but not yet synced".)
+#
+# Runs daily + on demand. Always exits 0 (a perpetually-red scheduled job is itself
+# noise); the alert IS the signal.
+
+name: Prod deploy-staleness guard
+
+on:
+  schedule:
+    - cron: '0 8 * * *'   # 08:00 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    name: prod manifest vs latest release tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare + alert on drift
+        shell: bash
+        env:
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -uo pipefail
+          command -v jq   >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends jq   >/dev/null; }
+          command -v curl >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends curl >/dev/null; }
+          if [[ -z "${FORGEJO_TOKEN:-}" ]]; then echo "FORGEJO_PM_TOKEN absent — no-op (mirror/fork)."; exit 0; fi
+          B="https://git.allotmentology.tech/api/v1"
+          ORG="Allotment-Technology-Ltd"
+          auth=(-H "Authorization: token ${FORGEJO_TOKEN}")
+
+          # 1. latest dashboard-v* release tag + its target commit (short-12)
+          tags_json="$(curl -fsS "${auth[@]}" "${B}/repos/${ORG}/restormel-keys/tags?limit=50" || echo '[]')"
+          latest_tag="$(printf '%s' "${tags_json}" | jq -r '[.[]|select(.name|startswith("dashboard-v"))][0].name // empty')"
+          if [[ -z "${latest_tag}" ]]; then echo "No dashboard-v* tags — nothing to compare."; exit 0; fi
+          tag_sha="$(printf '%s' "${tags_json}" | jq -r '[.[]|select(.name|startswith("dashboard-v"))][0].commit.sha // empty' | cut -c1-12)"
+
+          # 2. prod manifest dashboard image tag
+          mf="$(curl -fsS "${auth[@]}" "${B}/repos/${ORG}/restormel-gitops/contents/applications/restormel-app-prod/20-dashboard-deployment.yaml" \
+                | jq -r '.content' | base64 -d 2>/dev/null || true)"
+          manifest_tag="$(printf '%s' "${mf}" | grep -oE 'allotment-technology-ltd/dashboard:[A-Za-z0-9._-]+' | head -1 | cut -d: -f2)"
+
+          echo "latest release tag : ${latest_tag} -> commit ${tag_sha}"
+          echo "prod manifest tag  : ${manifest_tag}"
+
+          if [[ -n "${manifest_tag}" && "${manifest_tag}" == "${tag_sha}" ]]; then
+            echo "OK — prod manifest is at the latest release."
+            exit 0
+          fi
+
+          echo "::warning::DRIFT — prod manifest (${manifest_tag:-none}) != latest release ${latest_tag} (${tag_sha})."
+          if [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
+            msg="🟠 Restormel prod deploy-staleness: prod manifest dashboard:${manifest_tag:-none} is NOT at the latest release ${latest_tag} (commit ${tag_sha}). The deploy-k3s pipeline may not have shipped this release — check its runs. (REC-INC-006 guard)"
+            curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=${msg}" >/dev/null 2>&1 || echo "(telegram send failed)"
+          fi
+          exit 0

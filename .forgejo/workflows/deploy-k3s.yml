@@ -1,11 +1,7 @@
 # Forgejo CI — K3s GitOps deploy pipeline (build → push → bump), Argo CD PULL model.
 # ---------------------------------------------------------------------------------
-# Replaces the Coolify-API deploy in deploy-dashboard.yml once the K3s cluster is the
-# prod target. THIS WORKFLOW IS NOT YET THE LIVE DEPLOY PATH — it ships behind the
-# `K3S_DEPLOY_ENABLED` Forgejo Actions variable so it can land, be reviewed, and be
-# exercised on staging without yanking the proven Coolify path out from under prod.
-# Flip `K3S_DEPLOY_ENABLED=1` (org/repo Actions variable) on cutover day; deploy-dashboard.yml
-# is retired in the same change. Until then every job here no-ops cleanly.
+# Replaces the retired Coolify-API deploy. Ships behind the `K3S_DEPLOY_ENABLED`
+# Forgejo Actions variable (cutover gate). Until armed, every job no-ops cleanly.
 #
 # Source of truth for the design: deploy/k3s/gitops/DEPLOY-PIPELINE.md §4,
 # planning/k3s-cluster-target-design.md §8, runbook deploy/k3s/runbooks/docker-runner.md.
@@ -16,35 +12,39 @@
 # REC-INC-006: prod auto-deploy silently broke for ~14 merges because a CI per-job
 # container tried to reach an ON-BOX control-plane API (Coolify at 10.0.1.1). The
 # per-job network reaches the internet but cannot route to the host's own services.
-# The fix is to REMOVE that dependency. This workflow is OUTBOUND-ONLY:
+# This workflow is OUTBOUND-ONLY:
 #
 #   ALLOWED (outbound)                         FORBIDDEN (never reintroduce)
 #   ───────────────────                        ─────────────────────────────
-#   git clone/fetch source + restormel-gitops  curl an on-box control-plane API to
-#   docker login + PUSH to the Forgejo registry  trigger a deploy (Coolify/Argo/kube-API)
-#   git PUSH the bumped image.tag commit        runner → cluster kubectl/argocd sync
-#                                               any call to 10.0.1.1 / 172.16.0.2 / :6443
+#   git clone source + restormel-gitops        curl an on-box control-plane API to
+#   BuildKit build + PUSH to the registry        trigger a deploy (Coolify/Argo/kube-API)
+#   git PUSH the bumped image tag commit        runner → cluster kubectl/argocd sync
+#                                               any call to 10.0.1.1 / 172.16.0.x / :6443
 #
 # The deploy completes BY ARGO CD PULLING FROM GIT INSIDE THE CLUSTER — never by the
 # runner pushing in. The runner only produces an image and proposes a git commit.
 #
 # ---------------------------------------------------------------------------------
-# RUNNER REQUIREMENT (#242 — see deploy/k3s/runbooks/docker-runner.md)
+# BUILD SURFACE (REC-PLAN-021 — the .166/.150 off-cluster runner premise died)
 # ---------------------------------------------------------------------------------
-# Needs a DOCKER/BUILDKIT-CAPABLE off-cluster runner on .166 with label `docker-build`.
-# Today's standard runner has NO docker socket (that is WHY the legacy pipeline calls
-# Coolify to build from source). The runbook documents two options; default is rootless
-# buildkit on .166. Until that runner registers, the first cutover builds by hand
-# (runbook §6). `runs-on: docker-build` selects it.
+# The old design wanted an off-cluster `docker-build` runner on .166. .166 became a
+# K3s node and .150/BX11 were retired, so that runner no longer exists. We now build
+# IN-CLUSTER on the existing on-cluster Forgejo runner (ns forgejo-runner) using a
+# privileged `moby/buildkit` job container — BuildKit builds natively on an amd64
+# cluster node and pushes to the registry over the fast internal network (the prior
+# Mac→registry path hit a 60s proxy timeout on large layers; in-cluster does not).
+# This is still OUTBOUND-ONLY: the job talks to the registry + gitops, never the
+# kube-API/Argo. `moby/buildkit` has no Node, so we clone source by hand instead of
+# the JS checkout action.
 #
 # ---------------------------------------------------------------------------------
 # SECRETS / VARIABLES (Forgejo Actions — sourced from Infisical, never committed)
 # ---------------------------------------------------------------------------------
-#   vars.K3S_DEPLOY_ENABLED    — "1" to arm this pipeline (cutover gate). Absent ⇒ no-op.
-#   secrets.FORGEJO_REGISTRY_USER  — registry.allotmentology.tech push/pull user (CI machine).
-#   secrets.FORGEJO_REGISTRY_TOKEN — scoped package read+write token (restormel org only).
-#   secrets.FORGEJO_PM_TOKEN       — write token for the restormel-gitops repo (bump commit)
-#                                    AND issue-write on restormel-keys (staging PBI flip).
+#   vars.K3S_DEPLOY_ENABLED        — "1" to arm this pipeline (cutover gate). Absent ⇒ no-op.
+#   secrets.FORGEJO_REGISTRY_USER  — registry push user (adam).
+#   secrets.FORGEJO_REGISTRY_TOKEN — registry push token (FORGEJO_REGISTRY, write:package).
+#   secrets.FORGEJO_PM_TOKEN       — clone source (read) + write restormel-gitops bump
+#                                    + issue-write on restormel-keys (staging PBI flip).
 # Any required secret absent ⇒ the job no-ops cleanly (GitHub mirror / forks / first setup).
 
 name: Deploy K3s (GitOps)
@@ -61,59 +61,77 @@ on:
       environment:
         description: "Target environment (staging | prod)"
         required: true
-        default: "staging"
+        default: "prod"
         type: choice
         options:
           - staging
           - prod
+      dry_run:
+        description: "Build + push images only; skip the gitops tag bump (pipeline validation)"
+        required: false
+        default: false
+        type: boolean
 
-# One build/bump at a time per repo: two parallel full-workspace docker builds OOM the box,
-# and concurrent gitops pushes race on `git push origin main`.
+# One build/bump at a time per repo: two parallel full-workspace builds strain the
+# node, and concurrent gitops pushes race on `git push origin main`.
 concurrency:
   group: deploy-k3s
   cancel-in-progress: false
 
 env:
-  REG: registry.allotmentology.tech
+  REG: git.allotmentology.tech
+  IMAGE_REPO: allotment-technology-ltd
   GITOPS_REPO: Allotment-Technology-Ltd/restormel-gitops
-  # The Argo Applications consume these helm value files (see restormel-gitops
-  # applications/workloads/restormel-{dashboard,worker}-{env}.yaml → valueFiles:
-  # ../../values/restormel-{dashboard,worker}-{env}.yaml). CI bumps `.image.tag`.
-  GITOPS_VALUES_DIR: values
+  KEYS_REPO: Allotment-Technology-Ltd/restormel-keys
 
 jobs:
   # ===========================================================================
   # STAGING — build → push → bump staging values → Argo AUTO-SYNCS → PBI flip.
+  # NOTE: values/restormel-{dashboard,worker}-staging.yaml are currently ABSENT,
+  # so the staging Argo app is not deployable yet — the bump step fails loudly with
+  # guidance until those files are restored. (Prod is the live target today.)
   # ===========================================================================
   deploy-staging:
     name: Build, push, bump (staging)
-    runs-on: docker-build
+    runs-on: ubuntu-latest
+    container:
+      image: moby/buildkit:v0.16.0
+      options: --privileged
     if: ${{ vars.K3S_DEPLOY_ENABLED == '1' && github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging' }}
     steps:
-      - uses: https://code.forgejo.org/actions/checkout@v4
-        with:
-          token: ${{ secrets.FORGEJO_TOKEN }}
+      - name: Tooling (alpine buildkit image has no git/bash/jq/curl)
+        shell: sh
+        run: apk add --no-cache git bash jq curl
+
+      - name: Clone source at the dispatched ref
+        shell: bash
+        env:
+          PM_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${PM_TOKEN:-}" ]]; then
+            echo "::warning::FORGEJO_PM_TOKEN absent — no-op (expected on the GitHub mirror / fork)."; exit 0
+          fi
+          git clone --depth 1 --branch "${GITHUB_REF_NAME}" \
+            "https://x-access-token:${PM_TOKEN}@git.allotmentology.tech/${KEYS_REPO}.git" src
 
       - name: Build → push → bump staging image tag in restormel-gitops
-        id: bump
         shell: bash
         env:
           REG_USER: ${{ secrets.FORGEJO_REGISTRY_USER }}
           REG_TOKEN: ${{ secrets.FORGEJO_REGISTRY_TOKEN }}
           GITOPS_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
           ENV_NAME: staging
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           set -euo pipefail
           if [[ -z "${REG_TOKEN:-}" || -z "${GITOPS_TOKEN:-}" ]]; then
-            echo "::warning::registry/gitops token absent — no-op (expected on the GitHub mirror / fork)."
-            exit 0
+            echo "::warning::registry/gitops token absent — no-op (expected on the GitHub mirror / fork)."; exit 0
           fi
-          "${GITHUB_WORKSPACE}/.forgejo/scripts/k3s-build-push-bump.sh" "${ENV_NAME}"
+          cd src && bash .forgejo/scripts/k3s-build-push-bump.sh "${ENV_NAME}"
 
-      # Staging auto-syncs (Argo Image Updater / auto-sync), so the deploy completes
-      # in-band: flip every PBI at status/ready-deploy → status/deployed + close it.
-      # PRESERVED BYTE-FOR-BYTE from deploy-dashboard.yml (only the deploy mechanism
-      # changed). Outbound-only: talks to the PUBLIC Forgejo issues API only.
+      # Staging auto-syncs, so flip every PBI at status/ready-deploy → status/deployed.
+      # Outbound-only: talks to the PUBLIC Forgejo issues API only.
       - name: Lifecycle — close PBIs that were awaiting this deploy
         if: ${{ success() }}
         shell: bash
@@ -121,10 +139,7 @@ jobs:
           FORGEJO_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
         run: |
           set -euo pipefail
-          if [[ -z "${FORGEJO_TOKEN:-}" ]]; then
-            echo "FORGEJO_PM_TOKEN not set — skipping PM lifecycle callback."; exit 0
-          fi
-          command -v jq >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends jq >/dev/null; }
+          if [[ -z "${FORGEJO_TOKEN:-}" ]]; then echo "FORGEJO_PM_TOKEN not set — skipping PM lifecycle."; exit 0; fi
           ORG="Allotment-Technology-Ltd"; REPO="${ORG}/restormel-keys"
           BASE="https://git.allotmentology.tech/api/v1"
           auth=(-H "Authorization: token ${FORGEJO_TOKEN}")
@@ -141,10 +156,7 @@ jobs:
             curl -fsS "${auth[@]}" -X PATCH "${BASE}/repos/${REPO}/issues/${n}" -H 'Content-Type: application/json' -d '{"state":"closed"}' >/dev/null 2>&1 || true
             echo "deployed + closed #${n}"
           done
-          echo "PM lifecycle callback complete."
 
-      # REC-INC-006 alert leg (#245): if the staging build/push/bump failed, make it
-      # LOUD on the Telegram ops channel (the ~14-silent-merge gap). No-ops without secrets.
       - name: Alert on deploy failure (Telegram / PostHog)
         if: ${{ failure() }}
         shell: bash
@@ -154,25 +166,45 @@ jobs:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           DEPLOY_PIPELINE: "deploy-k3s (staging)"
           DEPLOY_ENV: staging
-        run: bash "${GITHUB_WORKSPACE}/.forgejo/scripts/deploy-failure-alert.sh"
+        run: |
+          set -uo pipefail
+          if [[ -f src/.forgejo/scripts/deploy-failure-alert.sh ]]; then
+            bash src/.forgejo/scripts/deploy-failure-alert.sh
+          elif [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
+            curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=⚠️ deploy-k3s (staging) FAILED for ${GITHUB_REPOSITORY}@${GITHUB_REF_NAME}" >/dev/null || true
+          fi
 
   # ===========================================================================
-  # PROD — build → push → bump prod values. CI STOPS HERE.
-  #   Argo shows restormel-dashboard-prod / -worker-prod OutOfSync.
+  # PROD — build → push → bump prod manifests. CI STOPS HERE.
+  #   Argo shows restormel-app-prod OutOfSync.
   #   *** THE OPERATOR SYNCS BY HAND *** (design §8 hard rule: prod is never
-  #   main-auto-deploy). The PBI status/ready-deploy → status/deployed flip is
-  #   NOT done here — it fires as an Argo PostSync hook Job on the operator's Sync
-  #   success (charts/restormel-dashboard/templates/pbi-lifecycle-postsync.yaml in
-  #   restormel-gitops). "deployed == synced", not "deployed == tag bumped".
+  #   main-auto-deploy). The PBI status flip fires as the Argo PostSync hook on the
+  #   operator's Sync success, not here. "deployed == synced", not "tag bumped".
   # ===========================================================================
   deploy-prod:
     name: Build, push, bump (prod) — operator syncs Argo by hand
-    runs-on: docker-build
+    runs-on: ubuntu-latest
+    container:
+      image: moby/buildkit:v0.16.0
+      options: --privileged
     if: ${{ vars.K3S_DEPLOY_ENABLED == '1' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/dashboard-v')) || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')) }}
     steps:
-      - uses: https://code.forgejo.org/actions/checkout@v4
-        with:
-          token: ${{ secrets.FORGEJO_TOKEN }}
+      - name: Tooling (alpine buildkit image has no git/bash/jq/curl)
+        shell: sh
+        run: apk add --no-cache git bash jq curl
+
+      - name: Clone source at the dispatched ref
+        shell: bash
+        env:
+          PM_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${PM_TOKEN:-}" ]]; then
+            echo "::warning::FORGEJO_PM_TOKEN absent — no-op (expected on the GitHub mirror / fork)."; exit 0
+          fi
+          git clone --depth 1 --branch "${GITHUB_REF_NAME}" \
+            "https://x-access-token:${PM_TOKEN}@git.allotmentology.tech/${KEYS_REPO}.git" src
 
       - name: Build → push → bump PROD image tag in restormel-gitops
         shell: bash
@@ -181,19 +213,16 @@ jobs:
           REG_TOKEN: ${{ secrets.FORGEJO_REGISTRY_TOKEN }}
           GITOPS_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
           ENV_NAME: prod
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           set -euo pipefail
           if [[ -z "${REG_TOKEN:-}" || -z "${GITOPS_TOKEN:-}" ]]; then
-            echo "::warning::registry/gitops token absent — no-op (expected on the GitHub mirror / fork)."
-            exit 0
+            echo "::warning::registry/gitops token absent — no-op (expected on the GitHub mirror / fork)."; exit 0
           fi
-          "${GITHUB_WORKSPACE}/.forgejo/scripts/k3s-build-push-bump.sh" "${ENV_NAME}"
-          echo "::notice::PROD image tag bumped in restormel-gitops. Argo will show OutOfSync."
-          echo "::notice::OPERATOR ACTION REQUIRED — sync by hand: argocd app sync restormel-dashboard-prod && argocd app sync restormel-worker-prod (or click Sync in the Argo UI). The PBI lifecycle flip runs as the prod PostSync hook on Sync success."
+          cd src && bash .forgejo/scripts/k3s-build-push-bump.sh "${ENV_NAME}"
+          echo "::notice::PROD image tag bumped in restormel-gitops. Argo will show restormel-app-prod OutOfSync."
+          echo "::notice::OPERATOR ACTION REQUIRED — sync by hand: argocd app sync restormel-app-prod (or click Sync in the Argo UI)."
 
-      # REC-INC-006 alert leg (#245): if the PROD build/push/bump failed, alert the
-      # Telegram ops channel immediately. This is the exact gap behind the silent ~14
-      # broken merges — a failed prod deploy must never be silent again. No-ops w/o secrets.
       - name: Alert on deploy failure (Telegram / PostHog)
         if: ${{ failure() }}
         shell: bash
@@ -203,4 +232,11 @@ jobs:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           DEPLOY_PIPELINE: "deploy-k3s (prod)"
           DEPLOY_ENV: prod
-        run: bash "${GITHUB_WORKSPACE}/.forgejo/scripts/deploy-failure-alert.sh"
+        run: |
+          set -uo pipefail
+          if [[ -f src/.forgejo/scripts/deploy-failure-alert.sh ]]; then
+            bash src/.forgejo/scripts/deploy-failure-alert.sh
+          elif [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
+            curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=🔴 deploy-k3s (prod) FAILED for ${GITHUB_REPOSITORY}@${GITHUB_REF_NAME} — prod NOT updated" >/dev/null || true
+          fi

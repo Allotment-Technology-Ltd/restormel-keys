@@ -1,25 +1,28 @@
 #!/usr/bin/env bash
-# k3s-build-push-bump.sh — build the dashboard + worker images, push them to the
-# Forgejo container registry, and bump `image.tag` in the restormel-gitops helm
-# values so Argo CD (PULL model) sees the new release as OutOfSync.
+# k3s-build-push-bump.sh — build the dashboard + worker images with BuildKit, push
+# them to the Forgejo container registry, and bump the deployed image tag in the
+# restormel-gitops repo so Argo CD (PULL model) sees the new release as OutOfSync.
 #
-# Called by .forgejo/workflows/deploy-k3s.yml for both staging and prod. The ONLY
-# difference between environments is which values files get the tag bump; the build
-# + push are identical (one SHA, consumed by both apps and both envs of that release).
+# Called by .forgejo/workflows/deploy-k3s.yml. Runs INSIDE a privileged
+# `moby/buildkit` job container on the on-cluster Forgejo runner (the .166/.150
+# off-cluster `docker-build` runner premise died when those boxes became K3s nodes
+# / were retired — REC-PLAN-021). BuildKit builds natively on an amd64 cluster node;
+# no Docker daemon / docker CLI is required.
 #
 # REC-INC-006 INVARIANT: OUTBOUND-ONLY. This script must NEVER call an on-box
 # control-plane API (Coolify / Argo / kube-API), never `kubectl`/`argocd`, never dial
-# 10.0.1.1 / 172.16.0.2 / :6443. It only: builds, `docker push` (egress to the public
-# registry), and `git push` to the public restormel-gitops repo. The deploy completes
-# by Argo CD PULLING from git inside the cluster. See deploy/k3s/runbooks/docker-runner.md §0.
+# 10.0.1.1 / 172.16.0.x / :6443. It only: builds, pushes to the public registry
+# (egress), and `git push` to the public restormel-gitops repo. The deploy completes
+# by Argo CD PULLING from git inside the cluster.
 #
 # Required env (set by the workflow):
 #   ENV_NAME           — "staging" | "prod"  (also accepted as $1)
-#   REG                — registry host (registry.allotmentology.tech)
-#   REG_USER REG_TOKEN — registry push/pull creds (scoped to the restormel org)
-#   GITOPS_TOKEN       — write token for restormel-gitops
+#   REG                — registry host (git.allotmentology.tech)
+#   IMAGE_REPO         — registry path/org ("allotment-technology-ltd")
+#   REG_USER REG_TOKEN — registry push creds. REG_TOKEN needs write:package
+#                        (FORGEJO_REGISTRY in Infisical; the PM token is read-only).
+#   GITOPS_TOKEN       — write token for restormel-gitops (the bump commit)
 #   GITOPS_REPO        — Allotment-Technology-Ltd/restormel-gitops
-#   GITOPS_VALUES_DIR  — "values"
 set -euo pipefail
 
 ENV_NAME="${1:-${ENV_NAME:?ENV_NAME (staging|prod) required}}"
@@ -29,75 +32,110 @@ case "${ENV_NAME}" in
 esac
 
 : "${REG:?REG required}"
+: "${IMAGE_REPO:?IMAGE_REPO required}"
 : "${REG_USER:?REG_USER required}"
 : "${REG_TOKEN:?REG_TOKEN required}"
 : "${GITOPS_TOKEN:?GITOPS_TOKEN required}"
 GITOPS_REPO="${GITOPS_REPO:-Allotment-Technology-Ltd/restormel-gitops}"
-GITOPS_VALUES_DIR="${GITOPS_VALUES_DIR:-values}"
 
-# 12-hex short SHA — matches the staging Image-Updater allow-tags regexp
-# (^[0-9a-f]{12}$) in restormel-gitops applications/workloads/restormel-dashboard-staging.yaml.
+# 12-hex short SHA — matches the running prod image tag convention
+# (git.allotmentology.tech/allotment-technology-ltd/dashboard:<12hex>).
 SHA="$(git rev-parse --short=12 HEAD)"
-DASH_IMG="${REG}/restormel/dashboard:${SHA}"
-WORKER_IMG="${REG}/restormel/worker:${SHA}"
+DASH_IMG="${REG}/${IMAGE_REPO}/dashboard:${SHA}"
+WORKER_IMG="${REG}/${IMAGE_REPO}/worker:${SHA}"
 
-echo "=== K3s build→push→bump | env=${ENV_NAME} sha=${SHA} ==="
+echo "=== K3s build→push→bump | env=${ENV_NAME} sha=${SHA} reg=${REG}/${IMAGE_REPO} ==="
 
-# --- 1. registry login (egress) ---------------------------------------------
-# Surface auth vs network failure clearly (runbook §8 follow-up: no bare -sf).
-echo "--- docker login ${REG} ---"
-echo "${REG_TOKEN}" | docker login "${REG}" -u "${REG_USER}" --password-stdin
+# --- 1. registry auth for BuildKit's pusher (egress) -------------------------
+# buildctl reads $DOCKER_CONFIG/config.json (or ~/.docker/config.json) and forwards
+# the auth to buildkitd, which performs the push. No `docker login` / daemon needed.
+DKR_CFG="$(mktemp -d)"; export DOCKER_CONFIG="${DKR_CFG}"
+AUTH_B64="$(printf '%s:%s' "${REG_USER}" "${REG_TOKEN}" | base64 | tr -d '\n')"
+umask 077
+cat > "${DKR_CFG}/config.json" <<JSON
+{"auths":{"${REG}":{"auth":"${AUTH_B64}"}}}
+JSON
+unset AUTH_B64
 
-# --- 2. build (buildkit/buildx on the docker-build runner) -------------------
-# Same Dockerfiles as the Coolify build pack (Dockerfile.dashboard / Dockerfile.worker),
-# built from the repo root so the workspace + lockfile resolve.
-echo "--- build dashboard ---"
-docker build -f Dockerfile.dashboard -t "${DASH_IMG}" .
-echo "--- build worker ---"
-docker build -f Dockerfile.worker -t "${WORKER_IMG}" .
+# --- 2. build + push with BuildKit (native amd64, in the buildkit container) --
+# Same Dockerfiles as before (built from the repo root so the pnpm workspace +
+# lockfile resolve). buildctl-daemonless.sh starts an ephemeral buildkitd.
+buildkit_build_push() {
+  local dockerfile="$1" image="$2" name="$3"
+  echo "--- build+push ${name} (${dockerfile}) → ${image} ---"
+  buildctl-daemonless.sh build \
+    --frontend dockerfile.v0 \
+    --local context=. \
+    --local dockerfile=. \
+    --opt filename="${dockerfile}" \
+    --output "type=image,name=${image},push=true"
+}
+buildkit_build_push Dockerfile.dashboard "${DASH_IMG}" dashboard
+buildkit_build_push Dockerfile.worker    "${WORKER_IMG}" worker
 
-# --- 3. push (egress) --------------------------------------------------------
-echo "--- push dashboard ---"
-docker push "${DASH_IMG}"
-echo "--- push worker ---"
-docker push "${WORKER_IMG}"
+# DRY_RUN=true|1 → validate the build+push surface without touching prod gitops.
+case "${DRY_RUN:-}" in
+  true|1|yes)
+    echo "=== DRY_RUN: images built+pushed (${SHA}); skipping gitops bump. ==="
+    exit 0 ;;
+esac
 
-# --- 4. bump the image tag in restormel-gitops (egress git push) -------------
-# Argo Applications read ../../values/restormel-{dashboard,worker}-{env}.yaml and
-# consume `.image.tag`. Bumping it makes Argo OutOfSync:
-#   staging → auto-syncs;  prod → OPERATOR SYNCS BY HAND (manual gate).
+# --- 3. bump the deployed image tag in restormel-gitops (egress git push) -----
+# PROD is raw manifests (applications/restormel-app-prod/*-deployment.yaml,
+# image: <reg>/<path>/<name>:<tag>); STAGING is helm values (.image.tag). Argo:
+#   prod    → OPERATOR SYNCS BY HAND (design §8 hard rule; never main-auto-deploy)
+#   staging → auto-syncs  (NOTE: the values/restormel-*-staging.yaml files are
+#             currently absent → staging Argo app is broken; see the staging guard).
 WORKDIR="$(mktemp -d)"
-trap 'rm -rf "${WORKDIR}"' EXIT
+trap 'rm -rf "${WORKDIR}" "${DKR_CFG}"' EXIT
 echo "--- clone restormel-gitops ---"
-# Token in the URL is masked by the runner; never echoed.
 git clone --depth 1 "https://x-access-token:${GITOPS_TOKEN}@git.allotmentology.tech/${GITOPS_REPO}.git" "${WORKDIR}/gitops"
 cd "${WORKDIR}/gitops"
 
-DASH_VALUES="${GITOPS_VALUES_DIR}/restormel-dashboard-${ENV_NAME}.yaml"
-WORKER_VALUES="${GITOPS_VALUES_DIR}/restormel-worker-${ENV_NAME}.yaml"
+# Replace only the tag on the `image: <reg>/<repo>/<component>:<tag>` line.
+bump_manifest_image() {
+  local file="$1" component="$2"
+  if [[ ! -f "${file}" ]]; then
+    echo "FATAL: ${file} not found in restormel-gitops — prod manifest must exist. Aborting so prod is never half-bumped." >&2
+    exit 3
+  fi
+  sed -i -E "s|(image:[[:space:]]*${REG}/${IMAGE_REPO}/${component}:)[A-Za-z0-9._-]+|\1${SHA}|" "${file}"
+  grep -qE "image:[[:space:]]*${REG}/${IMAGE_REPO}/${component}:${SHA}" "${file}" \
+    || { echo "FATAL: tag bump did not apply to ${file} (image line shape changed?)." >&2; exit 3; }
+  echo "bumped ${file} → ${component}:${SHA}"
+}
 
-bump_tag() {
+# helm values .image.tag (staging/preview chart path)
+bump_values_tag() {
   local file="$1"
   if [[ ! -f "${file}" ]]; then
-    echo "FATAL: ${file} not found in restormel-gitops — the helm values file must exist (gitops chart deliverable). Aborting so prod is never half-bumped." >&2
+    echo "FATAL: ${file} not found in restormel-gitops. The staging helm values files are" >&2
+    echo "       currently absent (the restormel-{dashboard,worker}-staging.yaml referenced by" >&2
+    echo "       the staging Argo apps do not exist) → staging is not a deployable target yet." >&2
+    echo "       Restore them before using the staging deploy path. Aborting." >&2
     exit 3
   fi
   if command -v yq >/dev/null 2>&1; then
     yq -i ".image.tag = \"${SHA}\"" "${file}"
   else
-    # No yq on the runner: in-place edit of the `tag:` under `image:` only.
-    # Assumes the canonical two-line block:  image:\n    tag: <value>
-    # (the chart values are authored that way; yq is preferred when available).
     perl -0pi -e "s/(^image:\\s*\\n(?:[^\\S\\n].*\\n)*?\\s*tag:\\s*)\\S+/\${1}${SHA}/m" "${file}"
   fi
   echo "bumped ${file} → image.tag=${SHA}"
 }
 
-bump_tag "${DASH_VALUES}"
-bump_tag "${WORKER_VALUES}"
+case "${ENV_NAME}" in
+  prod)
+    bump_manifest_image "applications/restormel-app-prod/20-dashboard-deployment.yaml" dashboard
+    bump_manifest_image "applications/restormel-app-prod/40-worker-deployment.yaml"    worker
+    ;;
+  staging)
+    bump_values_tag "values/restormel-dashboard-staging.yaml"
+    bump_values_tag "values/restormel-worker-staging.yaml"
+    ;;
+esac
 
 if git diff --quiet; then
-  echo "::notice::image.tag already ${SHA} in ${ENV_NAME} values — nothing to commit (re-run / no-op)."
+  echo "::notice::image tag already ${SHA} in ${ENV_NAME} — nothing to commit (re-run / no-op)."
   exit 0
 fi
 
@@ -106,4 +144,4 @@ git -c user.name=forgejo-ci -c user.email=ci@allotmentology.tech \
 echo "--- push bump to restormel-gitops main ---"
 git push origin HEAD:main
 
-echo "=== done: ${ENV_NAME} bumped to ${SHA}. Argo will reconcile (staging auto-sync; prod manual sync). ==="
+echo "=== done: ${ENV_NAME} bumped to ${SHA}. Argo will reconcile (prod=manual sync). ==="
