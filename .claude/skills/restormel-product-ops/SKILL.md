@@ -7,9 +7,11 @@ description: >-
   even if the user doesn't say "issue" or "ticket". Triggers on: "log this", "add to the backlog",
   "raise a bug", "track this", "what's the status of", "move this to in progress / QA / ready to
   deploy", "create a ticket", "update issue #N", planning notes that should become work items, or
-  discovery findings to capture against a PBI. It explains the Huly-native pipeline (create-or-
-  update, the status lifecycle, project routing, and the correct route for your surface) so work
-  lands consistently in Huly with a clean planning→delivery audit trail.
+  discovery findings to capture against a PBI — and PROACTIVELY whenever any improvement, bug, or
+  feature is surfaced (by anyone) that should be tracked, even unprompted. It explains the Huly-native
+  pipeline (the capture norm, create-or-update, the status lifecycle, project routing, the live ticket
+  CLI, and the correct route for your surface) so work lands consistently in Huly with a clean
+  planning→delivery audit trail.
 ---
 
 # Restormel product-ops pipeline
@@ -20,6 +22,19 @@ Forgejo Projects** for the *tracker*. **Forgejo stays canonical for git + CI + t
 only the PM board moved (see `product-ops/HULY-MIGRATION.md`; ISMS asset AST-030 + the project↔product
 map REC-GOV-008 in restormel-keys `governance/`). This skill is the *how to operate it*; the canonical
 design lives in `product-ops/` (`HULY-MIGRATION.md`, `LIFECYCLE-AND-AUTOMATION.md`, `PM-OPS-CENTRE.md`).
+
+## The capture norm — every improvement / bug / feature becomes a tracked PBI (do this UNPROMPTED)
+
+Standing rule (founder, 2026-06-26): the **moment** an improvement, bug, or feature is surfaced — by the
+founder **or by you**, deliberately or in passing — a PBI must exist for it in the Huly backlog and be
+tracked through the lifecycle. **Don't wait to be told "log it"** — capture is part of doing the work,
+not a separate chore. This covers: a bug you hit or merely spot, a follow-up a PR/review flags, a tooling
+or process improvement you propose, tech-debt you notice, a decision that needs making, a feature idea.
+Rule of thumb: **if it's worth doing later, it gets a PBI now** (create-or-update — fold into an existing
+PBI if one matches rather than duplicating). The only exception is a trivial change you complete *in the
+same turn*; anything **deferred** gets a PBI. Whenever you create or move a PBI as part of other work,
+**say so and cite the id** so the founder sees the audit trail. Set `kind/` honestly (bug · feature ·
+task · spike · decision) and a `priority/` so it slots into the roadmap rather than rotting in triage.
 
 ## Projects (the new top-level routing) — one Huly project per in-scope product
 
@@ -64,6 +79,15 @@ backend is Huly, where statuses are first-class and automatable — the gap Forg
 ## Route by your surface (this is the cross-surface part)
 
 **You're in Claude Code (on the Mac — can reach Huly).** Act directly:
+- **Read/operate ONE ticket live** with the proven mjs CLI `product-ops/forgejo-pack/huly/ticket.mjs`,
+  run via `./run.sh` (wires the account/transactor/collaborator port-forwards + reads `SERVER_SECRET`
+  from the live pod — never echoed): `./run.sh ticket.mjs get RES-N` (full detail incl. the markdown
+  **description + comments** — the body `dump-res.mjs` lacks), `./run.sh ticket.mjs status RES-N "In
+  Progress"`, `./run.sh ticket.mjs note RES-N "audit line"`. **Create** a PBI with `ISSUE_TITLE=…
+  ISSUE_BODY=… ISSUE_PRIORITY=… ISSUE_STATUS=… ./run.sh create-issue.mjs --apply` (idempotent on title);
+  **list** the board with `./run.sh dump-res.mjs`; **batch** status/priority with `apply-res.mjs`
+  (MAP_FILE JSON). ⚠ Never run two `run.sh` at once (fixed port-forward ports). See the `huly-ticket-cli`
+  memory + `huly/README.md`.
 - Use the **Huly MCP** for natural-language create/edit/comment/status, OR the **Huly REST API**
   (`connectRest`, token auth) directly.
 - Set/transition `status/*` via the repointed bridge `product-ops/forgejo-pack/lifecycle/set-status.sh
