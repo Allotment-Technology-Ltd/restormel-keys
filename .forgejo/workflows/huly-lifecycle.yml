@@ -1,0 +1,79 @@
+# =============================================================================
+# huly-lifecycle — per-repo Huly lifecycle automation (WS3).  *** ENABLED 2026-06-26 ***
+# -----------------------------------------------------------------------------
+# Forgejo is now on-cluster (crown-jewels Stage A); the on-cluster Actions runner
+# (k3s-oncluster) reaches the receiver at the PUBLIC host (verified HTTP 200).
+# Receiver HULY_APPLY=1 (dry-run smoke passed: restormel-keys#318 → RES-28). This
+# caller drives Huly issue transitions from git lifecycle events.
+#
+# SELF-CONTAINED by necessity: Forgejo cannot resolve a cross-repo `uses:` reusable
+# workflow from the PRIVATE restormel-ops repo (a run's token is scoped to its own
+# repo). Canonical source: restormel-ops `forgejo-pack/`. Copied here, kept identical.
+#
+# RECEIVER stays the PUBLIC host on purpose: the runner's dind job container resolves
+# via Docker's embedded DNS, NOT cluster DNS, so the in-cluster *.svc URL would not
+# resolve from it; the public host is the proven path. (Forgejo server-side webhooks
+# also reach the cluster, kept as a fallback option.)
+#
+# Transitions:  push #N → in-progress · PR opened/reopened #N → in-review ·
+#               PR merged-to-default #N → ready-deploy   (deploy→deployed = Argo).
+# =============================================================================
+name: huly-lifecycle
+on:
+  push:
+  pull_request:
+    types: [opened, reopened, closed]
+
+jobs:
+  huly:
+    runs-on: ubuntu-latest   # the proven self-hosted runner label (matches pm-lifecycle); jq preinstalled
+    steps:
+      - name: Drive Huly lifecycle (via in-cluster receiver)
+        shell: bash
+        env:
+          RECEIVER: "https://huly-lifecycle.allotmentology.tech"
+          HULY_WEBHOOK_TOKEN: ${{ secrets.HULY_WEBHOOK_TOKEN }}
+          REPO: ${{ github.repository }}     # owner/name; receiver maps the short name
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -uo pipefail
+          if [ -z "${HULY_WEBHOOK_TOKEN:-}" ]; then
+            echo "HULY_WEBHOOK_TOKEN not set — skipping (expected on the GitHub mirror/forks)."; exit 0
+          fi
+          command -v jq >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends jq >/dev/null 2>&1 || true; }
+          REPO_SHORT="${REPO##*/}"
+
+          # Per-PR fields read null-safely from the event JSON (never via ${{ }} expressions —
+          # github.event.pull_request.* is null on a push event and errors Forgejo's evaluator).
+          ACTION="$(jq -r '.action // ""'                 "$GITHUB_EVENT_PATH" 2>/dev/null || echo '')"
+          MERGED="$(jq -r '.pull_request.merged // false' "$GITHUB_EVENT_PATH" 2>/dev/null || echo false)"
+          PR_NUM="$(jq -r '.pull_request.number // ""'    "$GITHUB_EVENT_PATH" 2>/dev/null || echo '')"
+
+          # POST one transition to the receiver. Never echoes the token. Swallows non-2xx (a
+          # not-found issue is a 200 with found:false; only transactor errors are 5xx → we log, not fail).
+          post () { # $1=source(<repo>#N) $2=status $3=note
+            local body code
+            body="$(jq -nc --arg s "$1" --arg st "$2" --arg n "$3" '{source:$s,status:$st,note:$n}')"
+            code="$(curl -s -o /tmp/huly-resp.json -w '%{http_code}' -X POST \
+              -H "Authorization: Bearer ${HULY_WEBHOOK_TOKEN}" -H 'Content-Type: application/json' \
+              --data "$body" "${RECEIVER%/}/lifecycle" || echo 000)"
+            echo "  $1 → $2 : HTTP $code $(jq -rc '.change // .note // .error // empty' /tmp/huly-resp.json 2>/dev/null)"
+          }
+
+          extract () { grep -oE '#[0-9]+' | tr -d '#' | sort -u || true; }
+
+          if [ "$EVENT" = "push" ]; then
+            nums="$( { jq -r '.commits[]?.message // empty' "$GITHUB_EVENT_PATH" 2>/dev/null
+                       printf '%s\n' "$REF_NAME" | grep -oE '^[0-9]+' | sed 's/^/#/' ; } | extract )"
+            for n in $nums; do post "${REPO_SHORT}#${n}" "in-progress" "work on ${REF_NAME}"; done
+
+          elif [ "$EVENT" = "pull_request" ] && { [ "$ACTION" = "opened" ] || [ "$ACTION" = "reopened" ]; }; then
+            nums="$(jq -r '(.pull_request.title // "") + "\n" + (.pull_request.body // "")' "$GITHUB_EVENT_PATH" | extract)"
+            for n in $nums; do post "${REPO_SHORT}#${n}" "in-review" "PR #${PR_NUM} opened"; done
+
+          elif [ "$EVENT" = "pull_request" ] && [ "$ACTION" = "closed" ] && [ "$MERGED" = "true" ]; then
+            nums="$(jq -r '(.pull_request.title // "") + "\n" + (.pull_request.body // "")' "$GITHUB_EVENT_PATH" | extract)"
+            for n in $nums; do post "${REPO_SHORT}#${n}" "ready-deploy" "merged via PR #${PR_NUM}"; done
+          fi
+          echo "lifecycle: done."
