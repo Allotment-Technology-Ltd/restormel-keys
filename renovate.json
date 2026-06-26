@@ -63,17 +63,17 @@
     },
     {
       "description": "Group all Svelte/SvelteKit packages together",
-      "matchPackagePrefixes": ["@sveltejs/", "svelte"],
+      "matchPackageNames": ["@sveltejs/{/,}**", "svelte{/,}**"],
       "groupName": "Svelte ecosystem"
     },
     {
       "description": "Group all TypeScript/tsconfig packages together",
-      "matchPackagePrefixes": ["typescript", "@typescript-eslint/", "tsup", "tsx"],
+      "matchPackageNames": ["typescript{/,}**", "@typescript-eslint/{/,}**", "tsup{/,}**", "tsx{/,}**"],
       "groupName": "TypeScript toolchain"
     },
     {
       "description": "Group all Vitest/testing packages together",
-      "matchPackagePrefixes": ["vitest", "@vitest/", "playwright", "@playwright/"],
+      "matchPackageNames": ["vitest{/,}**", "@vitest/{/,}**", "playwright{/,}**", "@playwright/{/,}**"],
       "groupName": "Testing toolchain"
     },
     {
@@ -82,14 +82,18 @@
       "pinDigests": true,
       "automerge": false,
       "labels": ["dependencies", "renovate", "github-actions"]
+    },
+    {
+      "description": "Internal @restormel/* workspace packages are versioned in-repo (pnpm workspace: / peer-dep ranges). Disable npm-datasource lookups so the published, deprecated @restormel/keys package does not appear on the Dependency Dashboard — they are never upgraded via Renovate.",
+      "matchPackageNames": ["@restormel/**"],
+      "enabled": false
     }
   ],
 
   "vulnerabilityAlerts": {
-    "description": "OSV/GitHub Advisory vulnerability alerts — immediate PR, high priority",
+    "description": "OSV/GitHub Advisory vulnerability alerts — immediate PR, high priority (prPriority is applied via the security packageRule, which is the only place Renovate accepts it)",
     "enabled": true,
-    "labels": ["dependencies", "renovate", "security", "priority-high"],
-    "prPriority": 10
+    "labels": ["dependencies", "renovate", "security", "priority-high"]
   },
 
   "osvVulnerabilityAlerts": true,
