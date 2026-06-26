@@ -8,7 +8,6 @@
 #                     proxy/mcp regressions before they reach main)
 #   security       — OSV-Scanner + gitleaks + pnpm audit + Trivy config/fs
 #                    (required PR check; blocks on HIGH/CRITICAL)
-#   apply-migrations — DB migration runner (push-to-main only; needs secret)
 #
 # Security job:
 #   Composite: .forgejo/actions/security-scan (OSV-Scanner, gitleaks, pnpm audit)
@@ -302,30 +301,3 @@ jobs:
         run: node --test scripts/ci/check-bundled-asset-reads.test.mjs
       - name: Check for fixed-climb bundled asset reads
         run: node scripts/ci/check-bundled-asset-reads.mjs
-
-  apply-migrations:
-    name: Apply dashboard migrations (Forgejo DB)
-    runs-on: docker
-    # Only run on push to main; skip on PRs to avoid concurrent writers.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [build]
-    concurrency:
-      group: forgejo-dashboard-postgres
-      cancel-in-progress: false
-    steps:
-      - uses: https://code.forgejo.org/actions/checkout@v4
-        with:
-          # Job tokens 403 on private-repo http-git (filed); use the CI PAT.
-          token: ${{ secrets.FORGEJO_TOKEN }}
-      - uses: ./.forgejo/actions/pnpm-workspace-install
-      - name: Apply dashboard migrations (Forgejo DB)
-        env:
-          FORGEJO_DATABASE_URL: ${{ secrets.FORGEJO_DATABASE_URL }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${FORGEJO_DATABASE_URL:-}" ]]; then
-            echo "FORGEJO_DATABASE_URL not set — skipping (set secret to enable)."
-            exit 0
-          fi
-          export DATABASE_URL="$FORGEJO_DATABASE_URL"
-          pnpm --filter dashboard run migrate
