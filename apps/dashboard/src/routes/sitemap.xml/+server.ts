@@ -60,6 +60,7 @@ const ALWAYS_ON_PATHS: string[] = [
   "/keys/docs/guides/provider-access-modes",
   "/keys/docs/guides/verified-context",
   "/keys/docs/guides/mcp-verified-context",
+  "/keys/docs/guides/wrap-your-mcp-server",
   "/keys/docs/guides/context-regression-ci",
   "/keys/docs/guides/third-party-brand-marks",
   "/keys/docs/guides/model-registry",

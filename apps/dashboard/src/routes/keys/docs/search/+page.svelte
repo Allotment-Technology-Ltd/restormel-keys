@@ -46,6 +46,11 @@
       tags: "verified context connect evidence provenance trace audit verification rules g2 trust score claims envelope ebv",
     },
     {
+      title: "Wrap your MCP server (verifying proxy)",
+      href: "/keys/docs/guides/wrap-your-mcp-server",
+      tags: "verifying proxy wrap mcp server mode-1 mode1 verified envelope graph_answer upstream validator entailment faithfulness grounding supported unverified abstain reference runner stdio streamablehttp source hash",
+    },
+    {
       title: "Context-regression CI",
       href: "/keys/docs/guides/context-regression-ci",
       tags: "ci gate github action forgejo connect eval baseline regression tolerance sticky comment quality bar g2 efficacy weekly cross-model exit codes",
