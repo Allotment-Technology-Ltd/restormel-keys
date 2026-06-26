@@ -65,6 +65,14 @@ suppliers:
       AST-019). The "three Helsinki servers" list in `provides` above reflects the LEGACY Coolify
       topology (AST-003, now superseded-in-transition); the K3s nodes are the current live compute. The
       Hetzner AVV acceptance flagged in `dpa` covers all of this Hetzner estate — still to be confirmed.
+      BX11 STORAGE BOX DECOMMISSIONED 2026-06-26 (chore/decommission-bx11-150): the Falkenstein Storage
+      Box (u613941.your-storagebox.de, AST-012) was cancelled by the founder via Hetzner Robot. No
+      sub-processor change to notify — Hetzner remains the sub-processor; only a backup LOCATION was
+      retired. Off-site backups are now held SOLELY on the existing "Hetzner Object Storage (S3, fsn1)"
+      entry below (AST-019), proven recoverable by the crown-jewels Stage-C cold-start restore drill.
+      The `provides`/`location` lines above still list "BX11" for append-only history; treat the Storage
+      Box as removed. Box 1 / .150 (AST-010) was REMOVED 2026-06-26 (Cloud server 138350520 deleted;
+      workloads migrated to the K3s cluster; recovery snapshot 401960703 retained).
 
   - name: Hetzner Object Storage (S3, fsn1)
     provides: >
