@@ -66,6 +66,61 @@ suppliers:
       topology (AST-003, now superseded-in-transition); the K3s nodes are the current live compute. The
       Hetzner AVV acceptance flagged in `dpa` covers all of this Hetzner estate — still to be confirmed.
 
+  - name: Hetzner Object Storage (S3, fsn1)
+    provides: >
+      Encrypted off-site backups — S3-compatible object storage in Falkenstein (fsn1) used as the backup
+      target for the sovereign estate (database point-in-time backups, knowledge-graph exports, and file
+      blobs). A DISTINCT Hetzner product and region from the Helsinki compute above.
+    role: sub-processor
+    location: "Falkenstein, Germany (EU) — Hetzner Object Storage (fsn1); deliberately cross-region from the Helsinki (hel1) compute for DR geo-separation"
+    data_processed: >
+      Encrypted backup copies of the in-scope datastores — backups of ALL data classes held in the primary
+      CNPG Postgres + SurrealDB stores (Restormel product spine, PlotBudget financial data, Sophia app/graph
+      data, internal Huly docs). Data is restic-/Barman-encrypted before upload; bucket ACLs private.
+    dpa: "covered by the existing Hetzner Order Processing Contract (AVV) — SAME legal entity + SAME AVV as the Hetzner compute/storage/DNS entry above (verify-and-accept in the Hetzner control panel; tracked on that entry)"
+    sovereignty: ok
+    products: [restormel, plotbudget, sophia, shared]
+    notes: >
+      ADDED 2026-06-26 (RES-67 / PBI #237). VERIFIED against asset-inventory AST-019 / AST-029 / AST-030.
+      Broken out as a DISTINCT register entry from the Hetzner compute sub-processor because it is a separate
+      Hetzner PRODUCT (Object Storage S3), a separate REGION (Falkenstein fsn1 vs Helsinki hel1), and a
+      separate data role (encrypted backups, not live compute). Previously described only inside the Hetzner
+      (Coolify host) `provides`. Procured 2026-06-20 for the sovereign K3s migration (REC-PLAN-012). Buckets:
+      restormel-cnpg-backups-fsn1 (CloudNativePG / Barman WAL+base PITR for pg-restormel / pg-platform /
+      pg-plotbudget — AST-019); restormel-restic-backups (restic SurrealDB exports + PVCs — AST-029);
+      huly-allotmentology (Huly document/file blobs — AST-030). Endpoint https://fsn1.your-objectstorage.com.
+      NO new sub-processor to onboard and NO new Art 28 notification beyond this register entry — the same
+      Hetzner AVV covers it. S3 v4 credentials (key-names HETZNER_S3_FSN1_ACCESS_KEY_ID /
+      _SECRET_ACCESS_KEY — values never in repo) held in Infisical (AST-013), delivered in-cluster via the
+      External Secrets Operator (AST-027). EU-sovereign; no third-party SaaS in the backup path.
+
+  - name: Infisical (self-hosted)
+    provides: >
+      Secret management — self-hosted, open-source Infisical running on our own EU infrastructure as the
+      single auditable store for operational secrets. Software supply-chain supplier only; the vendor
+      receives no data.
+    role: self-hosted software (not a data sub-processor)
+    location: "Self-hosted — Hetzner, Helsinki/EU. No data is sent to the vendor (Infisical Inc.)."
+    data_processed: >
+      Operational secrets only — API keys, tokens and database credentials (encrypted secret blobs +
+      metadata) for the in-scope estate. These are infrastructure credentials, NOT customer personal data,
+      and they never leave our self-hosted instance.
+    dpa: "n/a — self-hosted open-source software; the vendor (Infisical Inc.) does not process, receive, or have access to any data. Tracked as a software supply-chain supplier, not a data sub-processor."
+    sovereignty: ok
+    products: [shared]
+    notes: >
+      ADDED 2026-06-26 (RES-67 / PBI #237). VERIFIED against asset-inventory AST-013. Recorded in the
+      supplier register as a SOFTWARE-SUPPLY-CHAIN supplier rather than a data sub-processor: Infisical is
+      self-hosted (EU sovereignty + OSS were the deciding reasons — AST-013, secrets.restormel.dev,
+      infisical/infisical v0.154.6), so there is no vendor data processing and no cross-border transfer.
+      Deployed 2026-06-17 as the single auditable secrets store (REC-POL-004, treating RISK-002); secrets
+      delivered in-cluster via the External Secrets Operator (AST-027). Backend master keys (key-names
+      ENCRYPTION_KEY / AUTH_SECRET — values never committed) live in /opt/infisical/.env on the box
+      (root-owned, 0600). Admin MFA still to be enabled (RISK-010); enterprise OIDC/SAML deliberately not
+      adopted (paid tier). Recovery point = pg_dump of the Infisical Postgres under the Box-B restic backup
+      (AST-012). NOTE: the Art-28 change-notifier keys off `name:` and will label this an added
+      "sub-processor" — it is a supply-chain supplier, not a data sub-processor (founder to note on review).
+
   - name: Neon
     provides: "Postgres (legacy — Restormel backup decommissioning; STILL WIRED in Sophia)"
     role: sub-processor

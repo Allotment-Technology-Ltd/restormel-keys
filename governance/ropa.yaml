@@ -28,14 +28,26 @@
 #   LI         — UK GDPR Art 6(1)(f): legitimate interests of the controller
 #   LEGAL-OBL  — UK GDPR Art 6(1)(c): compliance with a legal obligation
 #
-# Privacy notice: https://restormel.dev/keys/privacy (v2026-03-18)
-# NOTE: Privacy notice sub-processor list is out of date — see action items below.
+# Privacy notice: https://restormel.dev/keys/privacy (v2026-03-18). The PUBLIC sub-processor list at
+# /legal/sub-processors is now AUTO-GENERATED from governance/suppliers.yaml (loadSubProcessors), so it
+# tracks the register automatically (name/provides/role/location; internal fields are not published).
 #
-# Action items for next privacy notice version bump:
-#   - Remove "Vercel: hosting" (Vercel is DNS/registrar only; app is on Hetzner/Coolify)
-#   - Remove "Neon" once decommissioned (~2026-06-30)
-#   - Add "Hetzner (Coolify)" as the primary compute sub-processor
-#   - Clarify "authentication provider" = BetterAuth (self-hosted on Hetzner)
+# RES-67 / PBI #237 reconciliation (2026-06-26):
+#   - legal/privacy-policy.md error-tracking corrected Sentry -> PostHog EU (Sentry was NEVER deployed;
+#     PostHog is the live error tracker). PROC-003 above reconciled to match.
+#   - Public privacy-policy.md is a Tier-2 PUBLIC record: founder must REVIEW the wording change and bump
+#     `effective` / `last-reviewed` / `approved-on` on merge (a subagent must not self-approve).
+# Outstanding privacy-notice items for founder:
+#   - Sentry: never deployed (suppliers.yaml status pending-removal) — delete the entry on merge; the
+#     auto-generated public list still renders it until then. data-inventory.yaml DAT-009 needs the same
+#     Sentry -> PostHog reconciliation on removal.
+#   - Neon: NOT yet decommissioned — still wired in Sophia (NEON_API_KEY + Neon Auth; RISK-004). Keep listed
+#     until confirmed deletion across BOTH products.
+#   - Vercel: now ALSO hosts the PlotBudget frontend (not just the restormel.dev registrar) — reflected in
+#     suppliers.yaml; ensure the privacy notice's hosting wording stays accurate.
+#   - Consider adding transactional email (Migadu, EU) to the privacy-notice email section for completeness
+#     (Migadu remains the LIVE Restormel/allotmentology.tech transactional path — NOT replaced by Resend;
+#     Resend is PlotBudget-only).
 
 processing_activities:
 
@@ -103,29 +115,38 @@ processing_activities:
   - id: PROC-003
     purpose: >
       Service security, abuse prevention, and incident investigation —
-      maintaining audit logs and operational monitoring to protect the
-      service and its users.
+      maintaining audit logs and operational monitoring (incl. redacted
+      error/exception capture) to protect the service and its users.
     lawful_basis: "LI — security of the service and protection of users (Art 6(1)(f))"
     data_subjects: "All registered users"
     data_categories:
       - "Audit events: user ID, action type, timestamp, IP address"
       - "Operational logs: request status, performance metrics, error codes"
+      - "Redacted client/server error + exception events (PostHog) — payloads redacted at source; no PII"
     recipients:
       - "Hetzner (Coolify host, Helsinki EU) — self-hosted Postgres; audit_events table"
-      - "Sentry (US) — error/exception tracking; confirmed no PII in payloads (sendDefaultPii: off)"
+      - "PostHog EU — redacted error/exception capture (client_error / server_error; payloads redacted at source, no PII)"
     transfers: >
       Audit logs: no transfer (self-hosted EU).
-      Sentry (US): error payloads only; no personal data confirmed; Sentry DPA applies.
+      Error/exception capture: PostHog EU — EU residency, no transfer; payloads redacted at source.
     retention: >
       Audit events: 12 months online (hot); 6 years archived (cold).
       Annual compliance review scheduled (Cowork task: isms-audit-events-retention-review).
-      Operational logs: limited period per Sentry default (90 days).
+      Error/exception events: per the PostHog EU retention (see PROC-004).
     security_measures: >
-      Self-hosted Postgres with access controls; Sentry configured with
-      sendDefaultPii: off; IP addresses treated as personal data and
-      subject to same retention limits.
-    privacy_notice_ref: "https://restormel.dev/keys/privacy §2 (operational data), §3"
+      Self-hosted Postgres with access controls; PostHog error/exception capture
+      redacted at source (apps/dashboard hooks.client.ts / hooks.server.ts) so no
+      PII is transmitted; IP addresses treated as personal data and subject to the
+      same retention limits.
+    privacy_notice_ref: "https://restormel.dev/keys/privacy §2 (operational data), §3 (error tracking)"
     product: restormel
+    # RECONCILED (RES-67 / PBI #237, 2026-06-26): error/exception tracking moved Sentry -> PostHog EU.
+    # VERIFIED: zero Sentry references in app source (only transitive pnpm-lock entries); PostHog is the
+    # live error tracker (hooks.client.ts captureClientError / hooks.server.ts captureServerError +
+    # exception capture, redacted). Sentry was listed historically but was NEVER deployed
+    # (suppliers.yaml: status pending-removal). FLAG: data-inventory.yaml DAT-009 still names Sentry as
+    # the store and needs the same Sentry->PostHog reconciliation when the founder removes the Sentry
+    # supplier entry on merge.
 
   - id: PROC-004
     purpose: >
