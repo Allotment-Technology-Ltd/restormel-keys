@@ -26,11 +26,18 @@ jobs:
         with:
           token: ${{ secrets.FORGEJO_TOKEN }}
       - uses: ./.forgejo/actions/pnpm-workspace-install
-      - name: Build graphrag-core deps (parity suite imports)
+      - name: Build graphrag-core (parity suite imports) + its deps
         run: |
+          # store-parity.test.ts imports postgres-graph-retrieve.ts, which imports RUNTIME
+          # values from @restormel/graphrag-core, so graphrag-core's dist must exist or vitest
+          # aborts with a Vite packageEntryFailure. graphrag-core needs only contracts +
+          # graph-core; build them first (topological order), then graphrag-core.
+          # NOTE: do NOT build @restormel/connect-core here — it pulls @restormel/dispatch +
+          # @restormel/keys (not built in this job) and would fail the step; the parity suite
+          # does not import it.
           pnpm --filter @restormel/contracts run build
           pnpm --filter @restormel/graph-core run build
-          pnpm --filter @restormel/connect-core run build
+          pnpm --filter @restormel/graphrag-core run build
       - name: Store-parity suite (proves embedded G4 logic matches live code, incl. P7)
         run: pnpm --filter dashboard exec vitest run src/lib/server/graph-comparison/store-parity.test.ts
       - name: G4 gate — zero strict-mode claim-set delta vs Surreal + no coverage regression
