@@ -1,9 +1,11 @@
-# Records governance — Phase 2 (WARN-ONLY).
-# Per the Records & IA plan every check here is NON-BLOCKING; a red pipeline on day one
-# just trains people to ignore it. Phase 4 flips tier-2/3 to blocking by setting
-# RECORDS_ENFORCE=1 on the relevant steps. Lives in .forgejo/workflows (overrides .github
-# on the mirror); Forgejo is primary CI. Scripts are dependency-free — plain `node`.
-name: Records governance (warn-only)
+# Records governance — Phase 4 (ENFORCING for tier-2/3).
+# The tier-2/3 frontmatter / freshness / register / ledger checks are now BLOCKING
+# (RECORDS_ENFORCE=1 on those steps); CODEOWNERS coverage + mirror discipline stay advisory
+# (warn-only). Runs on EVERY PR (no path filter) so "Records governance" can be a required
+# branch-protection context WITHOUT deadlocking PRs that touch no records — those pass
+# instantly (nothing to validate). Lives in .forgejo/workflows (overrides .github on the
+# mirror); Forgejo is primary CI. Scripts are dependency-free — plain `node`.
+name: Records governance
 
 # Tier ① CI throughput (2026-06-24): cancel a superseded in-flight PR run when a
 # newer commit lands on the same branch; never collapse push runs (run_id-unique).
@@ -24,22 +26,12 @@ on:
       - 'CODEOWNERS'
       - 'scripts/records/**'
       - '.forgejo/workflows/records-governance.yml'
-  # WARN-ONLY / advisory (not a required branch-protection context), so it is safe
-  # to scope the PR trigger to the records surface — mirrors the push paths so a
-  # pure-code PR no longer spins the governance scripts on the runner. Records/docs
-  # PRs (its actual purpose) still trigger it.
+  # Runs on EVERY PR (no path filter). Now that tier-2/3 checks are enforcing and this is a
+  # required branch-protection context, the workflow MUST report on every PR — a path filter
+  # would leave the required check permanently "expected" (never reported) on PRs that touch
+  # no records, deadlocking them. A pure-code PR runs the dependency-free scripts in seconds
+  # and passes (nothing to validate), so the throughput cost is negligible.
   pull_request:
-    paths:
-      - 'docs/**'
-      - 'records/**'
-      - 'governance/**'
-      - 'evidence/**'
-      - 'planning/**'
-      - 'legal/**'
-      - 'people/**'
-      - 'CODEOWNERS'
-      - 'scripts/records/**'
-      - '.forgejo/workflows/records-governance.yml'
 
 jobs:
   records-governance:
@@ -50,15 +42,23 @@ jobs:
           fetch-depth: 0   # ledger-append-guard + mirror-verify need history
           token: ${{ secrets.FORGEJO_TOKEN }}
       - name: Front-matter validation
+        env:
+          RECORDS_ENFORCE: '1'   # Phase 4: tier-2/3 frontmatter is BLOCKING
         run: node scripts/records/frontmatter-validate.mjs
       - name: Freshness check
+        env:
+          RECORDS_ENFORCE: '1'   # Phase 4: tier-2/3 overdue review is BLOCKING
         run: node scripts/records/freshness-check.mjs
       - name: Register up to date (register-verify)
+        env:
+          RECORDS_ENFORCE: '1'   # Phase 4: stale register is BLOCKING
         run: node scripts/records/register.mjs --check
       - name: Ledger append-only guard
+        env:
+          RECORDS_ENFORCE: '1'   # Phase 4: ledger mutation is BLOCKING
         run: node scripts/records/ledger-append-guard.mjs
       - name: CODEOWNERS coverage
-        run: node scripts/records/codeowners-check.mjs
+        run: node scripts/records/codeowners-check.mjs   # advisory (warn-only)
       - name: Mirror discipline
         env:
           # Read-only ls-remote target for divergence comparison — never pushed to.

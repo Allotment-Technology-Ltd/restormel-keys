@@ -35,8 +35,10 @@ control-tier:    # 0 | 1 | 2 | 3
 created:         # YYYY-MM-DD
 last-reviewed:   # YYYY-MM-DD
 review-interval: # ISO 8601 duration, e.g. P12M. CI computes next-review = last-reviewed + interval.
-approved-by:     # REQUIRED when control-tier >= 2. The named approver.
-approved-on:     # REQUIRED when control-tier >= 2. YYYY-MM-DD.
+approved-by:     # The named approver. REQUIRED once a tier>=2 record is FINALIZED
+                 # (status approved|deprecated|superseded|closed); a draft/open record has no
+                 # approver yet, so it is only required at finalization (warn until then).
+approved-on:     # YYYY-MM-DD. Same rule as approved-by (required once finalized).
 retention:       # Controlled vocabulary — see retention grammar.
 supersedes:      # OPTIONAL — id of the record this replaces (lineage).
 related:         # OPTIONAL — list of related ids.
@@ -79,9 +81,10 @@ The `control-tier` field sets how strictly the record is governed (see ADR
 
 - **0 — uncontrolled / ephemeral.** Scratch, drafts, scaffolding. Minimal/no enforcement.
 - **1 — managed.** Technical, planning, decision docs. Metadata + register; CI advisory.
-- **2 — governed.** Policies, RoPA, SoA, supplier/asset registers. `owner`,
-  `approved-by`, `approved-on`, `retention` are **required**; CI blocking for schema +
-  freshness.
+- **2 — governed.** Policies, RoPA, SoA, supplier/asset registers. `owner` + `retention`
+  are **always required**; `approved-by` / `approved-on` are **required once the record is
+  finalized** (status approved|deprecated|superseded) — a `draft` carries no approver yet.
+  CI blocking for schema + freshness.
 - **3 — evidence.** Access reviews, posture reports, incidents, the ledger. Append-only /
   immutable intent; CI blocking, including the append-only guard.
 
