@@ -10,25 +10,56 @@ last-reviewed: 2026-06-27
 review-interval: P6M
 ---
 
-> Copy-paste-ready prompt for Claude Design / Figma to generate high-fidelity mockups of
-> the recommended "Pick & Live" routing journey. Companion to
-> routing-ux-simplification-2026-06-27.md.
+> Copy-paste-ready prompt for **Claude Design** to generate high-fidelity mockups of the
+> recommended "Pick & Live" routing journey. Companion to
+> `routing-ux-simplification-2026-06-27.md`.
+>
+> **Run it inside the "Restormel Dashboard" design-system project** (synced from the live
+> dashboard via `/design-sync`). That project carries the product's REAL components and tokens,
+> so Claude Design builds the routing screens from real parts that map 1:1 onto shippable Svelte
+> code — instead of inventing a generic (and, as the first draft of this prompt did, subtly
+> wrong) look. The "USE THE DESIGN SYSTEM" block below replaces the old hand-described visual
+> language. Sibling prompt for the Connect dashboard:
+> `connect-dashboard-claude-design-prompt-2026-06-27.md`.
 
 Design high-fidelity mockups for the redesigned "route" creation and editing experience of **Restormel Keys**, a BYOK (bring-your-own-key) AI gateway. A "route" sends an AI request to a provider/model with optional ordered fallback steps ("if this model fails, try the next"). The redesign collapses a sprawling, multi-tab, multi-commit editor into a single autosaving canvas, and physically separates a second product (Connect document-ingestion stage-routing) onto its own canvas-free board.
 
 == PRODUCT CONTEXT (what the user is trying to do) ==
 The user's ONE intent is: "point this route at a model and make it live." Today that takes ~4 commit clicks across 2 tabs, ~44 controls, raw-JSON textareas, and a pointless "publish" version gate — even though routes are already live. The redesign makes it ONE click: clicking "+ NEW ROUTE" creates a real, already-LIVE route on a sensible recommended default and opens the canvas. Everything autosaves. There is no Save button, no Apply button, no Publish button, no version gate. State is shown by a single status pill: SAVING… → LIVE · SAVED.
 
-== VISUAL LANGUAGE (brutalist design system — follow exactly) ==
-- Background: warm cream / paper, ~#F4ECD8. Everything sits on this paper.
-- Borders: THICK solid black (3px), hard 90-degree corners, NO rounded corners, NO soft shadows. Use hard offset drop-shadows only (a solid black rectangle offset ~4px down-right behind cards/buttons), never blurred shadows.
-- Primary accent: signal-teal (~#0FB5A6 / a punchy teal) used for ACTIVE/LIVE state, the selected radio, the primary action button fill, and the "resolves ✓" chip.
-- Secondary accent for warnings/attention: a hot signal-red/orange used sparingly (e.g. a disabled-until-configured step, an error toast).
-- Typography: a chunky grotesque/sans for headings; a monospace for labels, status text, model IDs (e.g. "together / gpt-5.2"), and metadata. Section labels and button text are UPPERCASE.
-- Buttons: chunky, uppercase, thick black border, hard offset shadow; primary = teal fill + black text; secondary = paper fill + black text; destructive = red fill, used rarely. On press, the button visually "presses into" its shadow.
-- Pills/chips: rectangular, thick-bordered, uppercase mono text. LIVE = teal fill. SAVING… = paper with an animated mono ellipsis. resolves ✓ = small teal-outlined chip.
-- Treat tokens conceptually as --rm-* (--rm-paper, --rm-ink, --rm-teal, --rm-red, --rm-border, --rm-shadow). Spacing is generous and grid-aligned; the layout should feel like a confident engineering tool, not a soft SaaS dashboard.
-- Drag handles render as a mono "[::]" glyph. Flow connections between steps are thick black vertical connectors with a small label "if it fails ↓".
+== USE THE DESIGN SYSTEM (build from the product's REAL parts — do not re-invent the look) ==
+Build every screen from the **"Restormel Dashboard"** design system in this project. It is
+**neo-brutalist**; use its real tokens with their real values, never hand-picked colours:
+- **Canvas** `--color-bg` warm cream `#f3ead0`; **card/input surface** `--color-surface` `#fffef0`.
+- **PRIMARY accent / main CTA fill** = `--color-yellow` `#ffd600` with **black text**. (This is the
+  product's primary — the first draft of this prompt wrongly used teal as the primary fill. Teal is
+  NOT the primary button colour.)
+- **LIVE / verified / "resolves ✓" / success signal** = `--signal-teal` `#2ec4b6` (used for the LIVE
+  pill, the selected radio, and the resolves-✓ chip — teal earns its keep here, just not as the CTA).
+- **Warning / attention** = `--amber-insight` `#ffb84d` / `--brut-amber`; **error / destructive** =
+  `--coral-alert` `#f25c54` / `--brut-coral` (used sparingly, e.g. a born-DISABLED step, an error toast).
+  State chips use `--state-ok-*` / `--state-warn-*` / `--state-fail-*`.
+- **Ink / borders / shadows** = `--color-ink` `#0c0c0c`. Borders are **2px solid ink, hard 90°
+  corners, radius 0** (`--border`). Shadows are **hard offset, no blur** (`--shadow-sm/md/lg` =
+  `3/5/7px 3/5/7px 0 ink`). On press a button "presses into" its shadow.
+- **Type**: display = **Barlow Condensed** (`--font-display`, chunky UPPERCASE headings); mono =
+  **Space Mono** (`--font-mono`, labels / status / model IDs like "together / gpt-5.2" / metadata,
+  UPPERCASE); body = **DM Sans** (`--font-body`). Buttons are mono, uppercase, 12px, 700, tracking
+  0.06em. Spacing on the `--space-*` scale — generous, grid-aligned; a confident engineering tool,
+  not a soft SaaS dashboard.
+- **Pills/chips**: rectangular, thick-bordered, uppercase mono. LIVE = teal fill. SAVING… = paper
+  surface with an animated mono ellipsis. resolves ✓ = small teal-outlined chip.
+- Drag handles render as a mono "[::]" glyph. Flow connectors between steps are thick ink vertical
+  connectors with a small mono label "if it fails ↓".
+
+**Reuse these real component cards (compose the screens from them; don't redraw primitives):**
+- Buttons / chips / inputs / cards: **BrutalButton**, **BrutalBadge**, **BrutalInput**,
+  **BrutalCard**, **BrutalBentoGrid**, **BrutalErrorBanner**, **BrutalLoadingState**,
+  **BrutalPageHeader**. Shell frame: **AppLogo**, **CommandPalette**, **UserMenu**, **EmptyState**.
+- The route-chain summary on a route card → **RoutePipelineStrip**; coverage/health → **RouteCoverageIndicator**.
+- The Connect screens (4 & 5) reuse the Connect cards: **ConnectPipelineReviewLaunch**,
+  **SetupChecklist**, **ConnectProviderKeyPanel**, **ConnectSourcesPanel** (these also anchor the
+  fuller Connect-dashboard prompt). A LIVE/run indicator → **LiveRunChip**.
 
 == SCREENS TO PRODUCE (5) ==
 
