@@ -1,0 +1,185 @@
+<!-- @dsCard group="Components / Brutalist" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BrutalButton — Restormel Brutalist</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Card chrome (layout + labels only; not product CSS) ── */
+    body {
+      background: var(--color-bg);
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: var(--space-8);
+    }
+    .ds-title {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-display-md);
+      line-height: 0.95;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      margin: 0 0 var(--space-2);
+    }
+    .ds-desc {
+      font-size: var(--text-body-md);
+      color: var(--color-ink-muted);
+      max-width: 60ch;
+      margin: 0 0 var(--space-8);
+    }
+    .ds-section-label {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: var(--text-mono-md);
+      text-transform: uppercase;
+      letter-spacing: var(--text-mono-tracking);
+      color: var(--color-ink);
+      border-bottom: var(--border);
+      padding-bottom: var(--space-2);
+      margin: var(--space-8) 0 var(--space-5);
+    }
+    .ds-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-8) var(--space-6);
+      align-items: flex-start;
+    }
+    .ds-cell {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      align-items: flex-start;
+    }
+    .ds-caption {
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-sm);
+      font-weight: 700;
+      letter-spacing: var(--text-mono-tracking);
+      text-transform: uppercase;
+      color: var(--color-ink-faint);
+    }
+    /* Static demos of the interactive lift/press (replicates product :hover / :active rules) */
+    .demo-hover {
+      transform: translate(-2px, -2px);
+      box-shadow: var(--shadow-md) !important;
+    }
+    .demo-active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 var(--color-ink) !important;
+    }
+  </style>
+</head>
+<body>
+  <h2 class="ds-title">BrutalButton</h2>
+  <p class="ds-desc">
+    Neo-brutalist action button. Mono uppercase label, hard 2px ink border, square
+    corners and a hard offset shadow that lifts on hover (translate -2,-2) and presses
+    on active (translate +2,+2). Variants map to <code>brutal-btn-primary</code>,
+    <code>brutal-btn-outline</code> (+ optional <code>brut-fill-*</code>) or
+    <code>brutal-btn-ghost</code>.
+  </p>
+
+  <div class="ds-section-label">Variants</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-primary brut-focus brut-pressable">Primary</button>
+      <span class="ds-caption">primary</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-outline brut-focus brut-pressable">Outline</button>
+      <span class="ds-caption">outline</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-ghost brut-focus">Ghost</button>
+      <span class="ds-caption">ghost</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-outline brut-fill-blue brut-focus brut-pressable">Blue</button>
+      <span class="ds-caption">blue</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-outline brut-fill-coral brut-focus brut-pressable">Coral</button>
+      <span class="ds-caption">coral</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-outline brut-fill-canvas brut-focus brut-pressable">Canvas</button>
+      <span class="ds-caption">canvas</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-primary brut-focus brut-pressable">Neon</button>
+      <span class="ds-caption">neon (= primary fill)</span>
+    </div>
+  </div>
+
+  <div class="ds-section-label">States — primary</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-primary brut-focus brut-pressable">Default</button>
+      <span class="ds-caption">default</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-primary brut-focus brut-pressable demo-hover">Hover</button>
+      <span class="ds-caption">hover (lift)</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-primary brut-focus brut-pressable demo-active">Active</button>
+      <span class="ds-caption">active (press)</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-primary brut-focus brut-pressable" disabled>Disabled</button>
+      <span class="ds-caption">disabled</span>
+    </div>
+  </div>
+
+  <div class="ds-section-label">States — outline &amp; ghost</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-outline brut-focus brut-pressable demo-hover">Hover</button>
+      <span class="ds-caption">outline · hover</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-outline brut-focus brut-pressable" disabled>Disabled</button>
+      <span class="ds-caption">outline · disabled</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-ghost brut-focus" style="background: var(--color-bg-deep);">Hover</button>
+      <span class="ds-caption">ghost · hover (well)</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-ghost brut-focus" disabled>Disabled</button>
+      <span class="ds-caption">ghost · disabled</span>
+    </div>
+  </div>
+
+  <div class="ds-section-label">Sizes</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-primary btn-inline brut-focus brut-pressable">Inline</button>
+      <span class="ds-caption">btn-inline</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-primary brut-focus brut-pressable">Default</button>
+      <span class="ds-caption">default (44px)</span>
+    </div>
+    <div class="ds-cell">
+      <button type="button" class="brutal-btn brutal-btn-primary btn-lg brut-focus brut-pressable">Large</button>
+      <span class="ds-caption">btn-lg</span>
+    </div>
+  </div>
+
+  <div class="ds-section-label">As link (href)</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <a href="#" class="brutal-btn brutal-btn-primary brut-focus brut-pressable">View report</a>
+      <span class="ds-caption">&lt;a&gt; · primary</span>
+    </div>
+    <div class="ds-cell">
+      <a href="#" class="brutal-btn brutal-btn-outline brut-fill-blue brut-focus brut-pressable">Open graph</a>
+      <span class="ds-caption">&lt;a&gt; · blue</span>
+    </div>
+  </div>
+</body>
+</html>

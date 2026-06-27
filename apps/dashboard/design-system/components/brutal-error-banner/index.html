@@ -1,0 +1,146 @@
+<!-- @dsCard group="Components / Brutalist" -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BrutalErrorBanner</title>
+    <link rel="stylesheet" href="../../styles.css" />
+    <style>
+      /* Legacy aliases the component <style> references (see styles.css note). */
+      :root {
+        --brut-ink: var(--color-ink);
+        --brut-coral: var(--coral-alert-active);
+        --brut-border-width: var(--border-width);
+        --brut-shadow: var(--shadow-md);
+      }
+
+      /* ── card chrome ── */
+      body {
+        margin: 0;
+        padding: var(--space-8);
+        background: var(--color-bg);
+      }
+      .ds-card {
+        max-width: 720px;
+        margin: 0 auto;
+      }
+      .ds-title {
+        font-family: var(--font-display);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: var(--text-display-tracking);
+        font-size: var(--text-display-md);
+        margin: 0;
+      }
+      .ds-desc {
+        font-family: var(--font-body);
+        font-size: var(--text-body-md);
+        color: var(--color-ink-muted);
+        margin: var(--space-2) 0 var(--space-8);
+        max-width: 46rem;
+      }
+      .ds-caption {
+        font-family: var(--font-mono);
+        font-size: var(--text-mono-sm);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: var(--text-mono-tracking);
+        color: var(--color-ink-faint);
+        margin: var(--space-8) 0 var(--space-3);
+      }
+
+      /* ── BrutalErrorBanner.svelte <style> (extracted verbatim) ── */
+      .brutal-error {
+        border: var(--brut-border-width) solid var(--brut-ink);
+        background: var(--brut-coral);
+        color: var(--brut-ink);
+        padding: var(--space-4);
+        box-shadow: var(--brut-shadow);
+        margin: 0 0 var(--space-4);
+      }
+      .brutal-error-title {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        margin: 0 0 var(--space-2);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .brutal-error-title span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        background: var(--brut-ink);
+        color: var(--brut-coral);
+        font-weight: 900;
+      }
+      .brutal-error-msg {
+        margin: 0;
+        font-weight: 600;
+      }
+      .brutal-error-actions {
+        display: flex;
+        gap: var(--space-2);
+        flex-wrap: wrap;
+        margin-top: var(--space-3);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ds-card">
+      <h2 class="ds-title">BrutalErrorBanner</h2>
+      <p class="ds-desc">
+        A fail-state banner on the coral slab with a hard ink frame and offset
+        shadow. <code>role="alert"</code>, an uppercase title with an inverted
+        <code>!</code> badge, a message line, and an <code>actions</code> slot —
+        the UX contract requires at least one recovery action.
+      </p>
+
+      <p class="ds-caption">Default — title + message + recovery actions</p>
+      <div class="brutal-error" role="alert">
+        <p class="brutal-error-title">
+          <span aria-hidden="true">!</span>
+          Something went wrong
+        </p>
+        <p class="brutal-error-msg">
+          We couldn't load your routes. The Keys API returned a 503 while
+          resolving the active binding.
+        </p>
+        <div class="brutal-error-actions">
+          <button type="button" class="btn btn-primary">Retry</button>
+          <button type="button" class="btn btn-ghost">View status</button>
+        </div>
+      </div>
+
+      <p class="ds-caption">Custom title — message only (no actions slot)</p>
+      <div class="brutal-error" role="alert">
+        <p class="brutal-error-title">
+          <span aria-hidden="true">!</span>
+          Key validation failed
+        </p>
+        <p class="brutal-error-msg">
+          The provider key <code>rk_live_••••a91f</code> was rejected upstream.
+          Check the credential in the vault and rebind.
+        </p>
+      </div>
+
+      <p class="ds-caption">Single recovery action</p>
+      <div class="brutal-error" role="alert">
+        <p class="brutal-error-title">
+          <span aria-hidden="true">!</span>
+          Session expired
+        </p>
+        <p class="brutal-error-msg">
+          Your sign-in token is no longer valid. Sign in again to continue.
+        </p>
+        <div class="brutal-error-actions">
+          <button type="button" class="btn btn-primary">Sign in</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,195 @@
+<!-- @dsCard group="Surfaces / Route Creator" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ConnectPipelineWizard — Surfaces / Route Creator</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* base.css tokens referenced by the scoped pipeline CSS but not present in the standalone styles.css */
+    :root {
+      --text-xs: .75rem;
+      --text-sm: .875rem;
+      --text-lg: 1.125rem;
+      --rm-sage: var(--signal-teal);
+      --color-canvas: var(--color-bg);
+    }
+    body { padding: var(--space-8); background: var(--color-bg); }
+    .wrap { max-width: 60rem; margin: 0 auto; }
+    .card-title { font-family: var(--font-display); font-weight: 900; font-size: var(--text-display-md); text-transform: uppercase; letter-spacing: var(--text-display-tracking); line-height: .95; margin: 0 0 var(--space-2); }
+    .card-desc { font-size: var(--text-body-md); color: var(--color-ink-muted); max-width: 48rem; margin: 0 0 var(--space-8); }
+    .variant { margin: 0 0 var(--space-10); }
+    .variant-label { font-family: var(--font-mono); font-size: var(--text-mono-md); font-weight: 700; letter-spacing: var(--text-mono-tracking); text-transform: uppercase; color: var(--color-ink-muted); border-bottom: var(--border-thin); padding-bottom: var(--space-2); margin: 0 0 var(--space-5); }
+    .stage { border: var(--border-thin); background: var(--color-bg); padding: var(--space-6); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    /* body-slot placeholder (the wizard lazy-loads the real step panel here) */
+    .body-slot { border: 2px dashed var(--color-ink); background: var(--color-surface); padding: var(--space-8); text-align: center; }
+    .body-slot-label { font-family: var(--font-mono); font-size: var(--text-mono-md); font-weight: 700; letter-spacing: var(--text-mono-tracking); text-transform: uppercase; color: var(--color-ink-faint); margin: 0; }
+    .footer-grid { display: grid; gap: var(--space-5); }
+
+    /* ── Scoped rules extracted from connect-pipeline.css (the wizard shell) ── */
+    .connect-pipeline .wizard-stepper { margin-bottom: var(--space-5); }
+    .connect-pipeline .wizard-steps { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0; }
+    .connect-pipeline .wizard-step,
+    .connect-pipeline .wizard-connector { display: flex; align-items: center; }
+    .connect-pipeline .wizard-connector { width: 1.5rem; height: 2px; flex-shrink: 0; margin: 0 var(--space-1); }
+    .connect-pipeline .wizard-connector-solid { background: var(--color-ink); }
+    .connect-pipeline .wizard-connector-dashed { background: repeating-linear-gradient(90deg, var(--color-ink) 0, var(--color-ink) 4px, transparent 4px, transparent 8px); }
+    .connect-pipeline .wizard-step-btn { display: inline-flex; align-items: center; gap: var(--space-2); border: var(--border); border-radius: 0; font-family: var(--font-mono); font-size: var(--text-mono-sm); padding: var(--space-2) var(--space-3); min-height: 44px; text-decoration: none; cursor: default; color: var(--color-ink); transition: background-color 200ms ease, color 200ms ease, box-shadow 80ms ease, transform 80ms ease; }
+    .connect-pipeline button.wizard-step-btn { cursor: pointer; font: inherit; font-family: var(--font-mono); }
+    .connect-pipeline .wizard-step-completed .wizard-step-btn { background: var(--color-ink); color: var(--color-surface); }
+    .connect-pipeline .wizard-step-active .wizard-step-btn { background: var(--color-surface); box-shadow: var(--shadow-sm); font-weight: 700; }
+    .connect-pipeline .wizard-step-upcoming .wizard-step-btn { background: var(--color-bg); border: 2px dashed var(--color-ink); color: var(--color-ink-faint); }
+    .connect-pipeline .wizard-step-upcoming .wizard-step-label { color: var(--color-ink-faint); }
+    .connect-pipeline .wizard-step-glyph { display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; font-weight: 700; flex-shrink: 0; }
+
+    .connect-pipeline .wizard-crumb { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); font-size: var(--text-xs); color: var(--rm-muted); }
+    .connect-pipeline .wizard-crumb a { font-weight: 700; color: var(--rm-text); }
+    .connect-pipeline .wizard-crumb [aria-current="page"] { color: var(--rm-text); font-weight: 600; }
+    .connect-pipeline .wizard-header { margin-bottom: var(--space-8); padding-top: var(--space-6); max-width: 42rem; }
+    .connect-pipeline .wizard-kicker { margin: 0 0 var(--space-1); font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 700; letter-spacing: var(--text-mono-tracking); text-transform: uppercase; color: var(--rm-dim); }
+    .connect-pipeline .wizard-title { margin: 0 0 var(--space-2); font-family: var(--font-mono); font-size: var(--text-mono-md); font-weight: 700; letter-spacing: var(--text-mono-tracking); text-transform: uppercase; color: var(--rm-text); }
+    .connect-pipeline .wizard-lead { margin: 0; color: var(--rm-muted); font-size: var(--text-sm); line-height: 1.55; }
+    .connect-pipeline .wizard-body { margin-bottom: var(--space-4); }
+    .connect-pipeline .wizard-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; border-top: var(--border-thin); padding-top: var(--space-4); }
+    .connect-pipeline .wizard-footer-left,
+    .connect-pipeline .wizard-footer-right { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    .connect-pipeline .btn-lg { padding: var(--space-3) var(--space-5); font-size: var(--text-sm); font-weight: 700; letter-spacing: 0.04em; }
+    .connect-pipeline .template-banner { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); max-width: 42rem; }
+    .connect-pipeline .notice { border: var(--border-thin); background: var(--rm-surface-raised); color: var(--rm-muted); padding: var(--space-2) var(--space-3); border-radius: var(--rm-radius); margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2 class="card-title">ConnectPipelineWizard</h2>
+    <p class="card-desc">
+      The shell of the guided ingest setup flow: a template banner, the progress stepper, a breadcrumb, the step
+      header (kicker / title / lead), the lazy-loaded step body, and a sticky footer whose Back / Skip / Continue
+      controls change per step. Below is a representative instance at the <strong>Sources</strong> step, then the
+      footer variants the shell renders for each step.
+    </p>
+
+    <div class="variant">
+      <p class="variant-label">Wizard shell — Sources step (representative instance)</p>
+      <div class="stage connect-pipeline">
+        <div class="notice template-banner" role="status">
+          You came from the <strong>Philosophy reading list</strong> template — finish setup and we'll pre-fill your
+          domain config at the Domain step.
+          <button type="button" class="btn btn-outline btn-sm template-banner-btn">Go to Domain step →</button>
+        </div>
+
+        <nav class="wizard-stepper" aria-label="Pipeline setup progress">
+          <ol class="wizard-steps">
+            <li class="wizard-step wizard-step-completed">
+              <button type="button" class="wizard-step-btn">
+                <span class="wizard-step-glyph" aria-hidden="true">✓</span>
+                <span class="wizard-step-label">Provider key</span>
+              </button>
+            </li>
+            <li class="wizard-connector wizard-connector-dashed" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-active">
+              <span class="wizard-step-btn" aria-current="step">
+                <span class="wizard-step-glyph" aria-hidden="true">2</span>
+                <span class="wizard-step-label">Sources</span>
+              </span>
+            </li>
+            <li class="wizard-connector wizard-connector-dashed" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-upcoming">
+              <button type="button" class="wizard-step-btn">
+                <span class="wizard-step-glyph" aria-hidden="true">3</span>
+                <span class="wizard-step-label">Domain</span>
+              </button>
+            </li>
+            <li class="wizard-connector wizard-connector-dashed" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-upcoming">
+              <button type="button" class="wizard-step-btn">
+                <span class="wizard-step-glyph" aria-hidden="true">4</span>
+                <span class="wizard-step-label">Review &amp; launch</span>
+              </button>
+            </li>
+          </ol>
+        </nav>
+
+        <nav class="wizard-crumb" aria-label="Breadcrumb">
+          <a href="#">Home</a>
+          <span aria-hidden="true">›</span>
+          <span aria-current="page">Setup · Sources</span>
+        </nav>
+
+        <header class="wizard-header">
+          <p class="wizard-kicker">Step 2 of 4</p>
+          <h2 class="wizard-title">Connect where documents live</h2>
+          <p class="wizard-lead">
+            Import from any mix of URLs, uploads, connectors, or crawls. Check the documents to include in your next
+            run — you can change the selection between runs.
+          </p>
+        </header>
+
+        <div class="wizard-body">
+          <div class="body-slot">
+            <p class="body-slot-label">Step panel renders here<br />(Provider · Sources · Domain · Review &amp; launch)</p>
+          </div>
+        </div>
+
+        <footer class="wizard-footer">
+          <div class="wizard-footer-left">
+            <button type="button" class="btn btn-outline btn-sm">Back</button>
+          </div>
+          <div class="wizard-footer-right">
+            <button type="button" class="btn btn-outline btn-sm">Skip for now</button>
+            <button type="button" class="btn btn-primary">Sources ready → Continue (3 documents)</button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Per-step footer controls</p>
+      <div class="stage connect-pipeline footer-grid">
+        <footer class="wizard-footer">
+          <div class="wizard-footer-left">
+            <a class="btn btn-outline btn-sm" href="#">Back</a>
+          </div>
+          <div class="wizard-footer-right">
+            <button type="button" class="btn btn-outline btn-sm">Skip for now</button>
+            <button type="button" class="btn btn-primary">Key connected → Continue</button>
+          </div>
+        </footer>
+
+        <footer class="wizard-footer">
+          <div class="wizard-footer-left">
+            <button type="button" class="btn btn-outline btn-sm">Back</button>
+          </div>
+          <div class="wizard-footer-right">
+            <button type="button" class="btn btn-outline btn-sm">Skip for now</button>
+            <button type="button" class="btn btn-primary" disabled title="Select or generate a domain pack to continue">Domain selected → Continue</button>
+          </div>
+        </footer>
+
+        <footer class="wizard-footer">
+          <div class="wizard-footer-left">
+            <button type="button" class="btn btn-outline btn-sm">Back</button>
+          </div>
+          <div class="wizard-footer-right">
+            <button type="button" class="btn btn-primary btn-lg">START RUN →</button>
+          </div>
+        </footer>
+
+        <footer class="wizard-footer">
+          <div class="wizard-footer-left">
+            <button type="button" class="btn btn-outline btn-sm">Back</button>
+          </div>
+          <div class="wizard-footer-right">
+            <button type="button" class="btn btn-primary btn-lg" disabled
+              aria-describedby="start-run-hint"
+              title="Select documents, a domain pack, a graph store, configure routes, and clear the provider preflight to start">START RUN →</button>
+            <span id="start-run-hint" class="sr-only">Select documents, a domain pack, a graph store, configure routes, and clear the provider preflight to start.</span>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

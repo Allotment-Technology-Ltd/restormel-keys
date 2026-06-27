@@ -1,0 +1,137 @@
+<!-- @dsCard group="Surfaces / Route Creator" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ConnectProviderKeyPanel — Surfaces / Route Creator</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* base.css tokens referenced by the scoped pipeline CSS but not present in the standalone styles.css */
+    :root {
+      --text-xs: .75rem;
+      --text-sm: .875rem;
+      --text-lg: 1.125rem;
+      --rm-sage: var(--signal-teal);
+      --color-canvas: var(--color-bg);
+    }
+    body { padding: var(--space-8); background: var(--color-bg); }
+    .wrap { max-width: 52rem; margin: 0 auto; }
+    .card-title { font-family: var(--font-display); font-weight: 900; font-size: var(--text-display-md); text-transform: uppercase; letter-spacing: var(--text-display-tracking); line-height: .95; margin: 0 0 var(--space-2); }
+    .card-desc { font-size: var(--text-body-md); color: var(--color-ink-muted); max-width: 48rem; margin: 0 0 var(--space-8); }
+    .variant { margin: 0 0 var(--space-10); }
+    .variant-label { font-family: var(--font-mono); font-size: var(--text-mono-md); font-weight: 700; letter-spacing: var(--text-mono-tracking); text-transform: uppercase; color: var(--color-ink-muted); border-bottom: var(--border-thin); padding-bottom: var(--space-2); margin: 0 0 var(--space-5); }
+    .stage { border: var(--border-thin); background: var(--color-bg); padding: var(--space-6); }
+
+    /* ── Component <style> block lifted verbatim from ConnectProviderKeyPanel.svelte ── */
+    .provider-panel { display: flex; flex-direction: column; gap: var(--space-3); }
+    .provider-empty,
+    .provider-verified { display: flex; gap: var(--space-3); padding: var(--space-4); border: var(--border); background: var(--color-bg); }
+    .provider-empty { flex-direction: column; }
+    .provider-glyph { font-family: var(--font-mono); font-weight: 900; font-size: var(--text-display-sm, 1.5rem); color: var(--color-ink); line-height: 1; }
+    .provider-verified-body { display: flex; flex-direction: column; gap: var(--space-2); }
+    .provider-empty-title,
+    .provider-verified-title { font-family: var(--font-display); font-weight: 900; text-transform: uppercase; letter-spacing: var(--text-display-tracking); margin: 0; color: var(--color-ink); }
+    .provider-empty-sub,
+    .provider-verified-sub { margin: 0; color: var(--color-ink-muted); }
+    .provider-verified-receipt { margin: 0; font-family: var(--font-mono); font-size: var(--text-mono-sm); color: var(--color-ink); }
+    .provider-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2 class="card-title">ConnectProviderKeyPanel</h2>
+    <p class="card-desc">
+      The provider-key step (step 1) of the guided ingest flow. Lightweight: the full verify-on-save UI lives on
+      <code>/integrations</code> — this panel routes there and the layout's return banner brings the operator back.
+      Shown empty when no provider integration exists; once one is verified it confirms with the real K2 verify-probe
+      receipt and the footer's Continue advances to Sources.
+    </p>
+
+    <div class="variant">
+      <p class="variant-label">Empty — no provider key yet</p>
+      <div class="stage">
+        <div class="provider-panel">
+          <div class="provider-empty">
+            <p class="provider-empty-title">No provider key yet</p>
+            <p class="provider-empty-sub">
+              Add one AI provider key — it's verified live against the provider the moment you save, with a real
+              authenticated probe. You'll land back here when it's connected.
+            </p>
+            <div class="provider-actions">
+              <a class="btn btn-primary" href="#">Add a provider key →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Verified — key connected, models ready (with verify receipt)</p>
+      <div class="stage">
+        <div class="provider-panel">
+          <div class="provider-verified" role="status">
+            <span class="provider-glyph" aria-hidden="true">✓</span>
+            <div class="provider-verified-body">
+              <p class="provider-verified-title">Provider key connected — verified.</p>
+              <p class="provider-verified-receipt" role="status">
+                Authenticated with openai (HTTP 200). · checked Jun 27, 2:14 PM
+              </p>
+              <p class="provider-verified-sub">
+                Chat and embedding routes are ready. Continue to choose your sources.
+              </p>
+              <div class="provider-actions">
+                <a class="btn btn-outline btn-sm" href="#">Manage provider keys →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Verified — key connected, routes not yet publishable</p>
+      <div class="stage">
+        <div class="provider-panel">
+          <div class="provider-verified" role="status">
+            <span class="provider-glyph" aria-hidden="true">✓</span>
+            <div class="provider-verified-body">
+              <p class="provider-verified-title">Provider key connected — verified.</p>
+              <p class="provider-verified-receipt" role="status">
+                Authenticated with anthropic (HTTP 200). · checked Jun 27, 2:18 PM
+              </p>
+              <p class="provider-verified-sub">
+                Publish at least one chat route and one embedding route so ingest can extract, group, validate, and
+                embed your documents.
+              </p>
+              <div class="provider-actions">
+                <a class="btn btn-outline btn-sm" href="#">Manage provider keys →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Verified — no receipt available (plain confirmation fallback)</p>
+      <div class="stage">
+        <div class="provider-panel">
+          <div class="provider-verified" role="status">
+            <span class="provider-glyph" aria-hidden="true">✓</span>
+            <div class="provider-verified-body">
+              <p class="provider-verified-title">Provider key connected — verified.</p>
+              <p class="provider-verified-sub">
+                Chat and embedding routes are ready. Continue to choose your sources.
+              </p>
+              <div class="provider-actions">
+                <a class="btn btn-outline btn-sm" href="#">Manage provider keys →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

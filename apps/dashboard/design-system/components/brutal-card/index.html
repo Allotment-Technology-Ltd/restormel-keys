@@ -1,0 +1,188 @@
+<!-- @dsCard group="Components / Brutalist" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BrutalCard — Restormel Brutalist</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Component-scoped CSS not in styles.css (brut-overlap, from brutalist-utilities.css) ── */
+    .brut-overlap { transform: rotate(-1deg); }
+    .brut-overlap.brut-pressable:hover { transform: rotate(-1deg) translate(-2px, -2px); }
+    .brut-overlap.brut-pressable:active { transform: rotate(-1deg) translate(2px, 2px); }
+
+    /* ── Card chrome (layout + labels only) ── */
+    body {
+      background: var(--color-bg);
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: var(--space-8);
+    }
+    .ds-title {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-display-md);
+      line-height: 0.95;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      margin: 0 0 var(--space-2);
+    }
+    .ds-desc {
+      font-size: var(--text-body-md);
+      color: var(--color-ink-muted);
+      max-width: 62ch;
+      margin: 0 0 var(--space-8);
+    }
+    .ds-section-label {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: var(--text-mono-md);
+      text-transform: uppercase;
+      letter-spacing: var(--text-mono-tracking);
+      border-bottom: var(--border);
+      padding-bottom: var(--space-2);
+      margin: var(--space-8) 0 var(--space-6);
+    }
+    .ds-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: var(--space-8) var(--space-6);
+      max-width: 980px;
+      align-items: start;
+    }
+    .ds-cell {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+    .ds-caption {
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-sm);
+      font-weight: 700;
+      letter-spacing: var(--text-mono-tracking);
+      text-transform: uppercase;
+      color: var(--color-ink-faint);
+    }
+    .demo-hover {
+      transform: translate(-2px, -2px);
+      box-shadow: var(--shadow-lg) !important;
+    }
+    .card-metric {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-display-sm);
+      line-height: 0.95;
+    }
+  </style>
+</head>
+<body>
+  <h2 class="ds-title">BrutalCard</h2>
+  <p class="ds-desc">
+    Container slab with a hard 2px ink border, square corners and a hard offset
+    shadow (<code>--shadow-md</code>). Optional mono uppercase title and a body slot.
+    Fill via <code>brut-fill-*</code>; add <code>brut-pressable</code> (or pass an
+    <code>href</code>) to make it lift on hover and press on active;
+    <code>brut-overlap</code> gives the blueprint-cutout 1° tilt.
+  </p>
+
+  <div class="ds-section-label">Fill variants</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <div class="brutal-card brut-fill-white">
+        <h2 class="brutal-card-title">Routed today</h2>
+        <div class="brutal-card-body">
+          <span class="card-metric">1,284</span>
+          <p style="margin:.5rem 0 0;">Requests across 6 connected sources.</p>
+        </div>
+      </div>
+      <span class="ds-caption">white (default)</span>
+    </div>
+
+    <div class="ds-cell">
+      <div class="brutal-card brut-fill-canvas">
+        <h2 class="brutal-card-title">Pending review</h2>
+        <div class="brutal-card-body">
+          <span class="card-metric">3</span>
+          <p style="margin:.5rem 0 0;">Sources flagged for verification.</p>
+        </div>
+      </div>
+      <span class="ds-caption">canvas</span>
+    </div>
+
+    <div class="ds-cell">
+      <div class="brutal-card brut-fill-neon">
+        <h2 class="brutal-card-title">Verified rate</h2>
+        <div class="brutal-card-body">
+          <span class="card-metric">99.2%</span>
+          <p style="margin:.5rem 0 0;">Answers backed by a cited source.</p>
+        </div>
+      </div>
+      <span class="ds-caption">neon (yellow)</span>
+    </div>
+
+    <div class="ds-cell">
+      <div class="brutal-card brut-fill-blue">
+        <h2 class="brutal-card-title">Graph nodes</h2>
+        <div class="brutal-card-body">
+          <span class="card-metric">42.1k</span>
+          <p style="margin:.5rem 0 0;">Entities in the knowledge graph.</p>
+        </div>
+      </div>
+      <span class="ds-caption">blue (outline)</span>
+    </div>
+
+    <div class="ds-cell">
+      <div class="brutal-card brut-fill-coral">
+        <h2 class="brutal-card-title">Stalled runs</h2>
+        <div class="brutal-card-body">
+          <span class="card-metric">1</span>
+          <p style="margin:.5rem 0 0;">Ingest job exceeded its SLA.</p>
+        </div>
+      </div>
+      <span class="ds-caption">coral (outline)</span>
+    </div>
+  </div>
+
+  <div class="ds-section-label">Pressable &amp; states</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <a href="#" class="brutal-card brut-fill-white brut-pressable brut-focus">
+        <h2 class="brutal-card-title">Open pipeline →</h2>
+        <div class="brutal-card-body">Link card. Lifts on hover, presses on active.</div>
+      </a>
+      <span class="ds-caption">pressable (href)</span>
+    </div>
+
+    <div class="ds-cell">
+      <a href="#" class="brutal-card brut-fill-white brut-pressable brut-focus demo-hover">
+        <h2 class="brutal-card-title">Open pipeline →</h2>
+        <div class="brutal-card-body">Hover state — translate(-2,-2), shadow steps up.</div>
+      </a>
+      <span class="ds-caption">pressable · hover</span>
+    </div>
+
+    <div class="ds-cell">
+      <div class="brutal-card brut-fill-canvas brut-pressable brut-overlap">
+        <h2 class="brutal-card-title">Blueprint cutout</h2>
+        <div class="brutal-card-body">Overlap tilt (−1°), preserved through press.</div>
+      </div>
+      <span class="ds-caption">overlap</span>
+    </div>
+  </div>
+
+  <div class="ds-section-label">No title (body only)</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <div class="brutal-card brut-fill-white">
+        <div class="brutal-card-body">
+          A bare card with no <code>title</code> prop — just the bordered slab and a
+          body slot for arbitrary content.
+        </div>
+      </div>
+      <span class="ds-caption">body only</span>
+    </div>
+  </div>
+</body>
+</html>

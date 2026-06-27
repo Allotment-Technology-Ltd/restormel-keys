@@ -1,0 +1,150 @@
+<!-- @dsCard group="Components / Brutalist" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BrutalInput — Restormel Brutalist</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Card chrome (layout + labels only) ── */
+    body {
+      background: var(--color-bg);
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: var(--space-8);
+    }
+    .ds-title {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-display-md);
+      line-height: 0.95;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      margin: 0 0 var(--space-2);
+    }
+    .ds-desc {
+      font-size: var(--text-body-md);
+      color: var(--color-ink-muted);
+      max-width: 62ch;
+      margin: 0 0 var(--space-8);
+    }
+    .ds-section-label {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: var(--text-mono-md);
+      text-transform: uppercase;
+      letter-spacing: var(--text-mono-tracking);
+      border-bottom: var(--border);
+      padding-bottom: var(--space-2);
+      margin: var(--space-8) 0 var(--space-5);
+    }
+    .ds-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--space-6);
+      max-width: 900px;
+    }
+    .ds-cell {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .ds-caption {
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-sm);
+      font-weight: 700;
+      letter-spacing: var(--text-mono-tracking);
+      text-transform: uppercase;
+      color: var(--color-ink-faint);
+    }
+    /* Static demo of the :focus-visible state (replicates product outline rule) */
+    .demo-focus {
+      outline: 2px solid var(--color-yellow);
+      outline-offset: 0;
+    }
+    /* Error treatment demo (coral border + coral hint) */
+    .brutal-input.is-error {
+      border-color: var(--brut-coral);
+    }
+    .brutal-hint.is-error {
+      color: var(--brut-coral);
+    }
+    .brutal-input:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      background: var(--color-bg-deep);
+    }
+  </style>
+</head>
+<body>
+  <h2 class="ds-title">BrutalInput</h2>
+  <p class="ds-desc">
+    Labelled text field. Mono uppercase label (optional coral required marker), a
+    full-bleed input with a hard 2px ink border and square corners, and an optional
+    muted mono hint. Focus draws a 2px yellow outline. Markup:
+    <code>.brutal-field › .brutal-label + .brutal-input.brut-focus + .brutal-hint</code>.
+  </p>
+
+  <div class="ds-section-label">States</div>
+  <div class="ds-grid">
+    <!-- Default -->
+    <div class="ds-cell">
+      <div class="brutal-field">
+        <label class="brutal-label" for="key-name">Key name</label>
+        <input id="key-name" type="text" class="brutal-input brut-focus" value="production-router" />
+      </div>
+      <span class="ds-caption">default</span>
+    </div>
+
+    <!-- Placeholder / empty -->
+    <div class="ds-cell">
+      <div class="brutal-field">
+        <label class="brutal-label" for="key-empty">Webhook URL</label>
+        <input id="key-empty" type="text" class="brutal-input brut-focus" placeholder="https://example.com/hook" />
+      </div>
+      <span class="ds-caption">placeholder</span>
+    </div>
+
+    <!-- Focus -->
+    <div class="ds-cell">
+      <div class="brutal-field">
+        <label class="brutal-label" for="key-focus">Endpoint slug</label>
+        <input id="key-focus" type="text" class="brutal-input brut-focus demo-focus" value="connect-ingest" />
+      </div>
+      <span class="ds-caption">focus (yellow outline)</span>
+    </div>
+
+    <!-- With hint -->
+    <div class="ds-cell">
+      <div class="brutal-field">
+        <label class="brutal-label" for="key-hint">API key<span class="brutal-required" aria-hidden="true"> *</span></label>
+        <input id="key-hint" type="text" class="brutal-input brut-focus" value="rk_live_••••••••4f2a" aria-describedby="key-hint-hint" />
+        <p class="brutal-hint brut-muted" id="key-hint-hint">Stored encrypted at rest — shown once on creation.</p>
+      </div>
+      <span class="ds-caption">required + hint</span>
+    </div>
+
+    <!-- Error -->
+    <div class="ds-cell">
+      <div class="brutal-field">
+        <label class="brutal-label" for="key-error">Rate limit<span class="brutal-required" aria-hidden="true"> *</span></label>
+        <input id="key-error" type="text" class="brutal-input brut-focus is-error" value="-5" aria-describedby="key-error-hint" />
+        <p class="brutal-hint is-error" id="key-error-hint">Must be a positive integer.</p>
+      </div>
+      <span class="ds-caption">error</span>
+    </div>
+
+    <!-- Disabled -->
+    <div class="ds-cell">
+      <div class="brutal-field">
+        <label class="brutal-label" for="key-disabled">Workspace ID</label>
+        <input id="key-disabled" type="text" class="brutal-input brut-focus" value="ws_restormel_01" disabled />
+        <p class="brutal-hint brut-muted" id="key-disabled-hint">Assigned automatically.</p>
+      </div>
+      <span class="ds-caption">disabled</span>
+    </div>
+  </div>
+</body>
+</html>

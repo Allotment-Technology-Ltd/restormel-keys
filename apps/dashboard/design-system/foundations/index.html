@@ -1,0 +1,286 @@
+<!-- @dsCard group="Foundations" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restormel Neo-Brutalist — Foundations</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    body { padding: var(--space-8); }
+    .wrap { max-width: 72rem; margin: 0 auto; }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-display-md);
+      text-transform: uppercase;
+      letter-spacing: var(--text-display-tracking);
+      line-height: var(--text-display-line-height);
+      margin: 0 0 var(--space-2);
+    }
+    .page-sub {
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-md);
+      letter-spacing: var(--text-mono-tracking);
+      text-transform: uppercase;
+      color: var(--color-ink-muted);
+      margin: 0 0 var(--space-10);
+    }
+
+    .section {
+      margin-bottom: var(--space-12);
+      border: var(--border);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-md);
+      padding: var(--space-6);
+    }
+    .section-head {
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-lg);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: var(--text-mono-tracking);
+      margin: 0 0 var(--space-5);
+      padding-bottom: var(--space-3);
+      border-bottom: var(--border);
+    }
+
+    /* Swatch grid */
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: var(--space-4);
+    }
+    .swatch {
+      border: var(--border);
+      background: var(--color-surface);
+    }
+    .swatch-chip {
+      height: 88px;
+      border-bottom: var(--border);
+    }
+    .swatch-meta {
+      padding: var(--space-2) var(--space-3);
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-md);
+      letter-spacing: 0.02em;
+    }
+    .swatch-name { font-weight: 700; text-transform: uppercase; display: block; }
+    .swatch-var { color: var(--color-ink-muted); display: block; }
+    .swatch-hex { color: var(--color-ink-faint); display: block; }
+
+    /* Type scale */
+    .type-row {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: var(--space-4);
+      align-items: baseline;
+      padding: var(--space-4) 0;
+      border-bottom: var(--border-thin);
+    }
+    .type-row:last-child { border-bottom: 0; }
+    .type-label {
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-md);
+      letter-spacing: var(--text-mono-tracking);
+      text-transform: uppercase;
+      color: var(--color-ink-muted);
+    }
+    .type-label b { color: var(--color-ink); display: block; }
+
+    /* Spacing scale */
+    .space-row {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: var(--space-4);
+      align-items: center;
+      padding: var(--space-2) 0;
+    }
+    .space-label {
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-md);
+      letter-spacing: var(--text-mono-tracking);
+    }
+    .space-bar {
+      height: 18px;
+      background: var(--color-yellow);
+      border: var(--border-thin);
+    }
+
+    /* Shadow demo */
+    .shadow-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: var(--space-8);
+      padding: var(--space-4) var(--space-2) var(--space-6);
+    }
+    .shadow-box {
+      height: 96px;
+      background: var(--color-surface);
+      border: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-md);
+      font-weight: 700;
+      letter-spacing: var(--text-mono-tracking);
+      text-transform: uppercase;
+    }
+    .sh-sm { box-shadow: var(--shadow-sm); }
+    .sh-md { box-shadow: var(--shadow-md); }
+    .sh-lg { box-shadow: var(--shadow-lg); }
+    .shadow-cap {
+      display: block;
+      margin-top: var(--space-3);
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-sm);
+      color: var(--color-ink-muted);
+      letter-spacing: var(--text-mono-tracking);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="page-title">Restormel — Foundations</h1>
+    <p class="page-sub">Neo-Brutalist v3 // tokens reference</p>
+
+    <!-- COLOUR -->
+    <section class="section">
+      <h2 class="section-head">Colour palette</h2>
+      <div class="swatch-grid">
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#f3ead0"></div>
+          <div class="swatch-meta"><span class="swatch-name">Canvas</span><span class="swatch-var">--color-bg</span><span class="swatch-hex">#f3ead0</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#e8dfbf"></div>
+          <div class="swatch-meta"><span class="swatch-name">Canvas deep</span><span class="swatch-var">--color-bg-deep</span><span class="swatch-hex">#e8dfbf</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#fffef0"></div>
+          <div class="swatch-meta"><span class="swatch-name">Surface</span><span class="swatch-var">--color-surface</span><span class="swatch-hex">#fffef0</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#ffd600"></div>
+          <div class="swatch-meta"><span class="swatch-name">Yellow</span><span class="swatch-var">--color-yellow</span><span class="swatch-hex">#ffd600</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#e6bf00"></div>
+          <div class="swatch-meta"><span class="swatch-name">Yellow dark</span><span class="swatch-var">--color-yellow-dark</span><span class="swatch-hex">#e6bf00</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#1a3f8a"></div>
+          <div class="swatch-meta"><span class="swatch-name">Blue</span><span class="swatch-var">--color-blue</span><span class="swatch-hex">#1a3f8a</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#0c0c0c"></div>
+          <div class="swatch-meta"><span class="swatch-name">Ink</span><span class="swatch-var">--color-ink</span><span class="swatch-hex">#0c0c0c</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#3a3530"></div>
+          <div class="swatch-meta"><span class="swatch-name">Ink muted</span><span class="swatch-var">--color-ink-muted</span><span class="swatch-hex">#3a3530</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#7a7060"></div>
+          <div class="swatch-meta"><span class="swatch-name">Ink faint</span><span class="swatch-var">--color-ink-faint</span><span class="swatch-hex">#7a7060</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#2ec4b6"></div>
+          <div class="swatch-meta"><span class="swatch-name">Signal teal</span><span class="swatch-var">--signal-teal</span><span class="swatch-hex">#2ec4b6</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#ffb84d"></div>
+          <div class="swatch-meta"><span class="swatch-name">Amber insight</span><span class="swatch-var">--amber-insight</span><span class="swatch-hex">#ffb84d</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#f25c54"></div>
+          <div class="swatch-meta"><span class="swatch-name">Coral alert</span><span class="swatch-var">--coral-alert</span><span class="swatch-hex">#f25c54</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#d94e47"></div>
+          <div class="swatch-meta"><span class="swatch-name">Brut coral</span><span class="swatch-var">--brut-coral</span><span class="swatch-hex">#d94e47</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#9d84b7"></div>
+          <div class="swatch-meta"><span class="swatch-name">Violet depth</span><span class="swatch-var">--violet-depth</span><span class="swatch-hex">#9d84b7</span></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-chip" style="background:#1c1917"></div>
+          <div class="swatch-meta"><span class="swatch-name">Code bg</span><span class="swatch-var">--code-bg</span><span class="swatch-hex">#1c1917</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TYPE -->
+    <section class="section">
+      <h2 class="section-head">Type scale</h2>
+
+      <div class="type-row">
+        <div class="type-label"><b>Display / Barlow Condensed</b>--text-display-md · 32px · 900</div>
+        <div style="font-family:var(--font-display);font-weight:900;font-size:var(--text-display-md);text-transform:uppercase;letter-spacing:var(--text-display-tracking);line-height:var(--text-display-line-height)">Verified answers</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label"><b>Display lg</b>--text-display-lg · 52px · 900</div>
+        <div style="font-family:var(--font-display);font-weight:900;font-size:var(--text-display-lg);text-transform:uppercase;letter-spacing:var(--text-display-tracking);line-height:var(--text-display-line-height)">Restormel</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label"><b>Body / DM Sans</b>--text-body-md · 15px · 400</div>
+        <div style="font-family:var(--font-body);font-size:var(--text-body-md);line-height:var(--text-body-line-height)">The quick brown fox jumps over the lazy dog. Body copy reads at a comfortable 1.65 line-height on the warm cream canvas.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label"><b>Body sm</b>--text-body-sm · 14px</div>
+        <div style="font-family:var(--font-body);font-size:var(--text-body-sm);line-height:var(--text-body-line-height)">Secondary body text and card bodies use the small body size.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label"><b>Mono lg</b>--text-mono-lg · 13px · 700</div>
+        <div style="font-family:var(--font-mono);font-size:var(--text-mono-lg);font-weight:700;text-transform:uppercase;letter-spacing:var(--text-mono-tracking)">CARD TITLE / SPACE MONO</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label"><b>Mono md</b>--text-mono-md · 11px · 700</div>
+        <div style="font-family:var(--font-mono);font-size:var(--text-mono-md);font-weight:700;text-transform:uppercase;letter-spacing:var(--text-mono-tracking)">METADATA LABEL</div>
+      </div>
+      <div class="type-row">
+        <div class="type-label"><b>Mono sm</b>--text-mono-sm · 10px · 700</div>
+        <div style="font-family:var(--font-mono);font-size:var(--text-mono-sm);font-weight:700;text-transform:uppercase;letter-spacing:var(--text-mono-tracking)">KICKER / FIELD LABEL</div>
+      </div>
+    </section>
+
+    <!-- SPACING -->
+    <section class="section">
+      <h2 class="section-head">Spacing scale (4px base)</h2>
+      <div class="space-row"><div class="space-label">--space-1 · 4px</div><div class="space-bar" style="width:0.25rem"></div></div>
+      <div class="space-row"><div class="space-label">--space-2 · 8px</div><div class="space-bar" style="width:0.5rem"></div></div>
+      <div class="space-row"><div class="space-label">--space-3 · 12px</div><div class="space-bar" style="width:0.75rem"></div></div>
+      <div class="space-row"><div class="space-label">--space-4 · 16px</div><div class="space-bar" style="width:1rem"></div></div>
+      <div class="space-row"><div class="space-label">--space-5 · 20px</div><div class="space-bar" style="width:1.25rem"></div></div>
+      <div class="space-row"><div class="space-label">--space-6 · 24px</div><div class="space-bar" style="width:1.5rem"></div></div>
+      <div class="space-row"><div class="space-label">--space-8 · 32px</div><div class="space-bar" style="width:2rem"></div></div>
+      <div class="space-row"><div class="space-label">--space-10 · 40px</div><div class="space-bar" style="width:2.5rem"></div></div>
+      <div class="space-row"><div class="space-label">--space-12 · 48px</div><div class="space-bar" style="width:3rem"></div></div>
+      <div class="space-row"><div class="space-label">--space-16 · 64px</div><div class="space-bar" style="width:4rem"></div></div>
+      <div class="space-row"><div class="space-label">--space-20 · 80px</div><div class="space-bar" style="width:5rem"></div></div>
+    </section>
+
+    <!-- SHADOWS -->
+    <section class="section">
+      <h2 class="section-head">Shadows (offset, hard ink)</h2>
+      <div class="shadow-grid">
+        <div>
+          <div class="shadow-box sh-sm">SM</div>
+          <span class="shadow-cap">--shadow-sm · 3px 3px 0</span>
+        </div>
+        <div>
+          <div class="shadow-box sh-md">MD</div>
+          <span class="shadow-cap">--shadow-md · 5px 5px 0</span>
+        </div>
+        <div>
+          <div class="shadow-box sh-lg">LG</div>
+          <span class="shadow-cap">--shadow-lg · 7px 7px 0</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

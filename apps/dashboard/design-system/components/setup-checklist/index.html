@@ -1,0 +1,144 @@
+<!-- @dsCard group="Surfaces / Dashboard" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SetupChecklist — Restormel Dashboard</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Tokens the product defines elsewhere; resolved to real values ── */
+    :root {
+      --text-base: 1rem;
+      --text-sm: 0.875rem;
+      --text-xs: 0.75rem;
+      --rm-sage: var(--color-blue);
+    }
+
+    /* ── Card chrome (layout + labels only) ── */
+    body {
+      background: var(--color-bg);
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: var(--space-8);
+    }
+    .ds-title {
+      font-family: var(--font-display); font-weight: 900;
+      font-size: var(--text-display-md); line-height: 0.95;
+      letter-spacing: -0.01em; text-transform: uppercase; margin: 0 0 var(--space-2);
+    }
+    .ds-desc { font-size: var(--text-body-md); color: var(--color-ink-muted); max-width: 64ch; margin: 0 0 var(--space-8); }
+    .ds-section-label {
+      font-family: var(--font-mono); font-weight: 700; font-size: var(--text-mono-md);
+      text-transform: uppercase; letter-spacing: var(--text-mono-tracking); color: var(--color-ink);
+      border-bottom: var(--border); padding-bottom: var(--space-2); margin: var(--space-10) 0 var(--space-5);
+    }
+    .ds-stage { max-width: 420px; margin: 0 0 var(--space-8); }
+
+    /* ── SetupChecklist scoped CSS (from component <style>) ── */
+    .setup-checklist,
+    .setup-complete-banner {
+      border: var(--border-thin);
+      background: var(--rm-surface-raised);
+      border-radius: var(--rm-radius);
+      padding: var(--space-4);
+    }
+    .setup-checklist h2 { margin: 0 0 var(--space-3); font-size: var(--text-base); color: var(--rm-text); }
+    .setup-checklist ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+    .setup-checklist li { display: flex; gap: var(--space-2); align-items: flex-start; }
+    .step-indicator {
+      width: 1.25rem; display: inline-flex; justify-content: center;
+      color: var(--rm-dim); font-size: var(--text-sm); line-height: 1.4; margin-top: 0.05rem;
+    }
+    .step-indicator.complete { color: #2e8f57; }
+    .step-indicator.current { color: var(--rm-sage); animation: pulse 1.1s ease-in-out infinite; }
+    .step-content { display: grid; gap: 0.1rem; }
+    .step-content a { color: var(--rm-sage); text-decoration: none; font-size: var(--text-sm); }
+    .step-content a:hover { text-decoration: underline; }
+    .step-content span { font-size: var(--text-sm); color: var(--rm-text); }
+    .step-content small { font-size: var(--text-xs); color: var(--rm-dim); }
+    .setup-complete-banner {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: var(--space-3); font-size: var(--text-sm); color: var(--rm-text);
+    }
+    .setup-complete-banner button {
+      border: var(--border-thin); background: transparent; color: var(--rm-muted);
+      border-radius: var(--rm-radius); font-size: var(--text-xs);
+      padding: var(--space-1) var(--space-2); cursor: pointer;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  </style>
+</head>
+<body>
+  <h2 class="ds-title">SetupChecklist</h2>
+  <p class="ds-desc">
+    Onboarding progress ledger for a new workspace. Seven ordered steps — completed ones get a
+    green ✓ and a completion date; the first incomplete step is the "current" step (sage, pulsing)
+    and links to where you finish it. Once every step is complete it collapses to a dismissable
+    "Setup complete" banner. (<code>.setup-checklist</code> · <code>.step-indicator</code>)
+  </p>
+
+  <div class="ds-section-label">State · in progress (current step pulsing)</div>
+  <div class="ds-stage">
+    <section class="setup-checklist" aria-labelledby="sc-heading">
+      <h2 id="sc-heading">Setup progress</h2>
+      <ol>
+        <li>
+          <span class="step-indicator complete" aria-hidden="true">✓</span>
+          <span class="step-content">
+            <span>Workspace created</span>
+            <small>12 Jun 2026</small>
+          </span>
+        </li>
+        <li>
+          <span class="step-indicator complete" aria-hidden="true">✓</span>
+          <span class="step-content">
+            <span>Project created</span>
+            <small>13 Jun 2026</small>
+          </span>
+        </li>
+        <li>
+          <span class="step-indicator complete" aria-hidden="true">✓</span>
+          <span class="step-content">
+            <span>Provider connected</span>
+            <small>14 Jun 2026</small>
+          </span>
+        </li>
+        <li>
+          <span class="step-indicator current" aria-hidden="true">○</span>
+          <span class="step-content">
+            <a href="#">Gateway Key created</a>
+          </span>
+        </li>
+        <li>
+          <span class="step-indicator" aria-hidden="true">○</span>
+          <span class="step-content">
+            <a href="#">Route created</a>
+          </span>
+        </li>
+        <li>
+          <span class="step-indicator" aria-hidden="true">○</span>
+          <span class="step-content">
+            <a href="#">First request received</a>
+          </span>
+        </li>
+        <li>
+          <span class="step-indicator" aria-hidden="true">○</span>
+          <span class="step-content">
+            <a href="#">Logs reviewed</a>
+          </span>
+        </li>
+      </ol>
+    </section>
+  </div>
+
+  <div class="ds-section-label">State · all complete (dismissable banner)</div>
+  <div class="ds-stage">
+    <section class="setup-complete-banner" aria-label="Setup complete">
+      <span>Setup complete · 16 Jun 2026</span>
+      <button type="button" aria-label="Dismiss setup banner">Dismiss</button>
+    </section>
+  </div>
+</body>
+</html>

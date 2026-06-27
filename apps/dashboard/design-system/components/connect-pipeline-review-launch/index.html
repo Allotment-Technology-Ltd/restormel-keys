@@ -1,0 +1,323 @@
+<!-- @dsCard group="Surfaces / Route Creator" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ConnectPipelineReviewLaunch — Surfaces / Route Creator</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* base.css tokens referenced by the scoped pipeline CSS but not present in the standalone styles.css */
+    :root {
+      --text-xs: .75rem;
+      --text-sm: .875rem;
+      --text-lg: 1.125rem;
+      --rm-sage: var(--signal-teal);
+      --color-canvas: var(--color-bg);
+    }
+    body { padding: var(--space-8); background: var(--color-bg); }
+    .wrap { max-width: 56rem; margin: 0 auto; }
+    .card-title { font-family: var(--font-display); font-weight: 900; font-size: var(--text-display-md); text-transform: uppercase; letter-spacing: var(--text-display-tracking); line-height: .95; margin: 0 0 var(--space-2); }
+    .card-desc { font-size: var(--text-body-md); color: var(--color-ink-muted); max-width: 48rem; margin: 0 0 var(--space-8); }
+    .variant { margin: 0 0 var(--space-10); }
+    .variant-label { font-family: var(--font-mono); font-size: var(--text-mono-md); font-weight: 700; letter-spacing: var(--text-mono-tracking); text-transform: uppercase; color: var(--color-ink-muted); border-bottom: var(--border-thin); padding-bottom: var(--space-2); margin: 0 0 var(--space-5); }
+    .stage { border: var(--border-thin); background: var(--color-bg); padding: var(--space-6); }
+
+    /* ── Component <style> block lifted verbatim from ConnectPipelineReviewLaunch.svelte ── */
+    .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .reingest-guard { border: var(--border); background: var(--state-warn-bg, #fff8e1); box-shadow: var(--shadow-md); padding: var(--space-3) var(--space-4); margin: var(--space-4) 0 0; }
+    .reingest-guard-header { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); }
+    .reingest-guard-glyph { font-family: var(--font-mono); font-size: var(--text-mono-lg); color: var(--state-warn-fg, var(--color-ink)); line-height: 1; flex-shrink: 0; }
+    .reingest-guard-title { font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--state-warn-fg, var(--color-ink)); }
+    .reingest-guard-note { font-size: var(--text-sm); color: var(--color-ink); margin: 0 0 var(--space-3); line-height: 1.5; }
+    .reingest-confirm-label { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 700; color: var(--color-ink); cursor: pointer; min-height: 44px; }
+    .reingest-confirm-checkbox { flex-shrink: 0; width: 18px; height: 18px; accent-color: var(--color-ink); cursor: pointer; }
+
+    /* ── Scoped rules extracted from connect-pipeline.css (Review & launch) ── */
+    .connect-pipeline .form { display: flex; flex-direction: column; gap: var(--space-3); max-width: 42rem; }
+    .connect-pipeline .field { display: flex; flex-direction: column; gap: var(--space-1); }
+    .connect-pipeline .field-label { font-size: var(--text-sm); color: var(--rm-text); font-weight: 500; }
+    .connect-pipeline .field-hint { font-size: var(--text-xs); color: var(--rm-muted); font-weight: 400; }
+    .connect-pipeline .notice { border: var(--border-thin); background: var(--rm-surface-raised); color: var(--rm-muted); padding: var(--space-2) var(--space-3); margin: 0; }
+    .connect-pipeline .err { color: var(--coral-alert); }
+    .connect-pipeline .disclosure { border-top: var(--border-thin); padding-top: var(--space-3); }
+    .connect-pipeline .disclosure summary { cursor: pointer; color: var(--rm-sage); font-size: var(--text-sm); margin-bottom: var(--space-3); }
+
+    .connect-pipeline .preflight-checklist { list-style: none; margin: 0 0 var(--space-4); padding: 0; border: var(--border); background: var(--color-surface); box-shadow: var(--shadow-sm); max-width: 42rem; }
+    .connect-pipeline .preflight-row { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-ink); }
+    .connect-pipeline .preflight-row:last-child { border-bottom: none; }
+    .connect-pipeline .preflight-bullet { font-family: var(--font-mono); flex-shrink: 0; color: var(--color-ink); }
+    .connect-pipeline .preflight-bullet-warn { color: var(--color-ink); }
+    .connect-pipeline .preflight-main { flex: 1; min-width: 0; }
+    .connect-pipeline .preflight-label { display: block; font-family: var(--font-mono); font-size: var(--text-mono-sm); color: var(--color-ink-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+    .connect-pipeline .preflight-value { display: block; font-size: var(--text-sm); margin-top: var(--space-1); }
+    .connect-pipeline .preflight-warn-note { margin: var(--space-1) 0 0; font-size: var(--text-xs); color: var(--color-ink-muted); }
+    .connect-pipeline .preflight-edit { font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 700; flex-shrink: 0; align-self: center; }
+    .connect-pipeline .preflight-repair-list { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: grid; gap: var(--space-2); }
+    .connect-pipeline .preflight-repair-item { border: 1px solid var(--color-ink); padding: var(--space-2) var(--space-3); background: var(--color-canvas); }
+    .connect-pipeline .preflight-repair-item .preflight-warn-note { margin-top: 0; }
+    .connect-pipeline .preflight-repair-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+    .connect-pipeline .preflight-override { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); font-size: var(--text-sm); }
+
+    .connect-pipeline .tag { font-family: var(--font-mono); font-size: var(--text-mono-sm); padding: 0 var(--space-2); border: var(--border); text-transform: uppercase; letter-spacing: 0.04em; }
+    .connect-pipeline .tag-builtin { background: var(--color-ink); color: var(--color-surface); }
+    .connect-pipeline .tag-custom { background: transparent; color: var(--color-ink); }
+
+    .connect-pipeline .run-forecast-title { margin: 0 0 var(--space-2); font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+    .connect-pipeline .run-forecast-warn { color: var(--coral-alert); font-weight: 600; }
+    .connect-pipeline .run-estimate { border: var(--border); background: var(--color-bg); padding: var(--space-3); margin-top: var(--space-4); max-width: 42rem; display: flex; flex-direction: column; gap: var(--space-2); }
+    .connect-pipeline .run-estimate-label { font-family: var(--font-mono); font-size: var(--text-mono-sm); color: var(--color-ink-faint); }
+    .connect-pipeline .run-estimate-value { font-size: var(--text-sm); }
+    .connect-pipeline .run-estimate-row { display: flex; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+    .connect-pipeline .wizard-run-empty { max-width: 42rem; }
+    .connect-pipeline .wizard-run-form { max-width: 42rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2 class="card-title">ConnectPipelineReviewLaunch</h2>
+    <p class="card-desc">
+      The final step: a preflight checklist (graph store, domain pack, documents, models, provider credentials),
+      a run-config form, and "what to expect" / run-estimate asides. START RUN is gated on every check passing —
+      the gate is computed here and bound up to the wizard footer so the two can't drift. When a graph already
+      exists, an explicit re-ingest guard must be acknowledged first.
+    </p>
+
+    <div class="variant">
+      <p class="variant-label">All clear — preflight passing, run configured</p>
+      <div class="stage connect-pipeline">
+        <section class="wizard-launch" aria-labelledby="launch-heading-1">
+          <h3 id="launch-heading-1" class="visually-hidden">Review and launch</h3>
+          <ul class="preflight-checklist">
+            <li class="preflight-row">
+              <span class="preflight-bullet preflight-bullet-ok" aria-hidden="true">■</span>
+              <div class="preflight-main">
+                <span class="preflight-label">Graph store</span>
+                <span class="preflight-value"><strong>Workspace Neon database</strong></span>
+              </div>
+              <a class="preflight-edit" href="#">Edit →</a>
+            </li>
+            <li class="preflight-row">
+              <span class="preflight-bullet preflight-bullet-ok" aria-hidden="true">■</span>
+              <div class="preflight-main">
+                <span class="preflight-label">Domain pack</span>
+                <span class="preflight-value"><strong>Philosophy &amp; ideas</strong> <span class="tag tag-builtin">Built-in</span></span>
+              </div>
+              <a class="preflight-edit" href="#">Edit →</a>
+            </li>
+            <li class="preflight-row">
+              <span class="preflight-bullet preflight-bullet-ok" aria-hidden="true">■</span>
+              <div class="preflight-main">
+                <span class="preflight-label">Documents</span>
+                <span class="preflight-value"><strong>2 documents selected</strong></span>
+              </div>
+              <a class="preflight-edit" href="#">Edit →</a>
+            </li>
+            <li class="preflight-row">
+              <span class="preflight-bullet preflight-bullet-ok" aria-hidden="true">■</span>
+              <div class="preflight-main">
+                <span class="preflight-label">Models</span>
+                <span class="preflight-value"><strong>Default routes</strong></span>
+              </div>
+              <a class="preflight-edit" href="#">Edit →</a>
+            </li>
+            <li class="preflight-row">
+              <span class="preflight-bullet preflight-bullet-ok" aria-hidden="true">■</span>
+              <div class="preflight-main">
+                <span class="preflight-label">Provider credentials</span>
+                <span class="preflight-value"><strong>2 providers executable on the routing project</strong></span>
+              </div>
+              <a class="preflight-edit" href="#">Edit →</a>
+            </li>
+          </ul>
+
+          <form class="form wizard-run-form">
+            <label class="field">
+              <span class="field-label">Run name (shown in run history)</span>
+              <input class="input" type="text" value="Ingest run — Jun 27, 2026" autocomplete="off" maxlength="200" />
+            </label>
+            <label class="field">
+              <span class="field-label">Domain pack for this run</span>
+              <select class="input">
+                <option selected>Philosophy &amp; ideas (built-in)</option>
+                <option>Generic knowledge (built-in)</option>
+                <option>Customer support corpus</option>
+              </select>
+              <span class="field-hint">Controls extraction vocabulary. Defaults to your saved domain.</span>
+            </label>
+            <details class="disclosure">
+              <summary>Advanced run options</summary>
+              <label class="field">
+                <span class="field-label">Stop after stage (optional)</span>
+                <select class="input">
+                  <option value="">Full pipeline</option>
+                  <option>extracting</option>
+                  <option>relating</option>
+                  <option>grouping</option>
+                  <option>embedding</option>
+                  <option>validating</option>
+                  <option>remediating</option>
+                  <option>storing</option>
+                </select>
+                <span class="field-hint">Useful for debugging — e.g. stop after extracting without embedding.</span>
+              </label>
+            </details>
+
+            <aside class="run-estimate run-forecast" aria-label="Expected quality">
+              <p class="run-forecast-title">What to expect</p>
+              <div class="run-estimate-row">
+                <span class="run-estimate-label">Quality preset</span>
+                <span class="run-estimate-value">Production — every claim validated against the source, weak claims remediated</span>
+              </div>
+              <div class="run-estimate-row">
+                <span class="run-estimate-label">Cross-model validation</span>
+                <span class="run-estimate-value">On — a different model family judges the extraction</span>
+              </div>
+              <div class="run-estimate-row">
+                <span class="run-estimate-label">Quality bar</span>
+                <span class="run-estimate-value">≥90% of claims supported, ≤2% unsupported (G2) — reported after the run</span>
+              </div>
+              <div class="run-estimate-row">
+                <span class="run-estimate-label">Current graph scorecard</span>
+                <span class="run-estimate-value">
+                  Trust score <strong>87/100</strong> · 92% supported · 96% evidence-bound · 100% embedded · last verified Jun 24, 2026
+                  — this run adds to the same graph; the scorecard on the Connect hub updates when it completes.
+                </span>
+              </div>
+            </aside>
+
+            <aside class="run-estimate" aria-label="Run estimates">
+              <div class="run-estimate-row">
+                <span class="run-estimate-label">Run time (floor estimate)</span>
+                <span class="run-estimate-value">~10–25 min (50 chunks)</span>
+              </div>
+              <div class="run-estimate-row">
+                <span class="run-estimate-label">Estimated LLM calls</span>
+                <span class="run-estimate-value">~100+ across 2 documents</span>
+              </div>
+              <div class="run-estimate-row">
+                <span class="run-estimate-label">Models used</span>
+                <span class="run-estimate-value">Configured ingest routes</span>
+              </div>
+            </aside>
+          </form>
+        </section>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Needs attention — warn rows + provider-credential repair</p>
+      <div class="stage connect-pipeline">
+        <ul class="preflight-checklist">
+          <li class="preflight-row preflight-row-warn">
+            <span class="preflight-bullet preflight-bullet-warn" aria-hidden="true">□</span>
+            <div class="preflight-main">
+              <span class="preflight-label">Graph store</span>
+              <span class="preflight-value"><strong>Not configured</strong></span>
+              <p class="preflight-warn-note">
+                No graph store is connected — your ingest run needs a durable home for the graph or it will fail
+                mid-flight. Configure one to start.
+              </p>
+            </div>
+            <a class="preflight-edit" href="#">Configure store →</a>
+          </li>
+          <li class="preflight-row preflight-row-warn">
+            <span class="preflight-bullet preflight-bullet-warn" aria-hidden="true">□</span>
+            <div class="preflight-main">
+              <span class="preflight-label">Documents</span>
+              <span class="preflight-value"><strong>2 documents selected</strong></span>
+              <p class="preflight-warn-note">Only 2 of 5 parsed documents selected.</p>
+            </div>
+            <a class="preflight-edit" href="#">Edit →</a>
+          </li>
+          <li class="preflight-row preflight-row-warn">
+            <span class="preflight-bullet preflight-bullet-warn" aria-hidden="true">□</span>
+            <div class="preflight-main">
+              <span class="preflight-label">Models</span>
+              <span class="preflight-value"><strong>Routes not configured</strong></span>
+              <p class="preflight-warn-note">Publish chat and embedding routes before starting.</p>
+            </div>
+            <a class="preflight-edit" href="#">Edit →</a>
+          </li>
+          <li class="preflight-row preflight-row-warn">
+            <span class="preflight-bullet preflight-bullet-warn" aria-hidden="true">□</span>
+            <div class="preflight-main">
+              <span class="preflight-label">Provider credentials</span>
+              <span class="preflight-value"><strong>Needs attention</strong></span>
+              <ul class="preflight-repair-list">
+                <li class="preflight-repair-item">
+                  <p class="preflight-warn-note">OpenAI has no executable chat route bound to the routing project.</p>
+                  <div class="preflight-repair-actions">
+                    <button type="button" class="btn btn-primary btn-sm">Bind Workspace OpenAI to project</button>
+                    <a class="btn btn-outline btn-sm" href="#">Add a provider key →</a>
+                  </div>
+                </li>
+              </ul>
+              <div class="preflight-repair-actions">
+                <button type="button" class="btn btn-outline btn-sm">Re-check</button>
+                <a class="btn btn-outline btn-sm" href="#readiness">Open readiness ledger</a>
+              </div>
+            </div>
+            <a class="preflight-edit" href="#">Edit →</a>
+          </li>
+        </ul>
+
+        <div class="reingest-guard" role="group" aria-labelledby="reingest-guard-label">
+          <div class="reingest-guard-header">
+            <span class="reingest-guard-glyph" aria-hidden="true">▲</span>
+            <span id="reingest-guard-label" class="reingest-guard-title">This run will re-ingest 2 documents into your existing graph</span>
+          </div>
+          <p class="reingest-guard-note">
+            Your workspace already has a knowledge graph. Starting this run will process the 2 selected documents and
+            add them to (or overwrite entries in) the graph. This uses LLM calls and may duplicate existing graph
+            content. Go back to <strong>Sources</strong> to change your selection.
+          </p>
+          <label class="reingest-confirm-label">
+            <input type="checkbox" class="reingest-confirm-checkbox" />
+            <span>I understand — re-ingest 2 documents into my existing graph</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Legacy environment-key override (no published stage routes)</p>
+      <div class="stage connect-pipeline">
+        <ul class="preflight-checklist">
+          <li class="preflight-row preflight-row-warn">
+            <span class="preflight-bullet preflight-bullet-warn" aria-hidden="true">□</span>
+            <div class="preflight-main">
+              <span class="preflight-label">Provider credentials</span>
+              <span class="preflight-value"><strong>Legacy environment key</strong></span>
+              <p class="preflight-warn-note">
+                No published stage routes — this run would execute on the server's legacy environment key instead of
+                your project's provider connections.
+              </p>
+              <label class="preflight-override">
+                <input type="checkbox" />
+                <span>Run on the legacy environment key anyway</span>
+              </label>
+            </div>
+            <a class="preflight-edit" href="#">Edit →</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Empty — no documents selected for this run</p>
+      <div class="stage connect-pipeline">
+        <section class="wizard-run-empty" role="status">
+          <p class="notice">
+            No documents are selected for this run. Go back to <strong>Sources</strong>, import from any connector or
+            URL, then check the documents you want included.
+          </p>
+          <div style="margin-top: var(--space-3);">
+            <button type="button" class="btn btn-outline btn-sm">Back to Sources</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

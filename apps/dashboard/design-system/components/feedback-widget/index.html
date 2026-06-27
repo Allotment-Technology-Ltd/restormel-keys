@@ -1,0 +1,152 @@
+<!-- @dsCard group="Shell" -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FeedbackWidget — Restormel Shell</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Legacy token bridge → product resolved values ── */
+    :root {
+      --rm-bg: #f3ead0;
+      --rm-surface: #fffef0;
+      --rm-surface-raised: #fffef0;
+      --rm-border: #0c0c0c;
+      --rm-text: #0c0c0c;
+      --rm-muted: #3a3530;
+      --rm-dim: #7a7060;
+      --rm-radius: 0;
+      --rm-sage: #2ec4b6;
+      --rm-sage-bg: #d8f3e3;
+      --rm-font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+      --radius-md: 6px;
+      --text-lg: 18px;
+      --text-sm: 14px;
+      --text-xs: 12px;
+      --z-modal: 1000;
+    }
+
+    /* ── Card chrome ── */
+    body { padding: var(--space-8); }
+    .ds-head { margin-bottom: var(--space-8); }
+    .ds-head h2 {
+      font-family: var(--font-display); font-weight: 900; text-transform: uppercase;
+      font-size: var(--text-display-md); letter-spacing: var(--text-display-tracking);
+      line-height: 0.95; margin: 0 0 var(--space-2);
+    }
+    .ds-head p { margin: 0; color: var(--color-ink-muted); font-size: var(--text-body-md); max-width: 64ch; }
+    .ds-label {
+      font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 700;
+      text-transform: uppercase; letter-spacing: var(--text-mono-tracking);
+      color: var(--color-ink-faint); margin: 0 0 var(--space-3);
+    }
+    .ds-row { display: flex; flex-wrap: wrap; gap: var(--space-10); align-items: flex-start; }
+    /* drawer is normally position:fixed bottom-left; render it static for the card */
+    .ds-stage .feedback-drawer {
+      position: static; inset: auto; animation: none; width: min(26rem, 100%);
+    }
+
+    /* ── Component scoped style (from FeedbackWidget.svelte) ── */
+    .feedback-drawer {
+      position: fixed; left: var(--space-4); bottom: var(--space-4);
+      width: min(26rem, calc(100vw - var(--space-8)));
+      background: var(--rm-surface); border: 1px solid var(--rm-border);
+      border-radius: var(--radius-md); padding: var(--space-4);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.36); z-index: var(--z-modal);
+    }
+    .close-btn {
+      position: absolute; top: var(--space-2); right: var(--space-2);
+      border: 0; background: transparent; color: var(--rm-muted);
+      width: 2rem; height: 2rem; border-radius: var(--rm-radius);
+      font-size: 1.25rem; cursor: pointer;
+    }
+    .close-btn:hover { background: var(--rm-surface-raised); color: var(--rm-text); }
+    .title { margin: 0 0 var(--space-3); font-size: var(--text-lg); color: var(--rm-text); font-family: var(--rm-font-display); }
+    .form { display: grid; gap: var(--space-3); }
+    .fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+    .category-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-1); }
+    .pill {
+      border: 1px solid var(--rm-border); border-radius: 999px; padding: 0.35rem 0.7rem;
+      font-size: var(--text-xs); color: var(--rm-muted); background: var(--rm-surface-raised); cursor: pointer;
+    }
+    .pill-active { background: var(--rm-sage-bg); border-color: var(--rm-sage); color: var(--rm-sage); }
+    .label { font-size: var(--text-xs); color: var(--rm-dim); }
+    .input {
+      width: 100%; border: 1px solid var(--rm-border); border-radius: var(--rm-radius);
+      background: var(--rm-bg); color: var(--rm-text); padding: var(--space-2) var(--space-3); font-size: var(--text-sm);
+    }
+    .textarea { resize: vertical; min-height: 6rem; }
+    .btn { border: 0; border-radius: var(--rm-radius); padding: var(--space-2) var(--space-4); font-size: var(--text-sm); cursor: pointer; }
+    .btn-primary { background: var(--color-yellow); color: var(--rm-bg); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .error-copy { margin: 0; color: var(--coral-alert); font-size: var(--text-sm); }
+    .success-copy { margin: 0 0 var(--space-3); color: var(--rm-muted); }
+  </style>
+</head>
+<body>
+  <div class="ds-head">
+    <h2>FeedbackWidget</h2>
+    <p>Bottom-left feedback drawer (focus-trapped, Esc to close). Category pills (bug /
+       question / feature), a title + description form, and a thank-you success state after
+       submit. Note: a softer surface than the brutalist cards — rounded pills, drop shadow.</p>
+  </div>
+
+  <div class="ds-row ds-stage">
+    <div>
+      <p class="ds-label">Form — "Bug" selected</p>
+      <div class="feedback-drawer" role="dialog" aria-label="Send feedback">
+        <button type="button" class="close-btn" aria-label="Close feedback drawer">×</button>
+        <h2 class="title">Send feedback</h2>
+        <form class="form" onsubmit="return false">
+          <fieldset class="fieldset">
+            <div class="category-row" aria-label="Feedback category">
+              <button type="button" class="pill pill-active">Bug</button>
+              <button type="button" class="pill">Question</button>
+              <button type="button" class="pill">Feature request</button>
+            </div>
+            <label class="label" for="feedback-title-1">Title</label>
+            <input id="feedback-title-1" class="input" type="text" maxlength="200" placeholder="Short summary" value="Resolve returns 500 on empty route" />
+            <label class="label" for="feedback-description-1">Description</label>
+            <textarea id="feedback-description-1" class="input textarea" rows="4" maxlength="2000" placeholder="What happened? What did you expect?">Calling /resolve with an empty route list 500s instead of returning a validation error.</textarea>
+          </fieldset>
+          <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+      </div>
+    </div>
+
+    <div>
+      <p class="ds-label">Form — empty (Send disabled) + error</p>
+      <div class="feedback-drawer" role="dialog" aria-label="Send feedback">
+        <button type="button" class="close-btn" aria-label="Close feedback drawer">×</button>
+        <h2 class="title">Send feedback</h2>
+        <form class="form" onsubmit="return false">
+          <fieldset class="fieldset">
+            <div class="category-row" aria-label="Feedback category">
+              <button type="button" class="pill">Bug</button>
+              <button type="button" class="pill">Question</button>
+              <button type="button" class="pill pill-active">Feature request</button>
+            </div>
+            <label class="label" for="feedback-title-2">Title</label>
+            <input id="feedback-title-2" class="input" type="text" maxlength="200" placeholder="Short summary" />
+            <label class="label" for="feedback-description-2">Description</label>
+            <textarea id="feedback-description-2" class="input textarea" rows="4" maxlength="2000" placeholder="What happened? What did you expect?"></textarea>
+          </fieldset>
+          <p class="error-copy">Something went wrong. Try again.</p>
+          <button type="submit" class="btn btn-primary" disabled>Send</button>
+        </form>
+      </div>
+    </div>
+
+    <div>
+      <p class="ds-label">Success state</p>
+      <div class="feedback-drawer" role="dialog" aria-label="Send feedback">
+        <button type="button" class="close-btn" aria-label="Close feedback drawer">×</button>
+        <h2 class="title">Send feedback</h2>
+        <p class="success-copy">Thanks — we'll look into it.</p>
+        <button type="button" class="btn btn-primary">Close</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
