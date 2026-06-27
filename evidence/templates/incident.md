@@ -16,6 +16,8 @@ retention: review-only
 
 > Copy to `evidence/incidents/<date>-<slug>.md` as `class: evidence`, `control-tier: 3`.
 > Capture while fresh (incident-capture playbook). Append-only once filed.
+> On **close**, set `status: closed` **and** `approved-by` + `approved-on` (the person who
+> signed off the RCA + the date) — these become a CI-blocking requirement once finalized.
 
 - **Detected:** `<datetime>`   **Reported by:** `<…>`   **Severity:** `<low|med|high>`
 - **What happened:** `<…>`

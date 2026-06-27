@@ -10,6 +10,8 @@ created: 2026-06-16
 last-reviewed: 2026-06-16
 review-interval: P12M
 retention: P6Y
+approved-by: founder
+approved-on: 2026-06-16
 related: [REC-TPL-004]
 ---
 
