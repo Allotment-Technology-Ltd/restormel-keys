@@ -94,3 +94,29 @@ kit alongside the escrow key. (The weekly drill itself fetches them from Infisic
   Stage-C requirement is the **full `etcd-s3`-path cold-start on a real box** (orchestration + RTO under
   the cold-start harness) before the irreversible Stage D/E (`.150` standby delete, BX11 cancel,
   `.150` decommission). Those remain **blocked** pending that founder-run cold-start.
+
+## Addendum (2026-06-27) — J10 etcd: cluster state recovers + added to the weekly drill
+
+REC-EVID-004 proved the J10 snapshot is a *valid etcd db* (`etcdutl snapshot status`). This addendum
+upgrades that to a **cluster-state-recovers** proof and folds it into the automatable weekly drill:
+
+- The latest master snapshot (`restormel-etcd-snapshots-fsn1/k3s/etcd-snapshot-…-master1-…`) was restored
+  into a **standalone etcd** (Docker, etcd v3.6) and its keyspace enumerated: **2516 objects, 25
+  namespaces, 5 CNPG clusters, 9 Argo applications, 184 services, 139 secrets, 59 deployments, 6
+  statefulsets** — i.e. the entire estate's declarative state is present and recoverable from S3 alone.
+- **Done with zero controllers, zero cloud token, zero prod risk.** This is deliberate: restoring the prod
+  etcd into a *live, networked* K3s would start the Hetzner **CCM** (holding the cloud token) and
+  **external-dns**, which could reconcile against the real Hetzner project and **mutate/tear down prod**.
+  Therefore the safe, automatable J10 proof restores the snapshot **offline**; the full live-cluster boot
+  ("apps return 200") stays a **founder-supervised, egress-firewalled** exercise (the cold-start box drill).
+- **Finding: K3s secrets are NOT encrypted at rest** — the etcd snapshot alone restores all secrets (no
+  separate encryption-config key needs escrowing for J10). It also means the etcd snapshot is itself
+  sensitive (plaintext secrets); the drill shreds it after use, like the escrow bundle.
+- **Drill bug caught by the drill:** the first J10 run picked a stray `verify-s3-*` S3-write-probe object
+  (older state, 3 CNPG clusters) because it sorts after `etcd-snapshot-*`; the selector now matches only
+  `etcd-snapshot-<node>-<epoch>`.
+
+`jewels-proof-local.sh` now runs **8/8** (J3/J4/J6/J7/J8 + C1 + C2 + J10) in ~3 min, £0, full teardown —
+so **9 of the 10 jewels** (all but J1 repos / J2 registry, covered read-only in REC-EVID-004) are proven
+by one automatable command. The weekly run is wired as a macOS launchd agent
+(`tech.allotmentology.dr-jewels-proof`, Sun 04:15, runs the latest `origin/main` blob).
