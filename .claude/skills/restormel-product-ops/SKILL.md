@@ -79,15 +79,19 @@ backend is Huly, where statuses are first-class and automatable — the gap Forg
 ## Route by your surface (this is the cross-surface part)
 
 **You're in Claude Code (on the Mac — can reach Huly).** Act directly:
-- **Read/operate ONE ticket live** with the proven mjs CLI `product-ops/forgejo-pack/huly/ticket.mjs`,
+- **Read/operate ONE ticket live** with the mjs CLI `product-ops/forgejo-pack/huly/ticket.mjs`,
   run via `./run.sh` (wires the account/transactor/collaborator port-forwards + reads `SERVER_SECRET`
   from the live pod — never echoed): `./run.sh ticket.mjs get RES-N` (full detail incl. the markdown
-  **description + comments** — the body `dump-res.mjs` lacks), `./run.sh ticket.mjs status RES-N "In
-  Progress"`, `./run.sh ticket.mjs note RES-N "audit line"`. **Create** a PBI with `ISSUE_TITLE=…
-  ISSUE_BODY=… ISSUE_PRIORITY=… ISSUE_STATUS=… ./run.sh create-issue.mjs --apply` (idempotent on title);
-  **list** the board with `./run.sh dump-res.mjs`; **batch** status/priority with `apply-res.mjs`
-  (MAP_FILE JSON). ⚠ Never run two `run.sh` at once (fixed port-forward ports). See the `huly-ticket-cli`
-  memory + `huly/README.md`.
+  **description + comments** — what the metadata-only `dump-active.mjs` lacks), `./run.sh ticket.mjs
+  status RES-N "In Progress"`, `./run.sh ticket.mjs priority RES-N High`, `./run.sh ticket.mjs note
+  RES-N "audit line"`. **List** the active board (In Progress + In Review) with `./run.sh ticket.mjs
+  list` (or `./run.sh dump-active.mjs`); keyword-search titles with `./run.sh find-connect.mjs`.
+  **Create-or-update** a PBI from an intent file (format below): `./run.sh apply-intent.mjs
+  <intent.yaml> --apply` (idempotent on the intent's match `id`/`query`) — or use the Huly MCP.
+  **Batch-review** many tickets' status/priority + post audit notes from one JSON with
+  `CHANGESET=<file.json> ./run.sh apply-review.mjs` (dry-run by default; add `--apply` to write; the
+  changeset is `[{id, status?, priority?, note?}]`, status matched by name, priority by enum). ⚠ Never
+  run two `run.sh` at once (fixed port-forward ports). See the `huly-ticket-cli` memory + `huly/README.md`.
 - Use the **Huly MCP** for natural-language create/edit/comment/status, OR the **Huly REST API**
   (`connectRest`, token auth) directly.
 - Set/transition `status/*` via the repointed bridge `product-ops/forgejo-pack/lifecycle/set-status.sh
