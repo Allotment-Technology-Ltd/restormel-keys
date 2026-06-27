@@ -58,7 +58,9 @@ bash scripts/dr/coldstart/dr-coldstart-drill.sh        # provisions, locks egres
 
 The trap always destroys the box + writes the evidence record (PASS or FAIL). `KEEP_BOX=1` keeps it for
 debugging (manual `hcloud server delete` owed). A full `etcd-s3`-path PASS (apps 200 + C1 + C2 + recorded
-RTO) is what licenses Stage D/E (delete `.150` standbys, cancel BX11, decommission `.150`).
+RTO) was the gate for Stage D/E — **which the founder executed 2026-06-26** (BX11 cancelled, `.150` deleted;
+governance PR #339), risk-accepted on the proven per-jewel + C1/C2 + J10 S3 recovery (REC-EVID-005/006) + the
+retained recovery snapshot `401960703`. This drill is now retrospective hardening + the recurring rehearsal.
 
 ## First box run (2026-06-27) — what it proved + what it caught
 

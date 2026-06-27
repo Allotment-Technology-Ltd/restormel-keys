@@ -572,3 +572,33 @@ risks:
     owner: founder
     status: in-treatment
     review: 2026-09-24
+
+  - id: RISK-016
+    risk: >
+      The crown-jewels escrow bundle (eso-bootstrap.age — the sealed C1 recovery machine-identity +
+      C2 J5 Infisical master key) lives at s3://restormel-restic-backups/escrow/ (fsn1, AST-019) with
+      bucket VERSIONING enabled but NO S3 Object-Lock (verified 2026-06-27). An actor holding the fsn1
+      S3 write/delete credentials — or an accidental mass-delete — could purge every version of the
+      sealed bundle, removing the S3 copy of the escrow seal. (Crown-jewels DR programme decision D-B-3.)
+    asset: "AST-019 (fsn1 Object Storage) — escrow bundle eso-bootstrap.age; REC-PLAN-021 crown-jewels DR"
+    product: shared
+    likelihood: L
+    impact: L
+    rating: Low
+    treatment_type: accept
+    treatment: >
+      ACCEPTED as versioning-only (no Object-Lock). Rationale: (1) the IRREPLACEABLE secret — the offline
+      escrow PRIVATE key — is NOT in S3; it is founder-held offline (FileVault `~/.config/restormel/dr-kit/
+      escrow-primary.key` + an age-passphrase-encrypted `dr-kit.age` backup in Drive). The S3 object is
+      ciphertext, useless without that key. (2) The bundle is REPRODUCIBLE: re-seal from the live (or
+      recoverable — J4 DB jewel) Infisical machine-identity + J5 master key with the offline public key at
+      any time. (3) Bucket versioning already protects against accidental delete/overwrite (prior versions
+      recoverable). (4) Object-Lock would impose a retention window that complicates routine key rotation /
+      re-sealing — disproportionate for reproducible ciphertext whose decryption key is not co-located.
+      Proven recoverable end-to-end: REC-EVID-005 (C1 authenticates + C2 canary sha256 MATCH from the
+      bundle + offline key). Optional defence-in-depth (NOT required): carry a copy of eso-bootstrap.age in
+      the offline DR-kit so the S3 copy is fully redundant.
+    treatment_status: "ACCEPTED 2026-06-27 (founder). Versioning Enabled verified on restormel-restic-backups; Object-Lock not configured. Re-evaluate only if the bundle ceases to be reproducible (e.g. escrow seal no longer derivable from Infisical) or the offline-key single-custody model changes."
+    owner: founder
+    status: accepted
+    review: 2027-06-27

@@ -1,15 +1,31 @@
 ---
 name: restormel-backup
 description: >-
-  Restormel DR/backup operations — restic encrypted backups to Hetzner Storage Box BX11, restore
-  drills, dead-man's-switch checks, and scheduling. Use whenever asked to: run or check a backup,
-  run a restore drill, add a new service to the backup scope, investigate a missed-backup alert,
-  rotate the restic password, or add a new box to the backup fleet. Knows the two-box topology
-  (.150 = buildops/SurrealDB, .167 = prod runtime), the BX11 repo paths, rclone/restic installation
-  pattern, and the Phase 8 restore drill procedure.
+  ⚠️ SUPERSEDED 2026-06-26 — the BX11 Storage Box + .150 box this skill describes are DECOMMISSIONED.
+  Backups are now on Hetzner Object Storage S3 (fsn1) under the crown-jewels DR programme (REC-PLAN-021).
+  For any current backup/DR task — run/check a backup, run the restore/jewels-proof drill, the cold-start
+  DR drill, add a jewel to scope — use the `restormel-dr-recovery` skill + `scripts/dr/coldstart/`. This
+  file is retained for historical context (the old two-box restic→BX11 topology, dead-man's-switch design).
 ---
 
 # Restormel backup / DR skill
+
+> ## ⚠️ SUPERSEDED 2026-06-26 — read this first
+> **BX11 Storage Box (AST-012) and the .150 box (AST-010) are DECOMMISSIONED** (governance PR #339;
+> memory `bx11-150-decommission`). Every restic→BX11 cron below is dead/removed. The estate runs on a
+> 3-node K3s cluster and **all backups now target Hetzner Object Storage S3 (fsn1, AST-019)** under the
+> crown-jewels DR programme **REC-PLAN-021**:
+> - **DBs (Forgejo/Infisical/app/platform/plotbudget):** CNPG **Barman** → `restormel-cnpg-backups-fsn1-ol/pg-*`
+> - **SurrealDB + Forgejo repos:** restic → `restormel-restic-backups` (fsn1)
+> - **etcd (cluster state):** native K3s `--etcd-s3` → `restormel-etcd-snapshots-fsn1/k3s`
+> - **registry mirror + age escrow:** fsn1 S3
+>
+> **Use instead:** the **`restormel-dr-recovery`** skill + **`scripts/dr/coldstart/`** — the weekly
+> per-jewel proof (`jewels-proof-local.sh`, REC-EVID-005) and the full cold-start drill
+> (`dr-coldstart-drill.sh`). Recovery proven from fsn1 S3 alone (REC-EVID-005/006). Everything below the
+> line is **historical** (the retired BX11/two-box model); do not action it against live infra.
+>
+> ---
 
 Encrypted, EU-sovereign restic backups to **Hetzner Storage Box BX11** — same box, two repos.
 Authoritative scripts are version-controlled in `scripts/backup/` in this repo.

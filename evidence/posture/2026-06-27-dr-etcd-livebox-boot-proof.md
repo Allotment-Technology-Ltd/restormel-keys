@@ -100,3 +100,14 @@ The drill used the founder's offline escrow key and the prod K3s token via **mac
 only** (master1 → throwaway box, and prod → local DR kit). No secret value entered any transcript, argv,
 or log; assertions are over counts / status / blocked-good booleans. The DR-kit passphrase remains
 founder-held (never known to any agent).
+
+## Correction (appended 2026-06-27)
+
+The "Stage-C status" section above states **"Stage D/E remains gated (no `.150` standby delete, no BX11
+cancel, no `.150` decommission)."** That was written without awareness that **Stage D/E had already been
+executed on 2026-06-26** — BX11 cancelled + `.150` (Cloud server 138350520) deleted, governance recorded in
+PR #339 (AST-010/AST-012 `status: decommissioned`); see memory `bx11-150-decommission`. The founder
+**front-ran the formal full-box gate**, a deliberate risk-acceptance grounded in the per-jewel + escrow
+C1/C2 + J10 recovery proven from fsn1 S3 alone (REC-EVID-005, this record) plus the retained recovery
+snapshot `401960703`. The crown-jewels recovery does not depend on the retired hosts. This note corrects
+the record append-only (the original text is left intact as the point-in-time entry).
