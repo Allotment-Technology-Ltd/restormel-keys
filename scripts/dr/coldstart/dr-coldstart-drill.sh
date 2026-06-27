@@ -121,6 +121,7 @@ s=$SECONDS
 log "STEP 0: provision throwaway box + restore etcd from S3"
 provision_temp_box "${TEMP_BOX_NAME}"
 write_scratch_hosts "${SCRATCH_DOMAIN}"
+lock_box_egress_to_s3            # SAFETY: restored CCM/external-dns must NOT reach the real Hetzner project
 if fetch_etcd_snapshot_from_s3; then
   k3s_cluster_reset_restore
   assert_etcd_loaded

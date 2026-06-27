@@ -117,11 +117,45 @@ write_scratch_hosts(){           # $1 = scratch domain
   box_ssh "grep -q '${1}' /etc/hosts || printf '127.0.0.1 git.%s secrets.%s\n%s ingress.%s\n' '$1' '$1' '${ip}' '$1' >> /etc/hosts"
   echo "  scratch DNS for *.$1 written on the temp box only (dies with the box)"
 }
+lock_box_egress_to_s3(){
+  # CRITICAL SAFETY CONTROL. The restored prod etcd carries the Hetzner CCM + external-dns (with the
+  # prod cloud token); if they reach api.hetzner.cloud / the metadata service they could reconcile
+  # against the REAL Hetzner project and detach volumes, delete LBs, or rewrite prod DNS. Before the
+  # etcd restore we lock the box's egress to the S3 store + DNS + in-cluster CIDRs ONLY (default-drop
+  # OUTPUT) — so every prod-mutating controller fails closed. Called AFTER k3s install (needs open
+  # egress) and BEFORE k3s_cluster_reset_restore (which boots those controllers).
+  # NOTE: added 2026-06-27; validated on the first supervised box run (see DESIGN-NOTE-livebox).
+  local s3ips
+  s3ips="$(box_ssh "getent ahostsv4 ${S3_HOST} | awk '{print \$1}' | sort -u | paste -sd, -")"
+  [ -n "${s3ips}" ] || fail_step "egress-lock-could-not-resolve-s3 (${S3_HOST})"
+  box_ssh "nft -f - <<NFT
+table inet drillguard {
+  chain output {
+    type filter hook output priority 0; policy drop;
+    oif lo accept
+    ct state established,related accept
+    ip daddr { 10.42.0.0/16, 10.43.0.0/16 } accept   # k3s pod + service CIDRs
+    udp dport 53 accept
+    tcp dport 53 accept
+    ip daddr { ${s3ips} } tcp dport 443 accept        # fsn1 object storage ONLY
+    # everything else (api.hetzner.cloud, 169.254.169.254 metadata, prod hosts) is DROPPED
+  }
+}
+NFT" || fail_step "egress-lock-nft-failed"
+  # prove the lock: metadata + the hetzner API must be unreachable; S3 must be reachable.
+  box_ssh "timeout 4 curl -sf https://169.254.169.254/ >/dev/null 2>&1 && echo OPEN || echo blocked" | grep -q blocked \
+    || fail_step "egress-lock-metadata-still-reachable"
+  box_ssh "timeout 6 curl -sf https://${S3_HOST}/ -o /dev/null 2>/dev/null; [ \$? -le 1 ] || curl -s -o /dev/null -w '%{http_code}' https://${S3_HOST}/ | grep -qE '^[0-9]'" \
+    || echo "  WARN egress-lock: S3 reachability probe inconclusive (verify in restore step)"
+  echo "  EGRESS LOCKED to ${S3_HOST} + DNS + pod CIDRs only (CCM/external-dns fail closed — prod safe)"
+}
 fetch_etcd_snapshot_from_s3(){
   # native K3s --etcd-s3 snapshots are RAW S3 objects (WS3; NOT restic). Find the newest snapshot name
-  # (exclude the metadata .zip/.sha256); the box restores it natively via --cluster-reset-restore-path.
+  # (exclude the metadata .zip/.sha256 AND the verify-s3-* write-probe objects); restore via --cluster-reset-restore-path.
+  # match ONLY real etcd-snapshot-<node>-<epoch> objects — a stray verify-s3-* S3-write-probe object in
+  # the bucket sorts after etcd-snapshot-* and is a STALE cluster state (caught by the local J10 drill).
   ETCD_SNAP_NAME="$(aws_s3 s3 ls "s3://${ETCD_BUCKET}/${ETCD_FOLDER}/" 2>/dev/null \
-    | awk '{print $4}' | grep -vE '\.(zip|metadata|sha256)$' | grep . | sort | tail -1)"
+    | awk '{print $4}' | grep -E 'etcd-snapshot-.*-[0-9]+$' | sort | tail -1)"
   [ -n "${ETCD_SNAP_NAME:-}" ] || return 1
   export ETCD_SNAP_NAME
   echo "  newest etcd snapshot in S3: ${ETCD_SNAP_NAME}"
