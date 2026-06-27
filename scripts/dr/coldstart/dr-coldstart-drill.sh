@@ -56,6 +56,12 @@ ESCROW_IDENTITY="${ESCROW_IDENTITY:-$HOME/.config/restormel/dr-kit/escrow-primar
 ESCROW_BUNDLE="${ESCROW_BUNDLE:-eso-bootstrap.age}"          # C1 MI + C2 J5; offline key only
 ESCROW_ENV="${WORK}/.escrow.env"                            # tmpfs-ish; 600; shredded in cleanup
 
+# ── K3s server token (J10 boot) — OFFLINE DR-kit only ───────────────────────
+# REQUIRED to boot the restored etcd snapshot: k3s seals its in-datastore bootstrap data with the cluster
+# server token, so a fresh node must carry the SAME token (proven on hardware 2026-06-27, REC-EVID-006).
+# It CANNOT live in Infisical (Step 0 precedes Step 1) — it sits in the offline DR kit next to the escrow key.
+K3S_TOKEN_FILE="${K3S_TOKEN_FILE:-$HOME/.config/restormel/dr-kit/k3s-server-token}"
+
 # ── canary (C2) — non-secret expected sha256 of the sentinel value ──────────
 CANARY_SECRET_PATH="${CANARY_SECRET_PATH:-/dr/canary}"      # in the `restormel` Infisical project
 CANARY_EXPECTED_SHA256="${CANARY_EXPECTED_SHA256:-fa3444cbb7d1deebd11875b62bd992cc9728632913e261a81217121b875276e2}"
@@ -80,7 +86,7 @@ TOTAL_RTO=""
 
 export WORK LOG EVID_OUT S3_HOST S3_ENDPOINT RESTIC_BUCKET CNPG_BUCKET_OL \
        REGISTRY_MIRROR_BUCKET ESCROW_S3 ETCD_BUCKET ETCD_FOLDER ESCROW_IDENTITY ESCROW_BUNDLE ESCROW_ENV \
-       CANARY_SECRET_PATH CANARY_EXPECTED_SHA256 TEMP_BOX_NAME TEMP_BOX_TYPE \
+       K3S_TOKEN_FILE CANARY_SECRET_PATH CANARY_EXPECTED_SHA256 TEMP_BOX_NAME TEMP_BOX_TYPE \
        SCRATCH_DOMAIN SCRATCH_KUBECONFIG SCRATCH_STORAGECLASS MANIFESTS \
        INFISICAL_IMAGE FORGEJO_IMAGE J2_SAMPLE_REPO DRILL_TS
 
@@ -97,6 +103,10 @@ cleanup(){
   local rc=$?
   log "CLEANUP: destroying temp box ${TEMP_BOX_NAME} (rc=${rc}, result=${DRILL_RESULT})"
   shred -u "${ESCROW_ENV}" 2>/dev/null || rm -f "${ESCROW_ENV}" 2>/dev/null || true
+  # the host-side etcd snapshot holds EVERY cluster secret in plaintext (k3s secrets are not encrypted at
+  # rest) — the single most sensitive artifact in WORK. Shred it explicitly (WORK itself is kept for the
+  # operator's evidence + log).
+  shred -u "${WORK}/etcd-snapshot.db" 2>/dev/null || rm -f "${WORK}/etcd-snapshot.db" 2>/dev/null || true
   if [ "${KEEP_BOX:-0}" = "1" ]; then
     log "KEEP_BOX=1 — NOT destroying ${TEMP_BOX_NAME} (manual teardown owed: hcloud server delete ${TEMP_BOX_NAME})"
   else

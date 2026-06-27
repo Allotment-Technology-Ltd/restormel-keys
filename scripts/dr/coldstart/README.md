@@ -38,13 +38,24 @@ DR_S3_ACCESS_KEY_ID=… DR_S3_SECRET_ACCESS_KEY=… bash scripts/dr/coldstart/je
 
 ### The offline DR kit (founder-held)
 
-- **Local working copy** (what the drills read): `~/.config/restormel/dr-kit/escrow-primary.key`
-  (`0600`, protected at rest by FileVault). The harness defaults to this path, falling back to the legacy
-  `~/restormel-escrow-primary.key`. The weekly drill gets the S3 creds + restic passphrase from Infisical.
+- **Local working copy** (what the drills read): `~/.config/restormel/dr-kit/` (`0600` files, protected
+  at rest by FileVault) — `escrow-primary.key` (the offline age key) **and** `k3s-server-token` (the prod
+  K3s cluster token, required to *boot* the restored etcd snapshot — see below). The harness defaults to
+  these paths, falling back to the legacy `~/restormel-escrow-primary.key`. The weekly drill gets the S3
+  creds + restic passphrase from Infisical.
 - **Encrypted backup** (Mac-loss / Infisical-down): an `age -p` passphrase-encrypted `dr-kit.age`
-  (escrow key + `RESTIC_PASSWORD` + fsn1 S3 read keys + a recovery README) in Google Drive
-  `…/Restormel-DR-Kit/`. Drive holds only ciphertext; the passphrase lives in a password manager / safe,
-  never in Drive. Decrypting it does not touch the automation (which uses the local key) — that's the point.
+  (escrow key + **k3s-server-token** + `RESTIC_PASSWORD` + fsn1 S3 read keys + a recovery README) in
+  Google Drive `…/Restormel-DR-Kit/`. Drive holds only ciphertext; the passphrase lives in a password
+  manager / safe, never in Drive. Decrypting it does not touch the automation (which uses the local
+  files) — that's the point.
+
+> **Why the K3s server token is in the kit (proven on hardware 2026-06-27, REC-EVID-006):** K3s encrypts
+> its in-datastore bootstrap data — the cluster CA private keys, service-account signing keys, and the
+> secrets-encryption config — with the **server token**. A fresh node restoring the etcd snapshot must
+> carry the *same* token, or it dies with `bootstrap data … encrypted with different token`. The token
+> **cannot** live only in Infisical, because the etcd restore (Step 0) happens *before* Infisical is back
+> (Step 1) — a chicken-and-egg. So it lives offline, next to the escrow key. **Rotating the cluster token
+> means re-issuing the kit.**
 
 ## What it guarantees (safety)
 
@@ -66,7 +77,8 @@ Tools on the workstation (the harness preflight asserts them):
 `age hcloud aws restic skopeo kubectl helm jq ssh git curl` + `sha256sum`/`shasum`.
 
 You hold:
-- the **offline** age key `~/restormel-escrow-primary.key` (opens `eso-bootstrap.age` → C1 MI + C2 J5),
+- the **offline** age key `~/.config/restormel/dr-kit/escrow-primary.key` (opens `eso-bootstrap.age` → C1 MI + C2 J5),
+- the **K3s server token** `~/.config/restormel/dr-kit/k3s-server-token` (boots the restored etcd — J10),
 - the **restic passphrase**, the **fsn1 S3 keys** (read-only-scoped if you provisioned one — F2),
 - an **hcloud token** and an **hcloud-registered SSH key** for the temp box — the existing
   `adam@allotment-hetzner` (local private half `~/.ssh/id_hetzner_allotment`) works; no new key needed.
@@ -87,10 +99,14 @@ export AWS_DEFAULT_REGION=fsn1
 # Existing Hetzner key (no new key needed): hcloud-registered name + matching local private key.
 export DR_DRILL_SSH_KEY="adam@allotment-hetzner"
 export DR_DRILL_SSH_PRIVKEY="$HOME/.ssh/id_hetzner_allotment"
-export ESCROW_IDENTITY="$HOME/restormel-escrow-primary.key"   # OFFLINE key — stays on this machine
+export ESCROW_IDENTITY="$HOME/.config/restormel/dr-kit/escrow-primary.key"  # OFFLINE key — stays on this machine
+export K3S_TOKEN_FILE="$HOME/.config/restormel/dr-kit/k3s-server-token"     # boots the restored etcd (J10)
 
 bash scripts/dr/coldstart/dr-coldstart-drill.sh
 ```
+
+Both `ESCROW_IDENTITY` and `K3S_TOKEN_FILE` default to those `~/.config/restormel/dr-kit/` paths, so you
+usually don't set them explicitly. The preflight fails fast if either is missing.
 
 `DR_DRILL_SSH_KEY` is the name of the public key already registered in Hetzner Cloud; the harness
 injects it into the temp box. `DR_DRILL_SSH_PRIVKEY` is the **matching local private key** the harness
@@ -114,6 +130,8 @@ record into a temp dir (path printed at the end), and destroys the box.
 | `J2_SAMPLE_REPO` | `dashboard` | a repo present in the registry mirror |
 | `PG_ROW_FLOOR` / `PG_FLOOR_TABLE` / `SURREAL_FLOOR_TABLE` | `1` / `information_schema.tables` / `source` | tighten the row-count floor to a real table |
 | `DR_DRILL_SSH_PRIVKEY` | _(unset → ssh-agent)_ | local private key to SSH the temp box (e.g. `~/.ssh/id_hetzner_allotment`) — must pair with `DR_DRILL_SSH_KEY` |
+| `ESCROW_IDENTITY` | `~/.config/restormel/dr-kit/escrow-primary.key` | offline age key; legacy `~/restormel-escrow-primary.key` auto-fallback |
+| `K3S_TOKEN_FILE` | `~/.config/restormel/dr-kit/k3s-server-token` | prod K3s server token — **required to boot the restored etcd** (J10) |
 | `DRILL_FULL_ROUNDTRIP` | `0` | `1` for the deepest push→CI→registry→Argo check (adds RTO — F4) |
 | `KEEP_BOX` | `0` | `1` to inspect the box after (you then destroy it manually) |
 
@@ -121,9 +139,9 @@ record into a temp dir (path printed at the end), and destroys the box.
 
 | Step | Proves | Jewels | Decisive assertion |
 |------|--------|--------|--------------------|
-| 0 | etcd restores from S3 (or clean-k3s fallback) | J10 | CRDs + app-of-apps present |
-| 1 | **Infisical decrypts from restored ciphertext + escrow key** | J4, J5 | **C2 canary sha256 MATCH** |
-| 2 | Forgejo repos + registry mirror restore | J1, J2, J3 | `git fsck` clean; image manifest+layer pull |
+| 0 | etcd restores from S3 **+ cluster boots** (local-path; needs the K3s token) | J10 | ≥5 CNPG clusters / app-of-apps `root` present (PROVEN on hardware — REC-EVID-006) |
+| 1 | **Infisical decrypts from restored ciphertext + escrow key** | J4, J5 | **C2 canary sha256 MATCH** _(Barman rewire pending — see below)_ |
+| 2 | Forgejo repos + registry mirror restore | J1, J2, J3 | `git fsck` clean; image manifest+layer pull _(DB J3 = Barman rewire pending)_ |
 | 3 | **ESO root recreatable from escrow alone** | C1 | 5 ClusterSecretStores → Valid |
 | 4 | platform rebuilds | — | 0 ImagePullBackOff; 0 ExternalSecret SyncError |
 | 5 | data restores | J6/7/8, J9 | CNPG `-dr` healthy; row counts ≥ floor |
@@ -148,8 +166,22 @@ via the **`etcd-s3`** path (not gitops-fallback), **C2 = MATCH**, **C1 recreated
 
 ## Notes
 
+- **Step 0 etcd restore is LOCAL-PATH, not `--etcd-s3`** (proven on hardware 2026-06-27, REC-EVID-006).
+  k3s `--etcd-s3` runs a HeadBucket existence check the **read-scoped** S3 key is *denied*, which silently
+  produces an empty "successful" restore. The harness instead downloads the snapshot host-side (a plain
+  GET the read key can do) + scp's it to the box, then `--cluster-reset-restore-path=/root/snap.db`. It
+  also (a) writes the **prod K3s token** (`K3S_TOKEN_FILE`) onto the box before the reset — k3s seals the
+  in-datastore bootstrap data with it — and (b) removes the box's freshly-generated `tls/`+`cred/` so they
+  regenerate from the **restored** CA. The restored apiserver serves with the prod CA, so the harness
+  re-fetches the kubeconfig after boot.
+- **Known remaining gap — Steps 1-2 Barman rewire.** The DB jewels (J3/J4/J6/J7/J8) are CNPG-**Barman**
+  physical backups (`restormel-cnpg-backups-fsn1-ol/pg-*`), *not* restic logical dumps. `restore_scratch_postgres`
+  still references the old (non-existent) restic prefixes and now **fails fast with a pointer** rather than
+  a confusing error. The proven Barman restore lives in `jewels-proof-local.sh` (REC-EVID-005, GREEN
+  weekly) — porting `restore_cluster()` into Steps 1-2 is the last piece for a clean full-drill PASS.
 - The harness restores **host-side** by default (restic creds stay on the workstation). `manifests/50-`
   is the in-cluster alternative if you prefer the fetch to run on the box.
 - A few coordinates (exact canary location, per-jewel dump filename, image pins) are run-time values you
   confirm on the first run; each has a default matching the 2026-06-25 ceremony + the gitops manifests.
-- Design + gate definition: `DESIGN.md` (WS6) and `~/.config/restormel/crown-jewels-dr/` blueprint.
+- Design + gate definition: `DESIGN.md` (WS6), `DESIGN-NOTE-livebox-2026-06-27.md`, and
+  `~/.config/restormel/crown-jewels-dr/` blueprint.

@@ -47,7 +47,8 @@ export HCLOUD_TOKEN=…              # provision/destroy the box (DNS via the sa
 export RESTIC_PASSWORD=…           # repos/surreal jewels
 export AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=…   # fsn1 read keys
 export DR_DRILL_SSH_KEY=adam@allotment-hetzner DR_DRILL_SSH_PRIVKEY="$HOME/.ssh/id_hetzner_allotment"
-export ESCROW_IDENTITY="$HOME/restormel-escrow-primary.key"
+export ESCROW_IDENTITY="$HOME/.config/restormel/dr-kit/escrow-primary.key"
+export K3S_TOKEN_FILE="$HOME/.config/restormel/dr-kit/k3s-server-token"   # boots the restored etcd (J10)
 bash scripts/dr/coldstart/dr-coldstart-drill.sh        # provisions, locks egress, restores, asserts, DESTROYS the box
 ```
 
@@ -74,9 +75,44 @@ prod expected-key-set (≥5 CNPG clusters or app-of-apps `root`) is present. The
 **actual** restore error in the log — likely the `--cluster-reset-restore-path` + `--etcd-s3` download
 semantics (run with `KEEP_BOX=1` to inspect, or download the snapshot to a local path first and pass that).
 
+## Second box run (2026-06-27) — J10 PROVEN end-to-end on real hardware (REC-EVID-006)
+
+The Step-0 etcd path now restores **and boots the whole prod control-plane** on a fresh throwaway cx33,
+egress-locked the entire time. Root-cause + fix for each blocker the run surfaced:
+
+1. **Empty restore → `--etcd-s3` HeadBucket Access Denied.** k3s `--cluster-reset … --etcd-s3` does a
+   bucket-existence (HeadBucket) check that the **read-scoped** S3 key is *denied*
+   (`failed to test for existence of bucket … Access Denied`) → it silently restored *nothing*.
+   **Fix:** download the snapshot host-side (`aws s3 cp`, a plain GET the read key CAN do) + scp to the
+   box, then `--cluster-reset-restore-path=/root/snap.db` with **no** `--etcd-s3` (no bucket check).
+   Verified: `kvstore restored, current-rev 3286574` (3.28M revisions = real prod etcd).
+2. **`bootstrap data … encrypted with different token`.** k3s seals its in-datastore bootstrap data
+   (cluster CA private keys, SA signing keys, secrets-encryption config) with the **server token**; the
+   throwaway box generated its own, so the restored bootstrap couldn't be decrypted. **Fix:** write the
+   **prod** token onto `/var/lib/rancher/k3s/server/token` before the reset (new `K3S_TOKEN_FILE`, from
+   the offline DR kit — it can't be in Infisical because Step 0 precedes Step 1). This is the headline
+   DR-design finding: **the K3s server token is a jewel-class secret and is now in the kit + escrow.**
+3. **`… tls/* newer than datastore … Remove the file(s) and restart`.** The box's freshly-generated
+   TLS/CA + cred files block the boot. **Fix:** `rm -rf server/tls server/cred/{ipsec.psk,passwd}` after
+   the reset so k3s recreates them from the **restored** CA.
+4. **Remote kubeconfig invalid post-restore** — the apiserver now serves with the *prod* CA, so the
+   provision-time kubeconfig fails TLS. **Fix:** re-fetch the kubeconfig after boot.
+
+**Result (egress-locked throughout — `api.hetzner.cloud` + metadata both `blocked-good`):** 25 namespaces,
+**5 CNPG clusters** (all "Cluster in healthy state"), **9 Argo apps** incl. the app-of-apps `root`
+(`OutOfSync` *because* egress-locked — the desired safety signal), 140 secrets, 52 ExternalSecrets,
+6 ClusterSecretStores, 13 Certificates, 16 IngressRoutes, 90 ConfigMaps. **J10 = PASS on hardware.** Box
+destroyed; prod untouched.
+
+> Note these are findings the **standalone-etcd** weekly jewels-proof structurally cannot catch — it reads
+> the raw etcd KV without booting k3s, so it never needs the token, the TLS reconcile, or a real apiserver.
+> This is exactly why the live-box drill exists.
+
 ## What is validated vs pending
 
 - **Validated:** all DB jewels + C1/C2 (barman) + J10 etcd cluster-state locally (REC-EVID-005); the
-  **egress safety lock on real hardware**; box provision/install/teardown.
-- **Pending next box run:** the actual `k3s_cluster_reset_restore` restore (debug via the now-surfaced log),
-  the Steps 1–2 Barman rewire, and Steps 3–6 (ESO/Argo/platform/apps-200) end-to-end.
+  **egress safety lock on real hardware**; box provision/install/teardown; **and now J10 etcd restore +
+  full control-plane boot on real hardware (REC-EVID-006)** via local-path + token + tls-removal.
+- **Pending for a full `etcd-s3`-path Stage-C PASS:** the Steps 1–2 **Barman rewire** (the one remaining
+  gap — `restore_scratch_postgres` now fails fast with a pointer instead of a confusing restic error), and
+  Steps 3–6 (ESO/Argo/platform/apps-200) end-to-end. Steps 0 (J10) + escrow C1/C2 are proven.
