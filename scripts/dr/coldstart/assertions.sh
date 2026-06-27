@@ -163,22 +163,34 @@ fetch_etcd_snapshot_from_s3(){
 k3s_cluster_reset_restore(){
   # native restore: K3s pulls ${ETCD_SNAP_NAME} from S3 and resets etcd to it. The secret key is piped
   # via stdin → K3S_ETCD_S3_SECRET_KEY (never in argv); the access-key-id is non-secret (config-tier).
-  printf '%s' "${AWS_SECRET_ACCESS_KEY}" | box_ssh "read -r SK; systemctl stop k3s; \
+  # IMPORTANT: do NOT mask the reset exit code behind `; systemctl start k3s` — a failed S3 download /
+  # restore would otherwise silently leave the FRESH cluster (first box run, 2026-06-27, surfaced this:
+  # restore "succeeded" but loaded an empty cluster). Capture the reset rc + tail the log on failure.
+  printf '%s' "${AWS_SECRET_ACCESS_KEY}" | box_ssh "set -o pipefail; read -r SK; systemctl stop k3s; \
     K3S_ETCD_S3_SECRET_KEY=\"\$SK\" k3s server --cluster-reset \
       --cluster-reset-restore-path='${ETCD_SNAP_NAME}' \
       --etcd-s3 --etcd-s3-bucket='${ETCD_BUCKET}' --etcd-s3-folder='${ETCD_FOLDER}' \
       --etcd-s3-endpoint='${S3_HOST}' --etcd-s3-region=fsn1 \
       --etcd-s3-access-key='${AWS_ACCESS_KEY_ID}' >/var/log/dr-etcd-restore.log 2>&1; \
-    systemctl start k3s" >/dev/null 2>&1 || fail_step "k3s-cluster-reset-restore-failed"
+    rc=\$?; \
+    if [ \$rc -ne 0 ]; then echo \"RESET_EXIT=\$rc\"; tail -25 /var/log/dr-etcd-restore.log; exit \$rc; fi; \
+    grep -qiE 'restoring.*snapshot|reset.*finished|has been reset' /var/log/dr-etcd-restore.log \
+      || { echo NO_RESTORE_EVIDENCE_IN_LOG; tail -25 /var/log/dr-etcd-restore.log; exit 3; }; \
+    systemctl start k3s" \
+    || fail_step "k3s-cluster-reset-restore-failed (reset log shown above; rerun with KEEP_BOX=1 to inspect /var/log/dr-etcd-restore.log)"
   local i; for i in $(seq 1 30); do k get --raw='/readyz' >/dev/null 2>&1 && break; sleep 4; done
 }
 assert_etcd_loaded(){
   k get crd >/dev/null 2>&1 || fail_step "etcd-restore-no-crds"
-  # expected-key-set: a known NON-GitOps object that only an etcd restore (not a clean k3s) would carry.
-  if k -n argocd get application root >/dev/null 2>&1; then
-    echo "  etcd restore loaded: CRDs + app-of-apps 'root' present (expected key set)"
+  # An EMPTY restore (fresh k3s) is a FAILED restore, not a NOTE. Require the prod expected-key-set:
+  # the 5 CNPG clusters and/or the app-of-apps 'root' — objects only a real etcd restore carries.
+  local cnpg root_ok=no
+  cnpg="$(k get clusters.postgresql.cnpg.io -A --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+  k -n argocd get application root >/dev/null 2>&1 && root_ok=yes
+  if [ "${cnpg:-0}" -ge 5 ] || [ "${root_ok}" = yes ]; then
+    echo "  etcd restore loaded: ${cnpg} CNPG clusters, app-of-apps root=${root_ok} (expected key set present)"
   else
-    echo "  NOTE: app-of-apps 'root' not in this etcd restore (will be re-created by GitOps in Step 3)"
+    fail_step "etcd-restore-EMPTY (cnpg=${cnpg}, root=${root_ok}) — snapshot did not load; the cluster is a fresh k3s. See /var/log/dr-etcd-restore.log (rerun with KEEP_BOX=1)."
   fi
 }
 
