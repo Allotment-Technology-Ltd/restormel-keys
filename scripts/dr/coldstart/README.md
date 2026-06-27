@@ -10,6 +10,25 @@ Stage D/E ( `.150` standby delete → BX11 cancel → `.150` decommission ).
 > (`~/restormel-escrow-primary.key`) never leaves the founder — never in the cluster, Infisical, or git.
 > That single-custody control is the heart of the DR design; the harness is built around it, not against it.
 
+## Two drills (pick by what you're proving)
+
+| Drill | Script | Proves | Cost |
+|-------|--------|--------|------|
+| **Full cold-start** (this runbook) | `dr-coldstart-drill.sh` | whole-estate orchestration + RTO on a real throwaway box via the `etcd-s3` path — the Stage-C **box** gate | a temp Hetzner box |
+| **Local jewels-proof** (§3d weekly) | `jewels-proof-local.sh` | every **DB jewel** (J3/J4/J6/J7/J8) restores to a live Postgres + the escrow **C1/C2** conditions, via `barman-cloud-restore` into throwaway Docker | **£0**, ~3 min |
+
+Run the **local jewels-proof weekly** (it needs only Docker + age + aws + the escrow key; no box, no
+prod touch — values never printed, full teardown on exit). It is the fast, cheap confidence that the
+*data* recovers; the full cold-start is the periodic proof that the *orchestration* recovers. First
+green run recorded as evidence `REC-EVID-005` (2026-06-27).
+
+```bash
+# weekly (fetches S3 creds from Infisical); REPLAY_TO_LATEST=1 for current-state instead of backup-end
+bash scripts/dr/coldstart/jewels-proof-local.sh
+# real-disaster mode (Infisical down): supply the offline DR-kit creds via env
+DR_S3_ACCESS_KEY_ID=… DR_S3_SECRET_ACCESS_KEY=… bash scripts/dr/coldstart/jewels-proof-local.sh
+```
+
 ## What it guarantees (safety)
 
 - **Read-only against the store.** Only `restic restore` / `aws s3 cp|ls|sync` (GET/LIST). Never

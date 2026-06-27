@@ -93,7 +93,10 @@ deleting/cancelling the old estate (`.150` standby, BX11). An agent may *prepare
 (the harness is pipe-only — escrow values never enter a transcript) but must **pause for explicit founder
 consent** before each irreversible/outward action. This is why it's a skill an agent follows with a human
 in the loop, **not** a fully autonomous cron/dispatch job — the recurring assurance is covered separately
-by the §3d weekly per-jewel drill (in-cluster CronJob) and the quarterly cold-start drill.
+by the **§3d weekly per-jewel drill** (`scripts/dr/coldstart/jewels-proof-local.sh` — founder Mac, Docker
+`barman-cloud-restore`; proves every DB jewel J3/J4/J6/J7/J8 restores to a live Postgres + the escrow
+**C1/C2** conditions in ~3 min, £0, full teardown — first green = REC-EVID-005) and the quarterly full
+cold-start box drill.
 
 ## 4. After
 - Keep the incident record current (timeline, root cause, RTO/RPO actually achieved, follow-ups).
@@ -103,6 +106,7 @@ by the §3d weekly per-jewel drill (in-cluster CronJob) and the quarterly cold-s
 
 ## Pointers
 - Procedure + harness: `scripts/dr/coldstart/` (README, DESIGN=WS6, assertions.sh = the exact steps).
+- Weekly per-jewel proof (no box, £0): `scripts/dr/coldstart/jewels-proof-local.sh` (DB jewels + escrow C1/C2).
 - Blueprint + escrow facts + runbook: `~/.config/restormel/crown-jewels-dr/` (off-repo, founder machine).
 - Target architecture: `restormel-k3s-architecture` · backups/restic + BX11: `restormel-backup`.
 - Alerts → cause/first-action: `restormel-infra-alert-response` · records: `restormel-isms-records`.
