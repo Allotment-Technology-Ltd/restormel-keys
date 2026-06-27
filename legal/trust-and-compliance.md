@@ -3,13 +3,15 @@ id: REC-GOV-020
 title: Trust & Compliance
 class: governance
 owner: founder
-status: draft
+status: approved
 classification: public
 control-tier: 2
 created: 2026-06-15
-last-reviewed: 2026-06-15
+last-reviewed: 2026-06-27
 review-interval: P6M
 retention: P6Y-after-superseded
+approved-by: founder
+approved-on: 2026-06-27
 ---
 
 # Trust & Compliance

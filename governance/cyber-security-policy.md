@@ -3,13 +3,15 @@ id: REC-POL-003
 title: Cyber Security Policy (Cyber Essentials controls)
 class: governance
 owner: founder
-status: draft
+status: approved
 classification: internal
 control-tier: 2
 created: 2026-06-15
-last-reviewed: 2026-06-15
+last-reviewed: 2026-06-27
 review-interval: P12M
 retention: P6Y-after-superseded
+approved-by: founder
+approved-on: 2026-06-27
 related: [REC-POL-001, REC-POL-002, REC-GOV-004, REC-GOV-021]
 ---
 

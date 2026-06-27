@@ -3,13 +3,15 @@ id: REC-LEG-014
 title: Data Processing Agreement (DPA)
 class: legal
 owner: founder
-status: draft
+status: approved
 classification: public
 control-tier: 2
 created: 2026-06-15
-last-reviewed: 2026-06-15
+last-reviewed: 2026-06-27
 review-interval: P12M
 retention: P6Y-after-superseded
+approved-by: founder
+approved-on: 2026-06-27
 effective: 2026-06-15
 related: [REC-LEG-011, REC-LEG-003]
 ---
