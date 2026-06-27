@@ -12,7 +12,7 @@ review-interval: P12M
 approved-by: founder
 approved-on: 2026-06-27
 retention: permanent
-related: [REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-ADR-019]
+related: [REC-ADR-005, REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-ADR-019, REC-PLAN-017]
 ---
 
 # ADR: Job-led Connect — one area, many connection shapes
@@ -154,6 +154,53 @@ What this ADR does **not** decide:
   overall navigation spine; those are captured in their own records in this set.
 - It does **not** stand in for the mandatory `restormel-high-risk-security` review that any
   keys/credentials/Connect/server-route work will require before a PR.
+
+---
+
+## Addendum — M4 requirements pinned (founder, 2026-06-27)
+
+These founder decisions refine *how* M4 is realised; they bind the build without changing the
+captured design intent above. Grounded in the RES-113 review, **REC-PLAN-017** (verified-context
+market positioning — the strategic basis) and the live code surface.
+
+1. **MVP connection types = MCP + REST only.** Of the five designed type cards, the MVP ships
+   **MCP** — the strategic hero (Door-1 verified-retrieval, lowest-friction distribution per
+   REC-PLAN-017 §5) — and **REST** (non-MCP consumers via AAIF / Connect v1, which already exists).
+   **Chat widget, SDK and GraphQL are deferred**: they have no backend and are on no plan or
+   backlog. Show them as "coming soon" or omit them. The "five equal type cards" mock is
+   re-weighted to MCP-first / REST-second; this is a faithful adaptation, not a contradiction
+   (`08_ARTEFACTS.md`: keep the intent, adapt the mechanic).
+
+2. **Access level is an ENFORCED scope, not a cosmetic label.** "Read" genuinely restricts to
+   retrieve; "read+write" gates `connect.memory.write`. Today keys are workspace-scoped with
+   identical read+write permissions, so this is a real authorisation change — key-side scope
+   metadata + an auth gate + a migration + a mandatory `restormel-high-risk-security` review. The
+   plain-language framing ("look things up" vs "look up *and* contribute back") sits on top of a
+   real scope, so the badge means what it says (honesty principle).
+
+3. **The MCP connection serves BOTH doors.** Door-1 (first-party): connect an agent to the
+   verified-retrieval MCP of the graph the user just built — the onboarding aha. Door-2 (verifying
+   proxy): wrap the user's own / a commodity MCP server into verified envelopes — **REC-ADR-005**
+   and the in-flight W-series backlog (RES-16/17/27). M4's Connect area surfaces **both**, pulling
+   Door-2 into onboarding rather than leaving it a separate distribution-only play. (Exact
+   sequencing against the W-series is a build/roadmap call, not a requirement; REC-PLAN-017 §5
+   sequences Door-1 before Door-2.)
+
+4. **A connection is not a separate entity over a generic gateway-key pool — the key _is_ the
+   connection.** Move away from "gateway keys" as a generic, purpose-free credential. A key is
+   minted **purpose-bound**: created for a specific function and **directly tied to what it
+   facilitates** — carrying its connection **type** (MCP / REST), **access level** (read /
+   read+write) and **target** (the graph/workspace it serves), plus label and status. Realisation
+   extends the key record itself (purpose/type/access/target/status on `api_keys`) rather than a
+   separate `serving_connections` table that FK-references a key table. The design's "each
+   connection has its own key" becomes **"each connection *is* a purpose-built key"**; per-connection
+   lifecycle (create / display-once / rotate / revoke) attaches to that purpose-bound key.
+
+These resolve the RES-113 review's M4 open questions (the MVP-type scope, Q16–Q19); the review is
+updated to mark them resolved and to carry the same answers.
+
+> Pinned by founder via the RES-113 requirements Q&A, 2026-06-27. Recorded as an append-only
+> addendum; supersede with a new ADR if these change.
 
 ---
 
