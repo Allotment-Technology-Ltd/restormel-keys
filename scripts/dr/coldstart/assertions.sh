@@ -20,7 +20,12 @@ k(){ kubectl --kubeconfig "${SCRATCH_KUBECONFIG}" "$@"; }
 sha256(){ if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
 # Optional explicit private key (DR_DRILL_SSH_PRIVKEY); else falls back to ssh-agent / default key.
 DR_SSH_I=(); [ -n "${DR_DRILL_SSH_PRIVKEY:-}" ] && DR_SSH_I=(-i "${DR_DRILL_SSH_PRIVKEY}")
-box_ssh(){ ssh "${DR_SSH_I[@]+"${DR_SSH_I[@]}"}" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 "root@$(cat "${WORK}/.boxip")" "$@"; }
+# Throwaway box: do NOT record/verify its host key. Hetzner recycles IPs, so a reused IP carries a STALE
+# known_hosts entry whose key no longer matches — `accept-new` then REFUSES (a real first-box-run failure,
+# 2026-06-27). `UserKnownHostsFile=/dev/null` + `StrictHostKeyChecking=no` is correct here: the box is one
+# we just provisioned and destroy at the end; there is nothing durable to pin.
+DR_SSH_NOHOST=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+box_ssh(){ ssh "${DR_SSH_I[@]+"${DR_SSH_I[@]}"}" "${DR_SSH_NOHOST[@]}" -o ConnectTimeout=15 "root@$(cat "${WORK}/.boxip")" "$@"; }
 # restic against one native-s3 prefix, READ paths only (never forget/prune/init):
 restic_at(){ local prefix="$1"; shift; RESTIC_REPOSITORY="${RESTIC_BUCKET}/${prefix}" restic "$@"; }
 aws_s3(){ aws --endpoint-url "${S3_ENDPOINT}" "$@"; }
@@ -43,10 +48,11 @@ assert_no_prod_dns(){
 preflight_checks(){
   echo "  PREFLIGHT: required tools"
   local miss=0 t
-  for t in age hcloud aws restic skopeo kubectl helm jq ssh git curl envsubst; do
+  for t in age hcloud aws restic skopeo kubectl helm jq ssh git curl envsubst docker; do
     command -v "$t" >/dev/null 2>&1 || { echo "    MISSING tool: $t"; miss=1; }
   done
   [ -r "${ESCROW_IDENTITY}" ] || { echo "    MISSING offline escrow key: ${ESCROW_IDENTITY}"; miss=1; }
+  [ -r "${K3S_TOKEN_FILE}" ]  || { echo "    MISSING K3s server token (J10 boot): ${K3S_TOKEN_FILE} — escrow it in the DR kit"; miss=1; }
   : "${HCLOUD_TOKEN:?set HCLOUD_TOKEN}" "${RESTIC_PASSWORD:?set RESTIC_PASSWORD}"
   : "${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID}" "${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY}"
   [ "$miss" = 0 ] || fail_step "preflight-tools-missing"
@@ -92,7 +98,7 @@ provision_temp_box(){            # $1 = box name
   local ip; ip="$(hcloud server ip "$1")"; echo "$ip" > "${WORK}/.boxip"
   echo "  box ip ${ip}; waiting for ssh ..."
   local i; for i in $(seq 1 40); do
-    ssh "${DR_SSH_I[@]+"${DR_SSH_I[@]}"}" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 "root@${ip}" true 2>/dev/null && break
+    ssh "${DR_SSH_I[@]+"${DR_SSH_I[@]}"}" "${DR_SSH_NOHOST[@]}" -o ConnectTimeout=5 "root@${ip}" true 2>/dev/null && break
     sleep 5; [ "$i" = 40 ] && fail_step "box-ssh-never-came-up"
   done
   echo "  installing single-node k3s (NO --etcd-s3 of its own; the snapshot is restored, not written) ..."
@@ -125,8 +131,13 @@ lock_box_egress_to_s3(){
   # OUTPUT) — so every prod-mutating controller fails closed. Called AFTER k3s install (needs open
   # egress) and BEFORE k3s_cluster_reset_restore (which boots those controllers).
   # NOTE: added 2026-06-27; validated on the first supervised box run (see DESIGN-NOTE-livebox).
+  # fsn1 object storage can answer with DIFFERENT A-records over time (round-robin / endpoint changes),
+  # so resolve REPEATEDLY and union — a single getent (first box run, 2026-06-27) caught only one IP and
+  # left later in-cluster S3 traffic intermittently blocked. (The etcd snapshot itself is fetched
+  # host-side + scp'd, so Step 0 does not depend on box→S3; this rule is for the Step 4-6 controllers,
+  # CNPG-Barman, etc.) If a long drill still sees S3 flaps, widen to the Hetzner object-storage prefix.
   local s3ips
-  s3ips="$(box_ssh "getent ahostsv4 ${S3_HOST} | awk '{print \$1}' | sort -u | paste -sd, -")"
+  s3ips="$(box_ssh "for i in \$(seq 1 8); do getent ahostsv4 ${S3_HOST}; done | awk '{print \$1}' | sort -u | paste -sd, -")"
   [ -n "${s3ips}" ] || fail_step "egress-lock-could-not-resolve-s3 (${S3_HOST})"
   box_ssh "nft -f - <<NFT
 table inet drillguard {
@@ -161,24 +172,46 @@ fetch_etcd_snapshot_from_s3(){
   echo "  newest etcd snapshot in S3: ${ETCD_SNAP_NAME}"
 }
 k3s_cluster_reset_restore(){
-  # native restore: K3s pulls ${ETCD_SNAP_NAME} from S3 and resets etcd to it. The secret key is piped
-  # via stdin → K3S_ETCD_S3_SECRET_KEY (never in argv); the access-key-id is non-secret (config-tier).
-  # IMPORTANT: do NOT mask the reset exit code behind `; systemctl start k3s` — a failed S3 download /
-  # restore would otherwise silently leave the FRESH cluster (first box run, 2026-06-27, surfaced this:
-  # restore "succeeded" but loaded an empty cluster). Capture the reset rc + tail the log on failure.
-  printf '%s' "${AWS_SECRET_ACCESS_KEY}" | box_ssh "set -o pipefail; read -r SK; systemctl stop k3s; \
-    K3S_ETCD_S3_SECRET_KEY=\"\$SK\" k3s server --cluster-reset \
-      --cluster-reset-restore-path='${ETCD_SNAP_NAME}' \
-      --etcd-s3 --etcd-s3-bucket='${ETCD_BUCKET}' --etcd-s3-folder='${ETCD_FOLDER}' \
-      --etcd-s3-endpoint='${S3_HOST}' --etcd-s3-region=fsn1 \
-      --etcd-s3-access-key='${AWS_ACCESS_KEY_ID}' >/var/log/dr-etcd-restore.log 2>&1; \
-    rc=\$?; \
-    if [ \$rc -ne 0 ]; then echo \"RESET_EXIT=\$rc\"; tail -25 /var/log/dr-etcd-restore.log; exit \$rc; fi; \
-    grep -qiE 'restoring.*snapshot|reset.*finished|has been reset' /var/log/dr-etcd-restore.log \
+  # LOCAL-PATH restore — PROVEN end-to-end on real hardware 2026-06-27 (REC-EVID-006). Three findings,
+  # each a hard requirement, none of which the standalone-etcd weekly jewels-proof can surface:
+  #
+  #  (a) DO NOT use k3s `--etcd-s3` for the restore. Its restore path runs a HeadBucket existence check
+  #      that the READ-scoped S3 key is DENIED ("failed to test for existence of bucket … Access Denied"),
+  #      which silently yields an EMPTY restore that then reports success. Instead download the snapshot on
+  #      the WORKSTATION (a plain GET, which the read key CAN do) and scp it to the box, then restore from
+  #      the local file with `--cluster-reset-restore-path=/root/snap.db` (no bucket check).
+  #  (b) The box's k3s server token MUST equal the prod cluster token the snapshot was sealed with. k3s
+  #      encrypts its in-datastore bootstrap data (cluster CA private keys, SA signing keys, the
+  #      secrets-encryption config) with the server token; a mismatch is fatal: "bootstrap data … already
+  #      found and encrypted with different token". This token CANNOT come from Infisical (Step 0 precedes
+  #      Step 1) — it lives in the OFFLINE DR kit and is supplied via K3S_TOKEN_FILE (piped, never argv).
+  #  (c) After the reset, REMOVE the box's freshly-generated tls/ + cred/{ipsec.psk,passwd}; they are
+  #      "newer than datastore" and k3s refuses to boot until they're recreated from the RESTORED CA.
+  #
+  # The restored apiserver serves with the PROD CA (not the box's original), so the kubeconfig fetched at
+  # provision time is now invalid — we re-fetch it after boot. `--cluster-reset` resets then exits; the
+  # boot is a separate `systemctl start`.
+  [ -r "${K3S_TOKEN_FILE:?set K3S_TOKEN_FILE=<offline DR-kit k3s-server-token>}" ] \
+    || fail_step "k3s-token-file-unreadable:${K3S_TOKEN_FILE} (the prod K3s server token; escrow it in the DR kit — see README 'offline DR kit')"
+  local snap="${WORK}/etcd-snapshot.db" ip; ip="$(cat "${WORK}/.boxip")"
+  echo "  downloading etcd snapshot host-side (GET; no HeadBucket) ..."
+  aws_s3 s3 cp "s3://${ETCD_BUCKET}/${ETCD_FOLDER}/${ETCD_SNAP_NAME}" "${snap}" >/dev/null 2>&1 \
+    || fail_step "etcd-snapshot-download-failed:${ETCD_SNAP_NAME}"
+  scp "${DR_SSH_I[@]+"${DR_SSH_I[@]}"}" "${DR_SSH_NOHOST[@]}" -o ConnectTimeout=20 \
+    "${snap}" "root@${ip}:/root/snap.db" >/dev/null 2>&1 || fail_step "etcd-snapshot-scp-failed"
+  # write the prod token onto the box token file (value piped from the offline kit; never printed/argv)
+  box_ssh "umask 077; cat > /var/lib/rancher/k3s/server/token; chmod 600 /var/lib/rancher/k3s/server/token" \
+    < "${K3S_TOKEN_FILE}" || fail_step "k3s-token-write-failed"
+  box_ssh "systemctl stop k3s 2>/dev/null || true; pkill -9 -f containerd-shim 2>/dev/null || true; sleep 2; \
+    k3s server --cluster-reset --token-file=/var/lib/rancher/k3s/server/token \
+      --cluster-reset-restore-path=/root/snap.db >/var/log/dr-etcd-restore.log 2>&1 || true; \
+    grep -qiE 'kvstore restored|restoring.*snapshot|has been reset|reset.*finish' /var/log/dr-etcd-restore.log \
       || { echo NO_RESTORE_EVIDENCE_IN_LOG; tail -25 /var/log/dr-etcd-restore.log; exit 3; }; \
+    rm -rf /var/lib/rancher/k3s/server/tls /var/lib/rancher/k3s/server/cred/ipsec.psk /var/lib/rancher/k3s/server/cred/passwd; \
     systemctl start k3s" \
-    || fail_step "k3s-cluster-reset-restore-failed (reset log shown above; rerun with KEEP_BOX=1 to inspect /var/log/dr-etcd-restore.log)"
-  local i; for i in $(seq 1 30); do k get --raw='/readyz' >/dev/null 2>&1 && break; sleep 4; done
+    || fail_step "k3s-cluster-reset-restore-failed (see /var/log/dr-etcd-restore.log; rerun with KEEP_BOX=1 to inspect)"
+  echo "  reset + boot issued; re-fetching kubeconfig (restored prod CA) ..."
+  fetch_box_kubeconfig    # waits for /readyz against the RESTORED apiserver
 }
 assert_etcd_loaded(){
   k get crd >/dev/null 2>&1 || fail_step "etcd-restore-no-crds"
@@ -218,22 +251,99 @@ open_escrow_bundle(){
 # ── shared scratch-Postgres restore (Step 1/2 — restic logical dump lane) ────
 # At Steps 1/2 the CNPG operator is NOT installed yet, so we restore the logical
 # dump into the plain `scratch-pg` Postgres (20-...). Step 5 uses CNPG recovery.
-restore_scratch_postgres(){      # $1 = jewel prefix (infisical|forgejo)
-  local prefix="$1"
+# ── CNPG-Barman restore (host-side Docker) — the proven jewels-proof-local.sh lane ───
+# DB jewels (J3/J4/J6/J7/J8) are CNPG-**Barman** physical backups under the object-locked
+# ${CNPG_BUCKET_OL}/pg-<name> store (NOT restic — the old `infisical`/`forgejo` restic prefixes never
+# existed). We restore host-side in throwaway Docker (the harness's documented default; the egress-locked
+# box can't pull/build the barman image), exactly as `jewels-proof-local.sh` does — build PG16.8 + an
+# upgraded barman (prod `backup.info` carries an `encryption` field barman<3.14 can't parse),
+# barman-cloud-restore the latest base backup, recover to consistency, then `pg_dump -Fc` the app DB. The
+# downstream scratch-pg load (kubectl exec pg_restore) is unchanged — we just replaced the dead restic
+# SOURCE of the dump with the real Barman one. Ports REC-EVID-005's proven path into the full drill.
+DR_BARMAN_IMAGE_BUILT=0
+build_dr_barman_image(){
+  [ "${DR_BARMAN_IMAGE_BUILT}" = 1 ] && return 0
+  command -v docker >/dev/null 2>&1 || fail_step "docker-required-for-barman-restore (Steps 1-2 restore DB jewels host-side)"
+  cat > "${WORK}/Dockerfile.drbarman" <<EOF
+FROM ${PG_IMAGE_BASE:-ghcr.io/cloudnative-pg/postgresql:16.8}
+USER root
+RUN pip install --no-cache-dir --upgrade 'barman[cloud,aws]'
+EOF
+  docker build -q -t dr-barman:local -f "${WORK}/Dockerfile.drbarman" "${WORK}" >/dev/null 2>&1 \
+    || fail_step "dr-barman-image-build-failed (needs Docker + internet on the workstation)"
+  DR_BARMAN_IMAGE_BUILT=1
+}
+barman_restore_db_to_dump(){     # $1 = db/jewel name (infisical|forgejo) → ${WORK}/$1.dump
+  local name="$1" cluster
+  cluster="pg-${name}"
+  local vol ctr
+  vol="dr-${cluster}-data"; ctr="dr-${cluster}"
+  build_dr_barman_image
+  docker rm -f "${ctr}" >/dev/null 2>&1 || true; docker volume rm "${vol}" >/dev/null 2>&1 || true
+  docker volume create "${vol}" >/dev/null
+  # restore latest base backup — READ-only against the object-locked CNPG store (no forget/prune/delete).
+  docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -v "${vol}":/recovery dr-barman:local bash -c "
+    set -e
+    barman-cloud-restore --cloud-provider aws-s3 --endpoint-url ${S3_ENDPOINT} s3://${CNPG_BUCKET_OL} ${cluster} latest /recovery/pgdata
+    chown -R 26:26 /recovery/pgdata && chmod 700 /recovery/pgdata
+  " >/dev/null 2>&1 || { docker volume rm "${vol}" >/dev/null 2>&1 || true; fail_step "barman-cloud-restore-${cluster}"; }
+  # standalone recovery to backup-end consistency (enough for a logical dump); neutralise CNPG /controller cfg.
+  docker run --rm --user 26:26 -v "${vol}":/recovery dr-barman:local bash -c "
+cat > /recovery/pgdata/custom.conf <<CONF
+listen_addresses = '*'
+unix_socket_directories = '/tmp'
+max_worker_processes = 64
+max_parallel_workers = 64
+max_replication_slots = 64
+max_wal_senders = 64
+max_locks_per_transaction = 256
+hot_standby = on
+wal_level = logical
+archive_mode = off
+ssl = off
+logging_collector = off
+shared_preload_libraries = ''
+restart_after_crash = off
+CONF
+cat > /recovery/pgdata/override.conf <<CONF
+recovery_target = 'immediate'
+recovery_target_action = 'promote'
+recovery_target_timeline = 'latest'
+restore_command = 'barman-cloud-wal-restore --cloud-provider aws-s3 --endpoint-url ${S3_ENDPOINT} s3://${CNPG_BUCKET_OL} ${cluster} %f %p'
+CONF
+touch /recovery/pgdata/recovery.signal
+" >/dev/null 2>&1 || { docker volume rm "${vol}" >/dev/null 2>&1 || true; fail_step "barman-recovery-conf-${cluster}"; }
+  docker run -d --name "${ctr}" --user 26:26 -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
+    -v "${vol}":/recovery --entrypoint postgres dr-barman:local -D /recovery/pgdata >/dev/null 2>&1 \
+    || { docker volume rm "${vol}" >/dev/null 2>&1 || true; fail_step "barman-pg-start-${cluster}"; }
+  local i ok=0
+  for i in $(seq 1 80); do
+    docker logs "${ctr}" 2>&1 | grep -qi 'database system is ready to accept connections' && { ok=1; break; }
+    docker logs "${ctr}" 2>&1 | grep -qiE 'FATAL|PANIC' && break
+    sleep 3
+  done
+  if [ "${ok}" != 1 ]; then
+    docker logs "${ctr}" 2>&1 | grep -iE 'FATAL|PANIC|insufficient|max_' | tail -3
+    docker rm -f "${ctr}" >/dev/null 2>&1 || true; docker volume rm "${vol}" >/dev/null 2>&1 || true
+    fail_step "barman-pg-not-ready-${cluster}"
+  fi
+  docker exec -u 26 "${ctr}" pg_dump -h /tmp -U postgres -Fc -d "${name}" > "${WORK}/${name}.dump" 2>/dev/null \
+    || { docker rm -f "${ctr}" >/dev/null 2>&1 || true; docker volume rm "${vol}" >/dev/null 2>&1 || true; fail_step "pg_dump-${name}-from-restored-cluster"; }
+  docker rm -f "${ctr}" >/dev/null 2>&1 || true; docker volume rm "${vol}" >/dev/null 2>&1 || true
+  [ -s "${WORK}/${name}.dump" ] || fail_step "barman-empty-dump-${name}"
+  echo "  ${cluster} barman-restored → recovered PG → pg_dump ${name}.dump ($(wc -c < "${WORK}/${name}.dump") bytes)"
+}
+restore_scratch_postgres(){      # $1 = jewel/db name (infisical|forgejo) → CNPG cluster pg-<name>
+  local name="$1"
   # ensure the shared scratch namespaces + scratch-pg/redis/infisical are up (idempotent).
-  # 20- references ${SCRATCH_DOMAIN}/${INFISICAL_IMAGE} → render with envsubst.
   k apply -f "${MANIFESTS}/00-scratch-namespaces.yaml" >/dev/null
   envsubst < "${MANIFESTS}/20-scratch-infisical.yaml" | k apply -f - >/dev/null
   k -n dr-drill rollout status deploy/scratch-pg --timeout=180s >/dev/null 2>&1 || fail_step "scratch-pg-not-ready"
-  restic_at "${prefix}" restore latest --no-lock --target "${WORK}/${prefix}" >/dev/null 2>&1 \
-    || fail_step "restic-restore-${prefix}"
-  # dump filename: Stage-B writes <prefix>.dump (pg_dump -Fc); glob defensively.
-  local dump; dump="$(find "${WORK}/${prefix}" -type f \( -name "${prefix}.dump" -o -name '*.dump' -o -name '*.pgcustom' \) | head -1)"
-  [ -n "${dump}" ] || fail_step "${prefix}-dump-not-found-in-restic-restore"
-  k -n dr-drill exec deploy/scratch-pg -- createdb -U postgres "${prefix}" 2>/dev/null || true
-  k -n dr-drill exec -i deploy/scratch-pg -- pg_restore -U postgres -d "${prefix}" --no-owner --no-acl < "${dump}" \
-    >/dev/null 2>&1 || fail_step "pg_restore-${prefix}"
-  echo "  ${prefix} dump restored + pg_restore'd into scratch-pg (db=${prefix})"
+  barman_restore_db_to_dump "${name}"                    # CNPG-Barman → ${WORK}/${name}.dump (NOT restic)
+  k -n dr-drill exec deploy/scratch-pg -- createdb -U postgres "${name}" 2>/dev/null || true
+  k -n dr-drill exec -i deploy/scratch-pg -- pg_restore -U postgres -d "${name}" --no-owner --no-acl < "${WORK}/${name}.dump" \
+    >/dev/null 2>&1 || fail_step "pg_restore-${name}"
+  echo "  ${name} restored from CNPG-Barman → scratch-pg (db=${name})"
 }
 
 # ── STEP 1 — Infisical / C2 ──────────────────────────────────────────────────

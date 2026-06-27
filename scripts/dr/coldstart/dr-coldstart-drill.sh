@@ -56,8 +56,14 @@ ESCROW_IDENTITY="${ESCROW_IDENTITY:-$HOME/.config/restormel/dr-kit/escrow-primar
 ESCROW_BUNDLE="${ESCROW_BUNDLE:-eso-bootstrap.age}"          # C1 MI + C2 J5; offline key only
 ESCROW_ENV="${WORK}/.escrow.env"                            # tmpfs-ish; 600; shredded in cleanup
 
+# ── K3s server token (J10 boot) — OFFLINE DR-kit only ───────────────────────
+# REQUIRED to boot the restored etcd snapshot: k3s seals its in-datastore bootstrap data with the cluster
+# server token, so a fresh node must carry the SAME token (proven on hardware 2026-06-27, REC-EVID-006).
+# It CANNOT live in Infisical (Step 0 precedes Step 1) — it sits in the offline DR kit next to the escrow key.
+K3S_TOKEN_FILE="${K3S_TOKEN_FILE:-$HOME/.config/restormel/dr-kit/k3s-server-token}"
+
 # ── canary (C2) — non-secret expected sha256 of the sentinel value ──────────
-CANARY_SECRET_PATH="${CANARY_SECRET_PATH:-/dr/canary}"      # in the `restormel` Infisical project
+CANARY_SECRET_PATH="${CANARY_SECRET_PATH:-/DR_CANARY}"     # secret DR_CANARY at root path `/` in the `restormel` project (proven REC-EVID-005); assert_canary_decrypts splits dirname=path / basename=key
 CANARY_EXPECTED_SHA256="${CANARY_EXPECTED_SHA256:-fa3444cbb7d1deebd11875b62bd992cc9728632913e261a81217121b875276e2}"
 
 # ── scratch box / cluster ───────────────────────────────────────────────────
@@ -71,6 +77,7 @@ MANIFESTS="$(cd "$(dirname "$0")/manifests" && pwd)"
 # image pins (read during the 2026-06-25 ceremony; override if rotated) — see README
 INFISICAL_IMAGE="${INFISICAL_IMAGE:-infisical/infisical:v0.154.6}"
 FORGEJO_IMAGE="${FORGEJO_IMAGE:-codeberg.org/forgejo/forgejo:8.0.3}"
+PG_IMAGE_BASE="${PG_IMAGE_BASE:-ghcr.io/cloudnative-pg/postgresql:16.8}"  # MUST match prod PG major (backup version=160008) — Steps 1-2 Barman restore base
 J2_SAMPLE_REPO="${J2_SAMPLE_REPO:-dashboard}"               # a repo present in the registry mirror
 
 STEP_RTO=()                       # indexed array (keys 0-6); avoids bash-4-only `declare -A` (macOS bash is 3.2)
@@ -80,9 +87,9 @@ TOTAL_RTO=""
 
 export WORK LOG EVID_OUT S3_HOST S3_ENDPOINT RESTIC_BUCKET CNPG_BUCKET_OL \
        REGISTRY_MIRROR_BUCKET ESCROW_S3 ETCD_BUCKET ETCD_FOLDER ESCROW_IDENTITY ESCROW_BUNDLE ESCROW_ENV \
-       CANARY_SECRET_PATH CANARY_EXPECTED_SHA256 TEMP_BOX_NAME TEMP_BOX_TYPE \
+       K3S_TOKEN_FILE CANARY_SECRET_PATH CANARY_EXPECTED_SHA256 TEMP_BOX_NAME TEMP_BOX_TYPE \
        SCRATCH_DOMAIN SCRATCH_KUBECONFIG SCRATCH_STORAGECLASS MANIFESTS \
-       INFISICAL_IMAGE FORGEJO_IMAGE J2_SAMPLE_REPO DRILL_TS
+       INFISICAL_IMAGE FORGEJO_IMAGE PG_IMAGE_BASE J2_SAMPLE_REPO DRILL_TS
 
 source "$(dirname "$0")/assertions.sh"
 
@@ -97,6 +104,10 @@ cleanup(){
   local rc=$?
   log "CLEANUP: destroying temp box ${TEMP_BOX_NAME} (rc=${rc}, result=${DRILL_RESULT})"
   shred -u "${ESCROW_ENV}" 2>/dev/null || rm -f "${ESCROW_ENV}" 2>/dev/null || true
+  # the host-side etcd snapshot holds EVERY cluster secret in plaintext (k3s secrets are not encrypted at
+  # rest) — the single most sensitive artifact in WORK. Shred it explicitly (WORK itself is kept for the
+  # operator's evidence + log).
+  shred -u "${WORK}/etcd-snapshot.db" 2>/dev/null || rm -f "${WORK}/etcd-snapshot.db" 2>/dev/null || true
   if [ "${KEEP_BOX:-0}" = "1" ]; then
     log "KEEP_BOX=1 — NOT destroying ${TEMP_BOX_NAME} (manual teardown owed: hcloud server delete ${TEMP_BOX_NAME})"
   else
@@ -138,7 +149,7 @@ STEP_RTO[0]=$((SECONDS-s)); log "STEP 0: PASS (${STEP_RTO[0]}s, path=${ETCD_REST
 s=$SECONDS
 log "STEP 1: restore Infisical (J4 ciphertext + J5 master key from sealed escrow)"
 open_escrow_bundle                                   # opens eso-bootstrap.age ONCE with the OFFLINE key
-restore_scratch_postgres "infisical"                 # restic → pg_restore into scratch CNPG
+restore_scratch_postgres "infisical"                 # CNPG-Barman restore (host-side Docker) → pg_restore into scratch-pg
 stand_up_scratch_infisical                           # scratch Infisical over restored PG + J5 from escrow
 assert_canary_decrypts "${CANARY_SECRET_PATH}" "${CANARY_EXPECTED_SHA256}"   # C2: match-or-FAIL
 STEP_RTO[1]=$((SECONDS-s)); log "STEP 1: PASS (${STEP_RTO[1]}s) — canary decrypted (C2 satisfied)"
