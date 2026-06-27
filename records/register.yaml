@@ -220,25 +220,25 @@ records:
   - id: REC-GOV-020
     title: "Trust & Compliance"
     class: governance
-    status: draft
+    status: approved
     classification: public
     control-tier: 2
     owner: founder
-    last-reviewed: 2026-06-15
+    last-reviewed: 2026-06-27
     review-interval: P6M
-    next-review: 2026-12-15
+    next-review: 2026-12-27
     retention: P6Y-after-superseded
     path: legal/trust-and-compliance.md
   - id: REC-GOV-021
     title: "Cyber Essentials control mapping & gap analysis"
     class: governance
-    status: draft
+    status: approved
     classification: internal
     control-tier: 2
     owner: founder
-    last-reviewed: 2026-06-15
+    last-reviewed: 2026-06-27
     review-interval: P6M
-    next-review: 2026-12-15
+    next-review: 2026-12-27
     retention: P6Y-after-superseded
     path: governance/ce-control-mapping.md
   - id: REC-INC-001
@@ -568,37 +568,37 @@ records:
   - id: REC-LEG-012
     title: Cookie Policy
     class: legal
-    status: draft
+    status: approved
     classification: public
     control-tier: 2
     owner: founder
-    last-reviewed: 2026-06-15
+    last-reviewed: 2026-06-27
     review-interval: P12M
-    next-review: 2027-06-15
+    next-review: 2027-06-27
     retention: P6Y-after-superseded
     path: legal/cookie-policy.md
   - id: REC-LEG-013
     title: Acceptable Use Policy
     class: legal
-    status: draft
+    status: approved
     classification: public
     control-tier: 2
     owner: founder
-    last-reviewed: 2026-06-15
+    last-reviewed: 2026-06-27
     review-interval: P12M
-    next-review: 2027-06-15
+    next-review: 2027-06-27
     retention: P6Y-after-superseded
     path: legal/acceptable-use.md
   - id: REC-LEG-014
     title: Data Processing Agreement (DPA)
     class: legal
-    status: draft
+    status: approved
     classification: public
     control-tier: 2
     owner: founder
-    last-reviewed: 2026-06-15
+    last-reviewed: 2026-06-27
     review-interval: P12M
-    next-review: 2027-06-15
+    next-review: 2027-06-27
     retention: P6Y-after-superseded
     path: legal/dpa.md
   - id: REC-PLAN-000
@@ -904,13 +904,13 @@ records:
   - id: REC-POL-003
     title: Cyber Security Policy (Cyber Essentials controls)
     class: governance
-    status: draft
+    status: approved
     classification: internal
     control-tier: 2
     owner: founder
-    last-reviewed: 2026-06-15
+    last-reviewed: 2026-06-27
     review-interval: P12M
-    next-review: 2027-06-15
+    next-review: 2027-06-27
     retention: P6Y-after-superseded
     path: governance/cyber-security-policy.md
   - id: REC-POL-004
