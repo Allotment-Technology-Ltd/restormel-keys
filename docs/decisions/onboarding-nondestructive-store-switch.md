@@ -12,7 +12,7 @@ review-interval: P12M
 approved-by: founder
 approved-on: 2026-06-27
 retention: permanent
-related: [REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-018, REC-ADR-019]
+related: [REC-ADR-008, REC-ADR-009, REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-018, REC-ADR-019]
 ---
 
 # ADR: Non-destructive, reversible store switch (M3)
@@ -67,6 +67,7 @@ Concretely, the captured design holds three commitments:
 
 ## Consequences
 
+- **This decision unifies with the in-train DB strand — it is not a from-scratch store backend.** The "managed store the graph lives in today" and the "your own infra" target are the two tiers being built in **PR #288** (`feat/connect-zerosetup-stage1`, WIP/default-OFF) under **REC-ADR-008** (host-managed Postgres as the zero-setup default tier — sovereign EU Postgres, custody Restormel-side, EBV/G2 parity with Surreal proven via the G4 gate, BYO Surreal/Neo4j preserved as an override), with **REC-ADR-009** (Neon quick-start / tenant provisioning) as a sibling tier. The plan and detail for M3's backend live in #288 + REC-ADR-008, *not* in a separate greenfield build. This design rethink's contribution is to **unify those store strands into one coherent M3 "Store" experience** (managed → own, non-destructive, reversible). The genuinely-new pieces this ADR adds on top are the **non-destructive use/add/keep-separate choice and the node-count probe**; the managed-vs-own tenancy and the "no overwrite" guarantee must share **one** safety story with REC-ADR-008's shared-Postgres/workspace-scoped tenancy and the additive-only `allow_claim_versions_table` design. Sequencing tracks #288's default-OFF → on flag flip and founder sign-off (REC-ADR-008 §6); the flag is being renamed `connectNeonGraphStore → connectHostManagedGraphStore` (back-compat aliases kept).
 - **A read-only verify path is the realisation surface, not a new build mandated here.** The worktree already carries a read-only connectivity-test path that fits this intent: the `graph-store-config/test` endpoint (`apps/dashboard/src/routes/keys/dashboard/api/connect/pipeline/graph-store-config/test/+server.ts`) tests draft or saved config via `adapter.healthCheck()` (`testGraphStoreConfigDraft` / `testSavedGraphStoreConfig` in `apps/dashboard/src/lib/server/connect/graph-store-config.ts`) without writing — the natural home for the step-1a handshake. Config save/clear (`saveWorkspaceGraphStoreConfig` / `clearWorkspaceGraphStoreConfig`, migration `051_workspace_graph_store_config.sql`) is where the reversible "switch back" guarantee would land. Whoever builds M3 should preserve the *intent* and adapt the *mechanic* (`08_ARTEFACTS.md` "keep the intent, adapt the mechanic").
 - **Connect must be read-only and side-effect-free.** The reachability check must never write, copy, or migrate; any deviation breaks the captured guarantee and would need a superseding ADR.
 - **The managed copy must be retained until the user explicitly confirms a switch**, and a path back to it must remain — the reversibility promise is load-bearing copy, not decoration.
