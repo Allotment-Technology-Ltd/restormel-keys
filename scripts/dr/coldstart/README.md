@@ -2,9 +2,16 @@
 
 **REC-PLAN-021** crown-jewels off-cluster disaster-recovery. This harness restores the **whole estate**
 from the **fsn1 S3 store alone** into a **fresh throwaway Hetzner box**, proves it works, measures the
-**RTO**, writes an **evidence record**, and **destroys the box**. It is the **Stage-C gate**: a full PASS
-via the `etcd-s3` path (with the §3d weekly per-jewel drill GREEN) is what *licenses* the irreversible
-Stage D/E ( `.150` standby delete → BX11 cancel → `.150` decommission ).
+**RTO**, writes an **evidence record**, and **destroys the box**. It was the **Stage-C gate** for the
+irreversible Stage D/E ( `.150` standby delete → BX11 cancel → `.150` decommission ).
+
+> **Stage D/E was EXECUTED 2026-06-26** (see memory `bx11-150-decommission`; governance PR #339 — AST-010/
+> AST-012 `status: decommissioned`). The founder **front-ran the formal full-box gate**, accepting the
+> residual risk on the strength of the **per-jewel + escrow C1/C2 + J10 recovery proven from fsn1 S3 alone**
+> (REC-EVID-005) plus the retained recovery snapshot `401960703`. So this full-box drill is now
+> **retrospective hardening + the ongoing recovery rehearsal**, not a precondition. J10 etcd restore + a
+> full control-plane boot were subsequently proven on real hardware (REC-EVID-006). The crown-jewels do
+> **not** depend on the retired hosts — every lane is fsn1 S3 and the drill provisions a *fresh* box.
 
 > **The founder runs this**, on a trusted workstation, with the **offline escrow key in hand**. That key
 > (`~/restormel-escrow-primary.key`) never leaves the founder — never in the cluster, Infisical, or git.
@@ -160,10 +167,12 @@ in the temp dir; its path is printed at the end. **File it via the `restormel-is
 DR RTO**. (The WS6 `DESIGN.md` template predates the current schema and says `class: posture` / `REC-POS-DR`;
 the harness emits the schema-correct `class: evidence` form — follow the harness output, not the design template.)
 
-**Stage C is SATISFIED — and only then may you run the irreversible Stage D/E — when:** every step PASSes
-via the **`etcd-s3`** path (not gitops-fallback), **C2 = MATCH**, **C1 recreated from escrow alone**, the
-**§3d weekly drill is GREEN**, and the RTO is recorded + accepted. A FAIL / `gitops-fallback`-only /
-`PASS-PARTIAL` run does **not** license Stage D/E.
+**Stage D/E was executed 2026-06-26 (founder risk-acceptance)** ahead of a full live-box PASS — see the
+intro note above. The original gate criteria are retained here as the **standard a full `etcd-s3`-path PASS
+must still meet** for the ongoing rehearsal to count as GREEN: every step PASSes via the **`etcd-s3`** path
+(not gitops-fallback), **C2 = MATCH**, **C1 recreated from escrow alone**, the **§3d weekly drill is GREEN**,
+and the RTO is recorded. (Were Stage D/E *not* already done, a FAIL / `gitops-fallback`-only / `PASS-PARTIAL`
+run would not have licensed it.)
 
 ## Notes
 
