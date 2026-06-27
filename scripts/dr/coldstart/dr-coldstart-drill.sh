@@ -72,7 +72,7 @@ INFISICAL_IMAGE="${INFISICAL_IMAGE:-infisical/infisical:v0.154.6}"
 FORGEJO_IMAGE="${FORGEJO_IMAGE:-codeberg.org/forgejo/forgejo:8.0.3}"
 J2_SAMPLE_REPO="${J2_SAMPLE_REPO:-dashboard}"               # a repo present in the registry mirror
 
-declare -A STEP_RTO
+STEP_RTO=()                       # indexed array (keys 0-6); avoids bash-4-only `declare -A` (macOS bash is 3.2)
 DRILL_RESULT="FAIL"                # fail-closed: only ever set PASS at the very end
 ETCD_RESTORE_PATH="unknown"
 TOTAL_RTO=""

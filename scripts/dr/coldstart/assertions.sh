@@ -52,11 +52,21 @@ preflight_checks(){
   [ "$miss" = 0 ] || fail_step "preflight-tools-missing"
 
   echo "  PREFLIGHT: S3 restore sources (read-only existence check)"
+  # restic lane covers ONLY: Forgejo repos (J1, data volume) + Surreal (J9).
+  # The Infisical (J4) + Forgejo (J3) + app (J6/7/8) DATABASES are CNPG-Barman, NOT restic
+  # (verified 2026-06-27 — there is no restic 'infisical'/'forgejo' DB prefix). See the CNPG check below.
   local p
-  for p in infisical forgejo surreal-k3s; do
+  for p in forgejo-data-k3s surreal-k3s; do
     restic_at "$p" snapshots --no-lock --latest 1 >/dev/null 2>&1 \
       || fail_step "preflight-restic-prefix-missing:${p}"
     echo "    restic ${p}: snapshots present"
+  done
+  # CNPG Barman base backups for every DB jewel (J3/J4/J6/J7/J8) — must have a base/ backup
+  local c
+  for c in pg-infisical pg-forgejo pg-restormel pg-platform pg-plotbudget; do
+    aws_s3 s3 ls "s3://${CNPG_BUCKET_OL}/${c}/base/" >/dev/null 2>&1 \
+      || fail_step "preflight-cnpg-base-missing:${c}"
+    echo "    cnpg ${c}/base: backups present"
   done
   # etcd (J10) is native K3s --etcd-s3 → raw objects in a DEDICATED bucket (NOT restic)
   aws_s3 s3 ls "s3://${ETCD_BUCKET}/${ETCD_FOLDER}/" >/dev/null 2>&1 \
@@ -227,7 +237,8 @@ assert_canary_decrypts(){        # $1 = canary path/key, $2 = expected sha256 �
 
 # ── STEP 2 — Forgejo + registry ──────────────────────────────────────────────
 restore_sample_repo_and_fsck(){
-  restic_at forgejo restore latest --no-lock --include "**/repositories/**" --target "${WORK}/repos" >/dev/null 2>&1 \
+  # Forgejo repos live in the DATA-VOLUME restic repo `forgejo-data-k3s` (path /data/...), NOT a `forgejo` prefix.
+  restic_at forgejo-data-k3s restore latest --no-lock --include "**/repositories/**" --target "${WORK}/repos" >/dev/null 2>&1 \
     || fail_step "restic-restore-repos"
   local repo; repo="$(find "${WORK}/repos" -name '*.git' -type d | head -1)"
   [ -n "${repo}" ] || fail_step "no-repo-restored"
