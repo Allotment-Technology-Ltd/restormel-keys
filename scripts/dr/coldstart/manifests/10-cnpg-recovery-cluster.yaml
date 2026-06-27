@@ -1,0 +1,51 @@
+# WS6 Stage-C drill — scratch CNPG recovery cluster (THROWAWAY, temp box only).
+# REC-PLAN-021. Extends cluster/cnpg/cluster-pg-restormel.yaml: swaps bootstrap.initdb
+# for bootstrap.recovery from the OBJECT-LOCKED fsn1 Barman store (the same store the
+# prod clusters WRITE to — backups-fsn1-ol). NOT added to gitops; never runs on the live cluster.
+#
+# Applied by the harness with:  PG_CLUSTER=<name> envsubst < this | kubectl apply -f -
+#   PG_CLUSTER          = pg-restormel | pg-platform | pg-plotbudget   (rotated per run)
+#   SCRATCH_STORAGECLASS= local-path (fresh k3s default; NOT hcloud-volumes, which isn't on a fresh box)
+# Recovers READ-ONLY from Barman (no WAL archiver here → cannot write back to the store).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ${PG_CLUSTER}-dr            # -dr suffix: scratch, never collides with a prod name
+  namespace: cnpg-system
+  labels:
+    restormel.dev/role: dr-drill
+    restormel.dev/throwaway: "true"
+spec:
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.8   # matches the prod major (P3 verified PG16-portable)
+  instances: 1                                        # single instance is enough to validate a recovery
+  primaryUpdateStrategy: unsupervised
+
+  # ---- bootstrap.recovery: PITR from the object-locked fsn1 Barman store (READ path). ----
+  # This is the one swap vs the canonical cluster (which uses bootstrap.initdb). It proves
+  # J6/J7/J8 are restorable from the store alone — the whole point of Step 5.
+  bootstrap:
+    recovery:
+      source: ${PG_CLUSTER}-origin
+      # (omit recoveryTarget → recover to the latest available WAL; PITR is implicit)
+
+  externalClusters:
+    - name: ${PG_CLUSTER}-origin
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: backups-fsn1-ol      # the OBJECT-LOCKED store prod writes to (manifests/11)
+          serverName: ${PG_CLUSTER}              # the prod server's prefix inside the store
+
+  storage:
+    size: 10Gi
+    storageClass: ${SCRATCH_STORAGECLASS}
+  walStorage:
+    size: 10Gi                                   # Hetzner/local-path minimum; rounds up below 10Gi
+    storageClass: ${SCRATCH_STORAGECLASS}
+
+  resources:
+    requests: { memory: "512Mi", cpu: "250m" }
+    limits:   { memory: "1Gi",   cpu: "1" }
+
+  # NO Barman plugin as WAL-archiver here: the drill cluster must NEVER archive back to the store
+  # (read-only invariant). It only recovers FROM it.

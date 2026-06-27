@@ -1,0 +1,109 @@
+# Stage-C cold-start DR drill — push-button runbook
+
+**REC-PLAN-021** crown-jewels off-cluster disaster-recovery. This harness restores the **whole estate**
+from the **fsn1 S3 store alone** into a **fresh throwaway Hetzner box**, proves it works, measures the
+**RTO**, writes an **evidence record**, and **destroys the box**. It is the **Stage-C gate**: a full PASS
+via the `etcd-s3` path (with the §3d weekly per-jewel drill GREEN) is what *licenses* the irreversible
+Stage D/E ( `.150` standby delete → BX11 cancel → `.150` decommission ).
+
+> **The founder runs this**, on a trusted workstation, with the **offline escrow key in hand**. That key
+> (`~/restormel-escrow-primary.key`) never leaves the founder — never in the cluster, Infisical, or git.
+> That single-custody control is the heart of the DR design; the harness is built around it, not against it.
+
+## What it guarantees (safety)
+
+- **Read-only against the store.** Only `restic restore` / `aws s3 cp|ls|sync` (GET/LIST). Never
+  `restic forget|prune|init`, never an S3 write/delete to a jewel. The in-cluster restic Job
+  (`manifests/50-`) likewise omits `forget`/`prune`.
+- **Never touches prod.** `assert_no_prod_dns` aborts if any prod hostname resolves off the scratch box.
+  Scratch DNS (`*.dr-drill.internal`) lives only in the temp box's `/etc/hosts` and dies with the box.
+  No prod cluster / `.150` / BX11 / real DNS is read-for-write or mutated.
+- **No secret values ever printed.** Escrow plaintext is only ever *piped* (into `kubectl create`,
+  `age -d`, `sha256sum`); it lands only in a `600` temp file that is `shred`-ed on exit. Assertions are
+  over **hashes / row-count floors / canary-match booleans / HTTP status** — never plaintext.
+- **Fail-closed + always cleans up.** Any step failure stops the whole drill (a partial pass is a FAIL),
+  but the box is **still destroyed** and an evidence record is **still written**.
+
+## Prerequisites
+
+Tools on the workstation (the harness preflight asserts them):
+`age hcloud aws restic skopeo kubectl helm jq ssh git curl` + `sha256sum`/`shasum`.
+
+You hold:
+- the **offline** age key `~/restormel-escrow-primary.key` (opens `eso-bootstrap.age` → C1 MI + C2 J5),
+- the **restic passphrase**, the **fsn1 S3 keys** (read-only-scoped if you provisioned one — F2),
+- an **hcloud token** and the **name of an hcloud SSH key** for the temp box.
+
+## Run it (one command, after the env preamble)
+
+Fetch each secret **scoped** (never bulk-inject, never echo). Example using the self-hosted Infisical
+(`restormel-ops` / `prod`) — substitute your own source if different:
+
+```bash
+# restormel-ops projectId is non-secret (see the restormel-infra-access skill); set it once.
+OPS_PID="<restormel-ops-projectId>"; INF="--projectId=$OPS_PID --env=prod --domain=https://secrets.restormel.dev --plain"
+export HCLOUD_TOKEN="$(infisical secrets get HCLOUD_TOKEN $INF)"
+export RESTIC_PASSWORD="$(infisical secrets get RESTIC_PASSWORD $INF)"
+export AWS_ACCESS_KEY_ID="$(infisical secrets get HETZNER_S3_FSN1_ACCESS_KEY_ID $INF)"
+export AWS_SECRET_ACCESS_KEY="$(infisical secrets get HETZNER_S3_FSN1_SECRET_ACCESS_KEY $INF)"
+export AWS_DEFAULT_REGION=fsn1
+export DR_DRILL_SSH_KEY="<your hcloud ssh-key name>"
+export ESCROW_IDENTITY="$HOME/restormel-escrow-primary.key"   # OFFLINE key — stays on this machine
+
+bash scripts/dr/coldstart/dr-coldstart-drill.sh
+```
+
+That's it. The script provisions the box, runs Steps 0–6, prints `STEP n: PASS`, writes the evidence
+record into a temp dir (path printed at the end), and destroys the box.
+
+### Optional overrides (sane defaults baked in)
+
+| Var | Default | When to set |
+|-----|---------|-------------|
+| `TEMP_BOX_TYPE` | `cx33` | bigger box for a faster run (F3) |
+| `SCRATCH_DOMAIN` | `dr-drill.internal` | only if it collides with something you use |
+| `SCRATCH_STORAGECLASS` | `local-path` | fresh k3s default; change only for a custom box image |
+| `INFISICAL_IMAGE` / `FORGEJO_IMAGE` | ceremony pins (`v0.154.6` / `8.0.3`) | if the live versions rotated |
+| `CANARY_SECRET_PATH` | `/dr/canary` | confirm the canary's location in the `restormel` project |
+| `CANARY_PROJECT_ID` / `CANARY_ENV` | `f0165998…` / `prod` | if the canary lives elsewhere |
+| `J2_SAMPLE_REPO` | `dashboard` | a repo present in the registry mirror |
+| `PG_ROW_FLOOR` / `PG_FLOOR_TABLE` / `SURREAL_FLOOR_TABLE` | `1` / `information_schema.tables` / `source` | tighten the row-count floor to a real table |
+| `DRILL_FULL_ROUNDTRIP` | `0` | `1` for the deepest push→CI→registry→Argo check (adds RTO — F4) |
+| `KEEP_BOX` | `0` | `1` to inspect the box after (you then destroy it manually) |
+
+## The seven steps (the dependency chain)
+
+| Step | Proves | Jewels | Decisive assertion |
+|------|--------|--------|--------------------|
+| 0 | etcd restores from S3 (or clean-k3s fallback) | J10 | CRDs + app-of-apps present |
+| 1 | **Infisical decrypts from restored ciphertext + escrow key** | J4, J5 | **C2 canary sha256 MATCH** |
+| 2 | Forgejo repos + registry mirror restore | J1, J2, J3 | `git fsck` clean; image manifest+layer pull |
+| 3 | **ESO root recreatable from escrow alone** | C1 | 5 ClusterSecretStores → Valid |
+| 4 | platform rebuilds | — | 0 ImagePullBackOff; 0 ExternalSecret SyncError |
+| 5 | data restores | J6/7/8, J9 | CNPG `-dr` healthy; row counts ≥ floor |
+| 6 | apps serve on the scratch host | — | app `200`; ESO stores Valid |
+
+**C2** (Step 1) is the single most important assertion: it proves the J4 ciphertext + the J5 master key
+from escrow are a **usable recovery pair**. A mismatch is a CRITICAL **STOP** on the entire `.150` program.
+
+## After the run — file the evidence
+
+The harness emits a pre-filled evidence record (`class: evidence`, tier-3, id placeholder `REC-EVID-XXX`)
+in the temp dir; its path is printed at the end. **File it via the `restormel-isms-records` skill**
+(append-only under `evidence/posture/`): pick the next free `REC-EVID-NNN`, then run
+`node scripts/records/register.mjs` to regenerate the register. The recorded **RTO becomes the documented
+DR RTO**. (The WS6 `DESIGN.md` template predates the current schema and says `class: posture` / `REC-POS-DR`;
+the harness emits the schema-correct `class: evidence` form — follow the harness output, not the design template.)
+
+**Stage C is SATISFIED — and only then may you run the irreversible Stage D/E — when:** every step PASSes
+via the **`etcd-s3`** path (not gitops-fallback), **C2 = MATCH**, **C1 recreated from escrow alone**, the
+**§3d weekly drill is GREEN**, and the RTO is recorded + accepted. A FAIL / `gitops-fallback`-only /
+`PASS-PARTIAL` run does **not** license Stage D/E.
+
+## Notes
+
+- The harness restores **host-side** by default (restic creds stay on the workstation). `manifests/50-`
+  is the in-cluster alternative if you prefer the fetch to run on the box.
+- A few coordinates (exact canary location, per-jewel dump filename, image pins) are run-time values you
+  confirm on the first run; each has a default matching the 2026-06-25 ceremony + the gitops manifests.
+- Design + gate definition: `DESIGN.md` (WS6) and `~/.config/restormel/crown-jewels-dr/` blueprint.

@@ -1,0 +1,26 @@
+# WS6 Stage-C drill — scratch namespaces (THROWAWAY temp box only). REC-PLAN-021.
+# Created on the temp box's kubeconfig; die with the box. No prod namespace is a
+# write target on a box that can reach prod (it can't — S3 GET is its only egress).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dr-drill
+  labels: { restormel.dev/role: dr-drill, restormel.dev/throwaway: "true" }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cnpg-system
+  labels: { restormel.dev/role: dr-drill, restormel.dev/throwaway: "true" }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-secrets
+  labels: { restormel.dev/role: dr-drill, restormel.dev/throwaway: "true" }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+  labels: { restormel.dev/role: dr-drill, restormel.dev/throwaway: "true" }
