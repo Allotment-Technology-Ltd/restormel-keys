@@ -3,7 +3,7 @@ id: REC-ADR-014
 title: "Three-archetype depth model — one spine, opt-in depth"
 class: decision
 owner: founder
-status: approved
+status: superseded
 classification: internal
 control-tier: 1
 created: 2026-06-27
@@ -12,12 +12,14 @@ review-interval: P12M
 approved-by: founder
 approved-on: 2026-06-27
 retention: permanent
-related: [REC-ADR-013, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-ADR-018, REC-ADR-019]
+related: [REC-ADR-013, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-ADR-018, REC-ADR-019, REC-ADR-020]
 ---
 
 # ADR: Three-archetype depth model — one spine, opt-in depth
 
 ## Status
+
+**⛔ SUPERSEDED by [REC-ADR-020](onboarding-adaptive-path.md) — one adaptive onboarding path; explicit personas retired (founder, 2026-06-27).** The *durable* principles of this record survive into REC-ADR-020: the **mandatory M0→M1→M4 spine for everyone** and **M2/M3 as opt-in depth, never blockers**. What is retired is the **explicit three-archetype taxonomy (Initial / Learning / Advanced)** and any **persona inference**: production has no inference mechanism and two incumbent taxonomies collide with it, so per the ruthless-simplicity principle a single state-adaptive path replaces the three named personas. This file is kept for lineage; do not build from it — build from REC-ADR-020.
 
 **Approved as the product direction — founder steer, 2026-06-27:** the Claude Design onboarding handoff is the hard-won, iterative *direction of travel for the product — stick as close to it as possible*. This record’s decision stands as approved; the capture note below is retained for context, and faithful-realisation tensions (e.g. trust-meter/EBV honesty, M3/M4 backend) are tracked in the RES-113 review, not in this decision.
 
