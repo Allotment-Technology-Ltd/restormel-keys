@@ -18,7 +18,9 @@
 # ── tiny helpers ─────────────────────────────────────────────────────────────
 k(){ kubectl --kubeconfig "${SCRATCH_KUBECONFIG}" "$@"; }
 sha256(){ if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
-box_ssh(){ ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 "root@$(cat "${WORK}/.boxip")" "$@"; }
+# Optional explicit private key (DR_DRILL_SSH_PRIVKEY); else falls back to ssh-agent / default key.
+DR_SSH_I=(); [ -n "${DR_DRILL_SSH_PRIVKEY:-}" ] && DR_SSH_I=(-i "${DR_DRILL_SSH_PRIVKEY}")
+box_ssh(){ ssh "${DR_SSH_I[@]+"${DR_SSH_I[@]}"}" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 "root@$(cat "${WORK}/.boxip")" "$@"; }
 # restic against one native-s3 prefix, READ paths only (never forget/prune/init):
 restic_at(){ local prefix="$1"; shift; RESTIC_REPOSITORY="${RESTIC_BUCKET}/${prefix}" restic "$@"; }
 aws_s3(){ aws --endpoint-url "${S3_ENDPOINT}" "$@"; }
@@ -80,7 +82,7 @@ provision_temp_box(){            # $1 = box name
   local ip; ip="$(hcloud server ip "$1")"; echo "$ip" > "${WORK}/.boxip"
   echo "  box ip ${ip}; waiting for ssh ..."
   local i; for i in $(seq 1 40); do
-    ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 "root@${ip}" true 2>/dev/null && break
+    ssh "${DR_SSH_I[@]+"${DR_SSH_I[@]}"}" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 "root@${ip}" true 2>/dev/null && break
     sleep 5; [ "$i" = 40 ] && fail_step "box-ssh-never-came-up"
   done
   echo "  installing single-node k3s (NO --etcd-s3 of its own; the snapshot is restored, not written) ..."
