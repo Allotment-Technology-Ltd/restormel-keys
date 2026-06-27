@@ -1,0 +1,211 @@
+<!-- @dsCard group="Shell" -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AppLogo / RestormelLogo — Restormel Shell</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Legacy token bridge: the inline SVG references --brut-* tokens; map them
+       to the product's resolved neo-brutalist palette so the mark renders true. ── */
+    :root {
+      --brut-ink: #0c0c0c;
+      --brut-white: #fffef0;
+      --brut-canvas: #f3ead0;
+      --brut-neon: #ffd600;
+      --brut-blue: #1a3f8a;
+      --brut-coral: #d94e47;
+      --brut-font: "Space Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --focus-ring-width: 2px;
+      --focus-ring-offset: 2px;
+      --focus-ring-color: #ffd600;
+    }
+
+    /* ── Card chrome ── */
+    body { padding: var(--space-8); }
+    .ds-head { margin-bottom: var(--space-8); }
+    .ds-head h2 {
+      font-family: var(--font-display); font-weight: 900; text-transform: uppercase;
+      font-size: var(--text-display-md); letter-spacing: var(--text-display-tracking);
+      line-height: 0.95; margin: 0 0 var(--space-2);
+    }
+    .ds-head p { margin: 0; color: var(--color-ink-muted); font-size: var(--text-body-md); max-width: 64ch; }
+    .ds-label {
+      font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 700;
+      text-transform: uppercase; letter-spacing: var(--text-mono-tracking);
+      color: var(--color-ink-faint); margin: 0 0 var(--space-3);
+    }
+    .ds-row { display: flex; flex-wrap: wrap; gap: var(--space-10); align-items: flex-end; margin-bottom: var(--space-10); }
+    .ds-cell { display: flex; flex-direction: column; gap: var(--space-3); }
+    .ds-swatch-dark { background: var(--color-ink); padding: var(--space-6); display: inline-flex; }
+
+    /* ── Component scoped style (from AppLogo.svelte + RestormelLogo.svelte) ── */
+    .restormel-logo { display: block; flex-shrink: 0; }
+    .app-logo {
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+      padding: 0 var(--space-1);
+      transform: translate(0, 0);
+      transition: transform 100ms ease-in-out;
+    }
+    .app-logo:hover { transform: translate(1px, 1px); }
+    .app-logo:focus-visible {
+      outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color);
+      outline-offset: var(--focus-ring-offset, 2px);
+      border-radius: 0;
+    }
+    /* On the dark swatch the wordmark + ink strokes must flip to the cream ink-on-dark */
+    .ds-swatch-dark { --brut-ink: #fffef0; --brut-white: #0c0c0c; --brut-canvas: #1c1917; }
+  </style>
+</head>
+<body>
+  <div class="ds-head">
+    <h2>AppLogo / RestormelLogo</h2>
+    <p>The canonical Restormel brand mark. <code>AppLogo</code> is the clickable sidebar
+       lockup that wraps <code>RestormelLogo</code> (inline SVG — a 2×2 blueprint grid plus
+       wordmark, sized by a <code>height</code> prop). Same mark everywhere.</p>
+  </div>
+
+  <p class="ds-label">AppLogo — sidebar lockup (nav height 28px, hover translates 1px)</p>
+  <div class="ds-row">
+    <div class="ds-cell">
+      <a href="#" class="app-logo" aria-label="Restormel dashboard home">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="128" height="28" fill="none" role="presentation" aria-hidden="true" class="restormel-logo">
+          <g class="restormel-logo-mark">
+            <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink, #000)" />
+            <rect x="4" y="4" width="48" height="48" fill="var(--brut-white, #fff)" stroke="var(--brut-ink, #000)" stroke-width="4" />
+            <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue, #4d96ff)" />
+            <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon, #ffde4d)" />
+            <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral, #ff6b6b)" />
+            <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas, #f0e6d2)" />
+            <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink, #000)" stroke-width="3" />
+            <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink, #000)" stroke-width="3" />
+            <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon, #ffde4d)" stroke="var(--brut-ink, #000)" stroke-width="2" />
+            <path d="M11 11 H15 V13 H13 V15 H11 Z" fill="var(--brut-blue, #4d96ff)" />
+            <path d="M53 11 H49 V13 H51 V15 H53 Z" fill="var(--brut-blue, #4d96ff)" />
+            <path d="M11 53 H15 V51 H13 V49 H11 Z" fill="var(--brut-blue, #4d96ff)" />
+            <path d="M53 53 H49 V51 H51 V49 H53 Z" fill="var(--brut-blue, #4d96ff)" />
+            <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink, #000)" />
+            <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink, #000)" />
+          </g>
+          <text x="76" y="43" fill="var(--brut-ink, #000)" font-family="var(--brut-font, ui-monospace, monospace)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon, #ffde4d)" stroke="var(--brut-ink, #000)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue, #4d96ff)" stroke="var(--brut-ink, #000)" stroke-width="1" />
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <p class="ds-label">Lockup — login height (36px)</p>
+  <div class="ds-row">
+    <div class="ds-cell">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="164" height="36" fill="none" role="img" aria-label="Restormel" class="restormel-logo">
+        <title>Restormel</title>
+        <g class="restormel-logo-mark">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink, #000)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white, #fff)" stroke="var(--brut-ink, #000)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue, #4d96ff)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon, #ffde4d)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral, #ff6b6b)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas, #f0e6d2)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink, #000)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink, #000)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon, #ffde4d)" stroke="var(--brut-ink, #000)" stroke-width="2" />
+          <path d="M11 11 H15 V13 H13 V15 H11 Z" fill="var(--brut-blue, #4d96ff)" />
+          <path d="M53 11 H49 V13 H51 V15 H53 Z" fill="var(--brut-blue, #4d96ff)" />
+          <path d="M11 53 H15 V51 H13 V49 H11 Z" fill="var(--brut-blue, #4d96ff)" />
+          <path d="M53 53 H49 V51 H51 V49 H53 Z" fill="var(--brut-blue, #4d96ff)" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink, #000)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink, #000)" />
+        </g>
+        <text x="76" y="43" fill="var(--brut-ink, #000)" font-family="var(--brut-font, ui-monospace, monospace)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+        <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon, #ffde4d)" stroke="var(--brut-ink, #000)" stroke-width="1" />
+        <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue, #4d96ff)" stroke="var(--brut-ink, #000)" stroke-width="1" />
+      </svg>
+    </div>
+  </div>
+
+  <p class="ds-label">Variants — lockup without accent rules · mark only · mark on ink</p>
+  <div class="ds-row">
+    <div class="ds-cell">
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--color-ink-faint)">accent={false}</span>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="164" height="36" fill="none" role="img" aria-label="Restormel" class="restormel-logo">
+        <title>Restormel</title>
+        <g class="restormel-logo-mark">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink, #000)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white, #fff)" stroke="var(--brut-ink, #000)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue, #4d96ff)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon, #ffde4d)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral, #ff6b6b)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas, #f0e6d2)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink, #000)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink, #000)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon, #ffde4d)" stroke="var(--brut-ink, #000)" stroke-width="2" />
+          <path d="M11 11 H15 V13 H13 V15 H11 Z" fill="var(--brut-blue, #4d96ff)" />
+          <path d="M53 11 H49 V13 H51 V15 H53 Z" fill="var(--brut-blue, #4d96ff)" />
+          <path d="M11 53 H15 V51 H13 V49 H11 Z" fill="var(--brut-blue, #4d96ff)" />
+          <path d="M53 53 H49 V51 H51 V49 H53 Z" fill="var(--brut-blue, #4d96ff)" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink, #000)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink, #000)" />
+        </g>
+        <text x="76" y="43" fill="var(--brut-ink, #000)" font-family="var(--brut-font, ui-monospace, monospace)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+      </svg>
+    </div>
+
+    <div class="ds-cell">
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--color-ink-faint)">variant=mark (64)</span>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="Restormel" class="restormel-logo">
+        <title>Restormel</title>
+        <g class="restormel-logo-mark">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink, #000)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white, #fff)" stroke="var(--brut-ink, #000)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue, #4d96ff)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon, #ffde4d)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral, #ff6b6b)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas, #f0e6d2)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink, #000)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink, #000)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon, #ffde4d)" stroke="var(--brut-ink, #000)" stroke-width="2" />
+          <path d="M11 11 H15 V13 H13 V15 H11 Z" fill="var(--brut-blue, #4d96ff)" />
+          <path d="M53 11 H49 V13 H51 V15 H53 Z" fill="var(--brut-blue, #4d96ff)" />
+          <path d="M11 53 H15 V51 H13 V49 H11 Z" fill="var(--brut-blue, #4d96ff)" />
+          <path d="M53 53 H49 V51 H51 V49 H53 Z" fill="var(--brut-blue, #4d96ff)" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink, #000)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink, #000)" />
+        </g>
+      </svg>
+    </div>
+
+    <div class="ds-cell">
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--color-ink-faint)">lockup on ink</span>
+      <div class="ds-swatch-dark">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="164" height="36" fill="none" role="img" aria-label="Restormel" class="restormel-logo">
+          <title>Restormel</title>
+          <g class="restormel-logo-mark">
+            <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink, #000)" />
+            <rect x="4" y="4" width="48" height="48" fill="var(--brut-white, #fff)" stroke="var(--brut-ink, #000)" stroke-width="4" />
+            <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue, #4d96ff)" />
+            <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon, #ffde4d)" />
+            <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral, #ff6b6b)" />
+            <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas, #f0e6d2)" />
+            <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink, #000)" stroke-width="3" />
+            <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink, #000)" stroke-width="3" />
+            <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon, #ffde4d)" stroke="var(--brut-ink, #000)" stroke-width="2" />
+            <path d="M11 11 H15 V13 H13 V15 H11 Z" fill="var(--brut-blue, #4d96ff)" />
+            <path d="M53 11 H49 V13 H51 V15 H53 Z" fill="var(--brut-blue, #4d96ff)" />
+            <path d="M11 53 H15 V51 H13 V49 H11 Z" fill="var(--brut-blue, #4d96ff)" />
+            <path d="M53 53 H49 V51 H51 V49 H53 Z" fill="var(--brut-blue, #4d96ff)" />
+            <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink, #000)" />
+            <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink, #000)" />
+          </g>
+          <text x="76" y="43" fill="var(--brut-ink, #000)" font-family="var(--brut-font, ui-monospace, monospace)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon, #ffde4d)" stroke="var(--brut-ink, #000)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue, #4d96ff)" stroke="var(--brut-ink, #000)" stroke-width="1" />
+        </svg>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

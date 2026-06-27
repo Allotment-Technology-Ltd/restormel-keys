@@ -1,0 +1,130 @@
+<!-- @dsCard group="Surfaces / Dashboard" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickActions — Restormel Dashboard</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Tokens the product defines elsewhere; resolved to real values ── */
+    :root {
+      --text-base: 1rem;
+      --text-sm: 0.875rem;
+      --text-xs: 0.75rem;
+      --rm-sage: var(--color-blue);
+    }
+
+    /* ── Card chrome (layout + labels only) ── */
+    body { background: var(--color-bg); color: var(--color-ink); font-family: var(--font-body); margin: 0; padding: var(--space-8); }
+    .ds-title {
+      font-family: var(--font-display); font-weight: 900; font-size: var(--text-display-md);
+      line-height: 0.95; letter-spacing: -0.01em; text-transform: uppercase; margin: 0 0 var(--space-2);
+    }
+    .ds-desc { font-size: var(--text-body-md); color: var(--color-ink-muted); max-width: 64ch; margin: 0 0 var(--space-8); }
+    .ds-section-label {
+      font-family: var(--font-mono); font-weight: 700; font-size: var(--text-mono-md);
+      text-transform: uppercase; letter-spacing: var(--text-mono-tracking); color: var(--color-ink);
+      border-bottom: var(--border); padding-bottom: var(--space-2); margin: var(--space-10) 0 var(--space-5);
+    }
+    .ds-grid { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+    .ds-cell { width: 320px; max-width: 100%; }
+    .ds-caption {
+      font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 700;
+      letter-spacing: var(--text-mono-tracking); text-transform: uppercase; color: var(--color-ink-faint);
+      margin: 0 0 var(--space-3);
+    }
+
+    /* ── QuickActions scoped CSS (from component <style>) ── */
+    .quick-actions {
+      border: var(--border-thin); background: var(--rm-surface-raised); border-radius: var(--rm-radius);
+      padding: var(--space-4); display: grid; gap: var(--space-4);
+    }
+    .quick-actions h2 { margin: 0; font-size: var(--text-base); color: var(--rm-text); }
+    .actions { display: grid; gap: var(--space-2); }
+    .action-btn {
+      border: var(--border-thin); background: var(--rm-surface); color: var(--rm-text);
+      border-radius: var(--rm-radius); padding: var(--space-2) var(--space-3);
+      font-size: var(--text-sm); text-decoration: none;
+    }
+    .action-btn:hover,
+    .action-btn.demo-hover {
+      color: var(--rm-sage);
+      border-color: color-mix(in oklab, var(--rm-sage) 45%, var(--rm-border));
+      text-decoration: none;
+    }
+    .projects h3 { margin: 0 0 var(--space-2); font-size: var(--text-sm); color: var(--rm-text); }
+    .projects p { margin: 0; font-size: var(--text-sm); color: var(--rm-muted); }
+    .projects ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+    .projects a { font-size: var(--text-sm); color: var(--rm-sage); text-decoration: none; }
+    .projects a:hover { text-decoration: underline; }
+    .projects li span { font-size: var(--text-sm); color: var(--rm-muted); }
+  </style>
+</head>
+<body>
+  <h2 class="ds-title">QuickActions</h2>
+  <p class="ds-desc">
+    Dashboard side panel: a short, mode-aware action list plus the workspace's project shortcuts.
+    The three actions are chosen by the persisted <code>userMode</code> (new_project, existing_stack,
+    byok_saas, cli_agent, ops) and filtered against UI-hidden paths; UI-hidden projects render as
+    plain text rather than links. (<code>.quick-actions</code> · <code>.action-btn</code>)
+  </p>
+
+  <div class="ds-section-label">Variants by user mode</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <p class="ds-caption">mode: new_project · with projects</p>
+      <section class="quick-actions" aria-labelledby="qa1">
+        <h2 id="qa1">Quick actions</h2>
+        <div class="actions">
+          <a href="#" class="action-btn">Create route</a>
+          <a href="#" class="action-btn">Add provider</a>
+          <a href="#" class="action-btn">Open sandbox</a>
+        </div>
+        <div class="projects">
+          <h3>Projects</h3>
+          <ul>
+            <li><a href="#">sophia-prod</a></li>
+            <li><a href="#">plotbudget</a></li>
+            <li><span>archived-2025</span></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <div class="ds-cell">
+      <p class="ds-caption">mode: ops · no projects</p>
+      <section class="quick-actions" aria-labelledby="qa2">
+        <h2 id="qa2">Quick actions</h2>
+        <div class="actions">
+          <a href="#" class="action-btn demo-hover">View logs</a>
+          <a href="#" class="action-btn">Healthcheck</a>
+          <a href="#" class="action-btn">Rotate key</a>
+        </div>
+        <div class="projects">
+          <h3>Projects</h3>
+          <p>No projects yet.</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="ds-cell">
+      <p class="ds-caption">mode: byok_saas</p>
+      <section class="quick-actions" aria-labelledby="qa3">
+        <h2 id="qa3">Quick actions</h2>
+        <div class="actions">
+          <a href="#" class="action-btn">Preview KeyManager</a>
+          <a href="#" class="action-btn">Create route</a>
+          <a href="#" class="action-btn">View policies</a>
+        </div>
+        <div class="projects">
+          <h3>Projects</h3>
+          <ul>
+            <li><a href="#">acme-byok</a></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

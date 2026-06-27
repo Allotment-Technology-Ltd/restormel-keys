@@ -1,0 +1,209 @@
+<!-- @dsCard group="Surfaces / Dashboard" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RouteCoverageIndicator — Restormel Dashboard</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Tokens the product defines elsewhere; resolved to real values ── */
+    :root {
+      --text-base: 1rem;
+      --text-sm: 0.875rem;
+      --text-xs: 0.75rem;
+      --text-lg: 1.125rem;
+      --rm-sage: var(--color-blue);
+      --brut-ink: var(--color-ink);
+      --brut-white: var(--color-surface);
+      --brut-neon: var(--color-yellow);
+      --brut-canvas: var(--color-bg);
+      --brut-canvas-deep: var(--color-bg-deep);
+      --brut-border-width: var(--border-width);
+      --brut-border-micro: 1.5px;
+      --brut-shadow: var(--shadow-md);
+    }
+
+    /* ── Card chrome (layout + labels only) ── */
+    body { background: var(--color-bg); color: var(--color-ink); font-family: var(--font-body); margin: 0; padding: var(--space-8); }
+    .ds-title {
+      font-family: var(--font-display); font-weight: 900; font-size: var(--text-display-md);
+      line-height: 0.95; letter-spacing: -0.01em; text-transform: uppercase; margin: 0 0 var(--space-2);
+    }
+    .ds-desc { font-size: var(--text-body-md); color: var(--color-ink-muted); max-width: 64ch; margin: 0 0 var(--space-8); }
+    .ds-section-label {
+      font-family: var(--font-mono); font-weight: 700; font-size: var(--text-mono-md);
+      text-transform: uppercase; letter-spacing: var(--text-mono-tracking); color: var(--color-ink);
+      border-bottom: var(--border); padding-bottom: var(--space-2); margin: var(--space-10) 0 var(--space-5);
+    }
+    .ds-stage { max-width: 560px; margin: 0 0 var(--space-8); }
+
+    /* ── BrutalLoadingState scoped CSS ── */
+    .brutal-loading { border: var(--brut-border-width) solid var(--brut-ink); background: var(--brut-white); padding: var(--space-4); box-shadow: var(--brut-shadow); }
+    .brutal-loading-msg { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-size: var(--text-xs); }
+    .brutal-loading-bar { display: inline-block; width: 1.5rem; height: 0.75rem; background: var(--brut-neon); border: var(--brut-border-micro) solid var(--brut-ink); animation: brutal-pulse 1s steps(2) infinite; }
+    .brutal-skeletons { margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+    .brutal-skeleton-row { height: 1.25rem; border: var(--brut-border-micro) solid var(--brut-ink); background: repeating-linear-gradient(45deg, var(--brut-canvas), var(--brut-canvas) 6px, var(--brut-canvas-deep) 6px, var(--brut-canvas-deep) 12px); }
+    @keyframes brutal-pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+    /* ── BrutalErrorBanner scoped CSS ── */
+    .brutal-error { border: var(--brut-border-width) solid var(--brut-ink); background: var(--brut-coral); color: var(--brut-ink); padding: var(--space-4); box-shadow: var(--brut-shadow); margin: 0 0 var(--space-4); }
+    .brutal-error-title { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-2); font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; }
+    .brutal-error-title span { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; background: var(--brut-ink); color: var(--brut-coral); font-weight: 900; }
+    .brutal-error-msg { margin: 0; font-weight: 600; }
+    .brutal-error-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+
+    /* ── RouteCoverageIndicator scoped CSS (from component <style>) ── */
+    .coverage-indicator { margin: var(--space-3) 0; }
+    .cov-head {
+      display: flex; align-items: center; gap: var(--space-2);
+      border: var(--brut-border-width, 2px) solid var(--brut-ink);
+      background: var(--brut-canvas, var(--rm-surface-raised)); padding: var(--space-3);
+    }
+    .cov-glyph {
+      display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+      width: 1.5rem; height: 1.5rem; font-family: var(--font-mono); font-weight: 900;
+      border: var(--brut-border-width, 2px) solid var(--brut-ink);
+      background: var(--state-ok-bg); color: var(--state-ok-fg);
+    }
+    .cov-glyph--warn { background: var(--state-warn-bg); color: var(--state-warn-fg); }
+    .cov-headline { margin: 0; font-size: var(--text-sm); color: var(--rm-text); }
+    .cov-link { color: var(--rm-sage); font-weight: 600; }
+    .cov-empty { margin: 0; font-size: var(--text-sm); }
+    .cov-toggle {
+      margin-top: var(--space-2); background: transparent; border: var(--border-thin); color: var(--rm-text);
+      font-family: var(--font-mono); font-size: var(--text-xs); text-transform: uppercase;
+      letter-spacing: 0.04em; padding: var(--space-1) var(--space-2); cursor: pointer;
+    }
+    .cov-matrix { margin-top: var(--space-2); display: flex; flex-direction: column; gap: var(--space-3); }
+    .cov-env-title {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2);
+      margin: 0 0 var(--space-1); font-size: var(--text-sm); font-weight: 700; color: var(--rm-text);
+    }
+    .cov-env-pct { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--rm-muted); font-weight: 600; }
+    .cov-cells { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+    .cov-cell { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--text-xs); padding: var(--space-1) var(--space-2); border: var(--border-thin); }
+    .cov-cell--gap { border-color: var(--state-warn-fg, var(--rm-border)); }
+    .cov-cell-tuple { font-family: var(--font-mono); color: var(--rm-text); }
+    .cov-cell-state { color: var(--rm-muted); }
+    .cov-btn { background: var(--brut-ink); color: var(--brut-white, #fff); border: var(--brut-border-width, 2px) solid var(--brut-ink); font-size: var(--text-sm); font-weight: 700; padding: var(--space-1) var(--space-3); cursor: pointer; }
+    .muted { color: var(--rm-muted); }
+  </style>
+</head>
+<body>
+  <h2 class="ds-title">RouteCoverageIndicator</h2>
+  <p class="ds-desc">
+    An honest indicator (not a dashboard) over <code>/api/projects/{id}/route-coverage</code>. It
+    quotes the endpoint's own numbers verbatim: a headline status glyph plus the one actionable
+    number (routes with zero enabled steps), with the full workload × stage matrix behind a toggle.
+    Links back to the routes it summarizes. (<code>.coverage-indicator</code> · <code>.cov-*</code>)
+  </p>
+
+  <div class="ds-section-label">State · healthy (matrix expanded)</div>
+  <div class="ds-stage">
+    <div class="coverage-indicator" aria-label="Route coverage">
+      <div class="cov-head">
+        <span class="cov-glyph" aria-hidden="true">✓</span>
+        <p class="cov-headline" role="status">
+          All 6 routes have at least one enabled step.
+          <a class="cov-link" href="#">See routes below</a>.
+        </p>
+      </div>
+      <button type="button" class="cov-toggle" aria-expanded="true">Hide workload × stage coverage</button>
+      <div class="cov-matrix" role="group" aria-label="Coverage by environment">
+        <div class="cov-env">
+          <h4 class="cov-env-title">
+            Production
+            <span class="cov-env-pct">4/4 cells (100%)</span>
+          </h4>
+          <ul class="cov-cells">
+            <li class="cov-cell"><span class="cov-cell-tuple">ingest · resolve</span><span class="cov-cell-state">2 routes</span></li>
+            <li class="cov-cell"><span class="cov-cell-tuple">ingest · embed</span><span class="cov-cell-state">1 route</span></li>
+            <li class="cov-cell"><span class="cov-cell-tuple">chat · resolve</span><span class="cov-cell-state">2 routes</span></li>
+            <li class="cov-cell"><span class="cov-cell-tuple">chat · rerank</span><span class="cov-cell-state">1 route</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-section-label">State · gaps present (warn, matrix collapsed)</div>
+  <div class="ds-stage">
+    <div class="coverage-indicator" aria-label="Route coverage">
+      <div class="cov-head">
+        <span class="cov-glyph cov-glyph--warn" aria-hidden="true">!</span>
+        <p class="cov-headline" role="status">
+          2 of 6 routes have no enabled step
+          — <a class="cov-link" href="#">review them below</a>.
+        </p>
+      </div>
+      <button type="button" class="cov-toggle" aria-expanded="false">Show workload × stage coverage</button>
+    </div>
+  </div>
+
+  <div class="ds-section-label">State · gaps present (warn, matrix expanded with gap cell)</div>
+  <div class="ds-stage">
+    <div class="coverage-indicator" aria-label="Route coverage">
+      <div class="cov-head">
+        <span class="cov-glyph cov-glyph--warn" aria-hidden="true">!</span>
+        <p class="cov-headline" role="status">
+          2 of 6 routes have no enabled step
+          — <a class="cov-link" href="#">review them below</a>.
+        </p>
+      </div>
+      <button type="button" class="cov-toggle" aria-expanded="true">Hide workload × stage coverage</button>
+      <div class="cov-matrix" role="group" aria-label="Coverage by environment">
+        <div class="cov-env">
+          <h4 class="cov-env-title">
+            Staging
+            <span class="cov-env-pct">2/4 cells (50%)</span>
+          </h4>
+          <ul class="cov-cells">
+            <li class="cov-cell"><span class="cov-cell-tuple">ingest · resolve</span><span class="cov-cell-state">1 route</span></li>
+            <li class="cov-cell cov-cell--gap"><span class="cov-cell-tuple">ingest · embed</span><span class="cov-cell-state">no enabled route</span></li>
+            <li class="cov-cell"><span class="cov-cell-tuple">chat · resolve</span><span class="cov-cell-state">1 route</span></li>
+            <li class="cov-cell cov-cell--gap"><span class="cov-cell-tuple">chat · rerank</span><span class="cov-cell-state">no enabled route</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-section-label">State · empty (no routes yet)</div>
+  <div class="ds-stage">
+    <div class="coverage-indicator" aria-label="Route coverage">
+      <p class="cov-empty muted" role="status">
+        No routes yet — coverage appears once this project has at least one route.
+      </p>
+    </div>
+  </div>
+
+  <div class="ds-section-label">State · loading</div>
+  <div class="ds-stage">
+    <div class="coverage-indicator" aria-label="Route coverage">
+      <div class="brutal-loading" role="status" aria-live="polite">
+        <p class="brutal-loading-msg">
+          <span class="brutal-loading-bar" aria-hidden="true"></span>
+          Checking route coverage…
+        </p>
+        <div class="brutal-skeletons" aria-hidden="true">
+          <div class="brutal-skeleton-row"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-section-label">State · error</div>
+  <div class="ds-stage">
+    <div class="coverage-indicator" aria-label="Route coverage">
+      <div class="brutal-error" role="alert">
+        <p class="brutal-error-title"><span aria-hidden="true">!</span> Could not load route coverage</p>
+        <p class="brutal-error-msg">Could not load coverage (502)</p>
+        <div class="brutal-error-actions">
+          <button type="button" class="cov-btn">Retry</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

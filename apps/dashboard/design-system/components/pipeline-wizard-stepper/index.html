@@ -1,0 +1,195 @@
+<!-- @dsCard group="Surfaces / Route Creator" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PipelineWizardStepper — Surfaces / Route Creator</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* base.css tokens referenced by the scoped pipeline CSS but not present in the standalone styles.css */
+    :root {
+      --text-xs: .75rem;
+      --text-sm: .875rem;
+      --text-lg: 1.125rem;
+      --rm-sage: var(--signal-teal);
+      --color-canvas: var(--color-bg);
+    }
+    body { padding: var(--space-8); background: var(--color-bg); }
+    .wrap { max-width: 60rem; margin: 0 auto; }
+    .card-title { font-family: var(--font-display); font-weight: 900; font-size: var(--text-display-md); text-transform: uppercase; letter-spacing: var(--text-display-tracking); line-height: .95; margin: 0 0 var(--space-2); }
+    .card-desc { font-size: var(--text-body-md); color: var(--color-ink-muted); max-width: 48rem; margin: 0 0 var(--space-8); }
+    .variant { margin: 0 0 var(--space-10); }
+    .variant-label { font-family: var(--font-mono); font-size: var(--text-mono-md); font-weight: 700; letter-spacing: var(--text-mono-tracking); text-transform: uppercase; color: var(--color-ink-muted); border-bottom: var(--border-thin); padding-bottom: var(--space-2); margin: 0 0 var(--space-5); }
+    .stage { border: var(--border-thin); background: var(--color-bg); padding: var(--space-6); }
+
+    /* ── Scoped rules extracted from connect-pipeline.css (.connect-pipeline .wizard-step*) ── */
+    .connect-pipeline .wizard-stepper { margin-bottom: 0; }
+    .connect-pipeline .wizard-steps { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0; }
+    .connect-pipeline .wizard-step,
+    .connect-pipeline .wizard-connector { display: flex; align-items: center; }
+    .connect-pipeline .wizard-connector { width: 1.5rem; height: 2px; flex-shrink: 0; margin: 0 var(--space-1); }
+    .connect-pipeline .wizard-connector-solid { background: var(--color-ink); }
+    .connect-pipeline .wizard-connector-dashed {
+      background: repeating-linear-gradient(90deg, var(--color-ink) 0, var(--color-ink) 4px, transparent 4px, transparent 8px);
+    }
+    .connect-pipeline .wizard-step-btn {
+      display: inline-flex; align-items: center; gap: var(--space-2);
+      border: var(--border); border-radius: 0;
+      font-family: var(--font-mono); font-size: var(--text-mono-sm);
+      padding: var(--space-2) var(--space-3); min-height: 44px;
+      text-decoration: none; cursor: default; color: var(--color-ink);
+      transition: background-color 200ms ease, color 200ms ease, box-shadow 80ms ease, transform 80ms ease;
+    }
+    .connect-pipeline button.wizard-step-btn { cursor: pointer; font: inherit; font-family: var(--font-mono); }
+    .connect-pipeline button.wizard-step-btn:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-sm); }
+    .connect-pipeline .wizard-step-completed .wizard-step-btn { background: var(--color-ink); color: var(--color-surface); }
+    .connect-pipeline .wizard-step-active .wizard-step-btn { background: var(--color-surface); box-shadow: var(--shadow-sm); font-weight: 700; }
+    .connect-pipeline .wizard-step-upcoming .wizard-step-btn { background: var(--color-bg); border: 2px dashed var(--color-ink); color: var(--color-ink-faint); }
+    .connect-pipeline .wizard-step-upcoming .wizard-step-label { color: var(--color-ink-faint); }
+    .connect-pipeline .wizard-step-glyph { display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; font-weight: 700; flex-shrink: 0; }
+
+    /* statically force the :hover lift so a card reader can see it without a pointer */
+    .connect-pipeline .demo-hover .wizard-step-btn { transform: translate(-1px, -1px); box-shadow: var(--shadow-sm); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2 class="card-title">PipelineWizardStepper</h2>
+    <p class="card-desc">
+      The numbered progress strip across the top of the Connect ingest setup flow. Each step is
+      <strong>completed</strong> (solid ink fill, ✓ glyph), <strong>active</strong> (raised white surface), or
+      <strong>upcoming</strong> (dashed outline, faint ink). Connectors between two completed steps go solid;
+      every other connector stays dashed. Real per-step completion (not position) drives the ✓ marks, so a deep
+      link to a later step never shows unconfigured steps as done.
+    </p>
+
+    <div class="variant">
+      <p class="variant-label">Step 1 of 4 — entry (provider active, later steps reachable)</p>
+      <div class="stage connect-pipeline">
+        <nav class="wizard-stepper" aria-label="Pipeline setup progress">
+          <ol class="wizard-steps">
+            <li class="wizard-step wizard-step-active">
+              <span class="wizard-step-btn" aria-current="step">
+                <span class="wizard-step-glyph" aria-hidden="true">1</span>
+                <span class="wizard-step-label">Provider key</span>
+              </span>
+            </li>
+            <li class="wizard-connector wizard-connector-dashed" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-upcoming">
+              <button type="button" class="wizard-step-btn" aria-label="Go to Sources">
+                <span class="wizard-step-glyph" aria-hidden="true">2</span>
+                <span class="wizard-step-label">Sources</span>
+              </button>
+            </li>
+            <li class="wizard-connector wizard-connector-dashed" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-upcoming">
+              <button type="button" class="wizard-step-btn" aria-label="Go to Domain">
+                <span class="wizard-step-glyph" aria-hidden="true">3</span>
+                <span class="wizard-step-label">Domain</span>
+              </button>
+            </li>
+            <li class="wizard-connector wizard-connector-dashed" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-upcoming">
+              <button type="button" class="wizard-step-btn" aria-label="Go to Review &amp; launch">
+                <span class="wizard-step-glyph" aria-hidden="true">4</span>
+                <span class="wizard-step-label">Review &amp; launch</span>
+              </button>
+            </li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Mid-flow — two steps complete (solid connector), domain active</p>
+      <div class="stage connect-pipeline">
+        <nav class="wizard-stepper" aria-label="Pipeline setup progress">
+          <ol class="wizard-steps">
+            <li class="wizard-step wizard-step-completed">
+              <button type="button" class="wizard-step-btn" aria-label="Provider key — completed, go back to edit">
+                <span class="wizard-step-glyph" aria-hidden="true">✓</span>
+                <span class="wizard-step-label">Provider key</span>
+              </button>
+            </li>
+            <li class="wizard-connector wizard-connector-solid" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-completed">
+              <button type="button" class="wizard-step-btn" aria-label="Sources — completed, go back to edit">
+                <span class="wizard-step-glyph" aria-hidden="true">✓</span>
+                <span class="wizard-step-label">Sources</span>
+              </button>
+            </li>
+            <li class="wizard-connector wizard-connector-dashed" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-active">
+              <span class="wizard-step-btn" aria-current="step">
+                <span class="wizard-step-glyph" aria-hidden="true">3</span>
+                <span class="wizard-step-label">Domain</span>
+              </span>
+            </li>
+            <li class="wizard-connector wizard-connector-dashed" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-upcoming">
+              <button type="button" class="wizard-step-btn" aria-label="Go to Review &amp; launch">
+                <span class="wizard-step-glyph" aria-hidden="true">4</span>
+                <span class="wizard-step-label">Review &amp; launch</span>
+              </button>
+            </li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Final step — three complete, Review &amp; launch active</p>
+      <div class="stage connect-pipeline">
+        <nav class="wizard-stepper" aria-label="Pipeline setup progress">
+          <ol class="wizard-steps">
+            <li class="wizard-step wizard-step-completed">
+              <button type="button" class="wizard-step-btn" aria-label="Provider key — completed, go back to edit">
+                <span class="wizard-step-glyph" aria-hidden="true">✓</span>
+                <span class="wizard-step-label">Provider key</span>
+              </button>
+            </li>
+            <li class="wizard-connector wizard-connector-solid" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-completed">
+              <button type="button" class="wizard-step-btn" aria-label="Sources — completed, go back to edit">
+                <span class="wizard-step-glyph" aria-hidden="true">✓</span>
+                <span class="wizard-step-label">Sources</span>
+              </button>
+            </li>
+            <li class="wizard-connector wizard-connector-solid" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-completed">
+              <button type="button" class="wizard-step-btn" aria-label="Domain — completed, go back to edit">
+                <span class="wizard-step-glyph" aria-hidden="true">✓</span>
+                <span class="wizard-step-label">Domain</span>
+              </button>
+            </li>
+            <li class="wizard-connector wizard-connector-dashed" aria-hidden="true"></li>
+            <li class="wizard-step wizard-step-active">
+              <span class="wizard-step-btn" aria-current="step">
+                <span class="wizard-step-glyph" aria-hidden="true">4</span>
+                <span class="wizard-step-label">Review &amp; launch</span>
+              </span>
+            </li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Completed step — hover lift (statically forced)</p>
+      <div class="stage connect-pipeline">
+        <nav class="wizard-stepper" aria-label="Pipeline setup progress">
+          <ol class="wizard-steps demo-hover">
+            <li class="wizard-step wizard-step-completed">
+              <button type="button" class="wizard-step-btn">
+                <span class="wizard-step-glyph" aria-hidden="true">✓</span>
+                <span class="wizard-step-label">Provider key</span>
+              </button>
+            </li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

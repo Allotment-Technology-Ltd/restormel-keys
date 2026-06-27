@@ -1,0 +1,125 @@
+<!-- @dsCard group="Shell" -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UsagePathSelector — Restormel Shell</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Legacy token bridge → product resolved values ── */
+    :root {
+      --rm-text: #0c0c0c;
+      --rm-muted: #3a3530;
+      --rm-dim: #7a7060;
+      --rm-border: #0c0c0c;
+      --rm-surface-raised: #fffef0;
+      --rm-radius: 0;
+      --rm-sage: #2ec4b6;
+      --rm-container-narrow: 36rem;
+      --text-base: 15px;
+      --text-sm: 14px;
+      --text-xs: 12px;
+    }
+
+    /* ── Card chrome ── */
+    body { padding: var(--space-8); }
+    .ds-head { margin-bottom: var(--space-8); }
+    .ds-head h2 {
+      font-family: var(--font-display); font-weight: 900; text-transform: uppercase;
+      font-size: var(--text-display-md); letter-spacing: var(--text-display-tracking);
+      line-height: 0.95; margin: 0 0 var(--space-2);
+    }
+    .ds-head p { margin: 0; color: var(--color-ink-muted); font-size: var(--text-body-md); max-width: 64ch; }
+    .ds-label {
+      font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 700;
+      text-transform: uppercase; letter-spacing: var(--text-mono-tracking);
+      color: var(--color-ink-faint); margin: 0 0 var(--space-3);
+    }
+    .ds-grid { display: grid; gap: var(--space-10); grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); max-width: 1100px; }
+
+    /* ── Component scoped style (from UsagePathSelector.svelte) ── */
+    .usage-path { max-width: var(--rm-container-narrow, 36rem); margin-bottom: var(--space-5); }
+    .usage-path-title {
+      font-size: var(--text-base); font-weight: 600; color: var(--rm-text); margin: 0 0 var(--space-3);
+    }
+    .usage-path-options { display: flex; flex-direction: column; gap: var(--space-2); }
+    .usage-path-option {
+      display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1);
+      padding: var(--space-3) var(--space-4); background: var(--rm-surface-raised);
+      border: 1px solid var(--rm-border); border-radius: var(--rm-radius);
+      cursor: pointer; text-align: left;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .usage-path-option:hover {
+      border-color: var(--rm-sage);
+      background: color-mix(in oklab, var(--rm-sage) 6%, var(--rm-surface-raised));
+    }
+    .usage-path-option:focus-visible { outline: 2px solid var(--rm-sage); outline-offset: 2px; }
+    .option-label { font-size: var(--text-sm); font-weight: 600; color: var(--rm-text); }
+    .option-desc { font-size: var(--text-sm); color: var(--rm-muted); }
+    .usage-path-selected {
+      background: var(--rm-surface-raised); border: 1px solid var(--rm-border);
+      border-radius: var(--rm-radius); padding: var(--space-4);
+    }
+    .selected-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+    .selected-desc { font-size: var(--text-sm); color: var(--rm-muted); margin: var(--space-2) 0 var(--space-3); }
+    .selected-actions { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; }
+    .btn-link { font-size: var(--text-sm); color: var(--rm-sage); text-decoration: none; font-weight: 500; }
+    .btn-link:hover { text-decoration: underline; }
+    .dismiss-btn, .change-btn {
+      font-size: var(--text-xs); color: var(--rm-dim); background: none; border: none; cursor: pointer; padding: 0;
+    }
+    .dismiss-btn:hover, .change-btn:hover { color: var(--rm-muted); }
+  </style>
+</head>
+<body>
+  <div class="ds-head">
+    <h2>UsagePathSelector</h2>
+    <p>First-run prompt that asks how the user wants to integrate Restormel (app / terminal /
+       agent), persists the choice to <code>localStorage</code>, then collapses to a compact
+       "your workflow" summary with the matching docs links.</p>
+  </div>
+
+  <div class="ds-grid">
+    <div>
+      <p class="ds-label">Unselected — three options</p>
+      <section class="usage-path" aria-labelledby="usage-path-heading-1">
+        <h2 id="usage-path-heading-1" class="usage-path-title">How do you want to use Restormel?</h2>
+        <div class="usage-path-options">
+          <button type="button" class="usage-path-option">
+            <span class="option-label">In my app</span>
+            <span class="option-desc">Use the SDK to integrate routing, cost estimation, and provider resolution.</span>
+          </button>
+          <button type="button" class="usage-path-option">
+            <span class="option-label">In my terminal</span>
+            <span class="option-desc">Use the CLI to validate configuration and inspect routing from your terminal.</span>
+          </button>
+          <button type="button" class="usage-path-option">
+            <span class="option-label">In my agent or IDE</span>
+            <span class="option-desc">Connect Restormel to your agent workflow via MCP tools.</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div>
+      <p class="ds-label">Selected — collapsed summary</p>
+      <section class="usage-path" aria-labelledby="usage-path-heading-2">
+        <div class="usage-path-selected">
+          <div class="selected-header">
+            <h2 id="usage-path-heading-2" class="usage-path-title">Your workflow: In my app</h2>
+            <button type="button" class="dismiss-btn" aria-label="Dismiss">Dismiss</button>
+          </div>
+          <p class="selected-desc">Use the SDK to integrate routing, cost estimation, and provider resolution.</p>
+          <div class="selected-actions">
+            <a href="#" class="btn-link">SDK docs &rarr;</a>
+            <a href="#" class="btn-link">Developer tools</a>
+            <button type="button" class="change-btn">Change</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

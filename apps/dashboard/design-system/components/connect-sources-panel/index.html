@@ -1,0 +1,276 @@
+<!-- @dsCard group="Surfaces / Route Creator" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ConnectSourcesPanel — Surfaces / Route Creator</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* base.css tokens referenced by the scoped pipeline CSS but not present in the standalone styles.css */
+    :root {
+      --text-xs: .75rem;
+      --text-sm: .875rem;
+      --text-lg: 1.125rem;
+      --rm-sage: var(--signal-teal);
+      --color-canvas: var(--color-bg);
+    }
+    body { padding: var(--space-8); background: var(--color-bg); }
+    .wrap { max-width: 56rem; margin: 0 auto; }
+    .card-title { font-family: var(--font-display); font-weight: 900; font-size: var(--text-display-md); text-transform: uppercase; letter-spacing: var(--text-display-tracking); line-height: .95; margin: 0 0 var(--space-2); }
+    .card-desc { font-size: var(--text-body-md); color: var(--color-ink-muted); max-width: 48rem; margin: 0 0 var(--space-8); }
+    .variant { margin: 0 0 var(--space-10); }
+    .variant-label { font-family: var(--font-mono); font-size: var(--text-mono-md); font-weight: 700; letter-spacing: var(--text-mono-tracking); text-transform: uppercase; color: var(--color-ink-muted); border-bottom: var(--border-thin); padding-bottom: var(--space-2); margin: 0 0 var(--space-5); }
+    .stage { border: var(--border-thin); background: var(--color-bg); padding: var(--space-6); }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    /* ── Scoped rules extracted from connect-pipeline.css (Sources panel surfaces) ── */
+    .connect-pipeline .wizard-panel { display: flex; flex-direction: column; gap: var(--space-3); }
+    .connect-pipeline .form { display: flex; flex-direction: column; gap: var(--space-3); max-width: 42rem; }
+    .connect-pipeline .row { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+    .connect-pipeline .row .field { flex: 1; min-width: 12rem; }
+    .connect-pipeline .field { display: flex; flex-direction: column; gap: var(--space-1); }
+    .connect-pipeline .field-label { font-size: var(--text-sm); color: var(--rm-text); font-weight: 500; }
+    .connect-pipeline .field-hint { font-size: var(--text-xs); color: var(--rm-muted); font-weight: 400; }
+    .connect-pipeline .actions { display: flex; gap: var(--space-3); }
+    .connect-pipeline .muted { color: var(--rm-muted); }
+    .connect-pipeline .err { color: var(--coral-alert); }
+    .connect-pipeline .notice { border: var(--border-thin); background: var(--rm-surface-raised); color: var(--rm-muted); padding: var(--space-2) var(--space-3); margin: 0; }
+    .connect-pipeline .badge { border: var(--border-thin); border-radius: 0; padding: 0 var(--space-2); font-family: var(--font-mono); font-weight: 700; letter-spacing: var(--text-mono-tracking); text-transform: uppercase; font-size: var(--text-mono-sm); margin-left: var(--space-2); }
+    .connect-pipeline .packs { list-style: none; margin: 0 0 var(--space-3); padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+    .connect-pipeline .pack { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; border: var(--border-thin); padding: var(--space-2) var(--space-3); }
+    .connect-pipeline .pack-title { color: var(--rm-text); font-weight: 500; }
+    .connect-pipeline .pack-slug { color: var(--rm-dim); font-size: var(--text-xs); }
+    .connect-pipeline .browse { border: var(--border-thin); background: var(--rm-surface-raised); padding: var(--space-3); margin: var(--space-2) 0 var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+    .connect-pipeline .docs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); max-height: 16rem; overflow-y: auto; }
+    .connect-pipeline .doc { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); border: var(--border-thin); padding: var(--space-1) var(--space-2); }
+    .connect-pipeline .doc-label { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
+    .connect-pipeline .preview-sub { margin: 0 0 var(--space-2); font-size: var(--text-sm); color: var(--rm-text); }
+
+    .connect-pipeline .doc-inventory { border: var(--border-thin); background: var(--rm-surface-raised); padding: var(--space-3); margin: 0 0 var(--space-3); }
+    .connect-pipeline .doc-inventory-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
+    .connect-pipeline .doc-inventory-count { color: var(--rm-muted); font-size: var(--text-xs); }
+    .connect-pipeline .doc-selection-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-2); }
+    .connect-pipeline .doc-select { display: flex; align-items: center; }
+    .connect-pipeline .doc-select input { width: 1rem; height: 1rem; margin: 0; }
+    .connect-pipeline .doc-inventory-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); max-height: 14rem; overflow-y: auto; }
+    .connect-pipeline .doc-inventory-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: var(--space-2); align-items: center; border: var(--border-thin); padding: var(--space-2); background: var(--rm-surface); }
+    .connect-pipeline .doc-inventory-main { min-width: 0; display: flex; flex-direction: column; gap: 0.125rem; }
+    .connect-pipeline .doc-inventory-error { grid-column: 1 / -1; color: var(--rm-coral, #c44); font-size: var(--text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .connect-pipeline .sources-select-banner { background: var(--color-surface); border: var(--border); padding: var(--space-2) var(--space-3); font-size: var(--text-sm); margin: 0 0 var(--space-2); }
+    .connect-pipeline .sources-empty { text-align: center; padding: var(--space-6) var(--space-4); border: 2px dashed var(--color-ink); max-width: 42rem; }
+    .connect-pipeline .sources-empty-icon { font-size: 2.5rem; font-family: var(--font-mono); display: block; margin-bottom: var(--space-3); }
+    .connect-pipeline .sources-empty-title { margin: 0 0 var(--space-2); font-size: var(--text-lg); }
+    .connect-pipeline .sources-empty-body { margin: 0 0 var(--space-4); color: var(--color-ink-faint); }
+    .connect-pipeline .doc-title-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+    .connect-pipeline .doc-name { color: var(--rm-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+    .connect-pipeline .tag { font-family: var(--font-mono); font-size: var(--text-mono-sm); padding: 0 var(--space-2); border: var(--border); text-transform: uppercase; letter-spacing: 0.04em; }
+    .connect-pipeline .tag-source { background: var(--color-bg); color: var(--color-ink); }
+    .connect-pipeline .tag-status-ok { background: color-mix(in oklab, var(--rm-sage) 25%, var(--color-surface)); }
+    .connect-pipeline .tag-status-err { background: #fff5f5; color: var(--coral-alert); }
+    .connect-pipeline .doc-inventory-meta { font-family: var(--font-mono); font-size: var(--text-mono-sm); color: var(--color-ink-faint); }
+    .connect-pipeline .doc-remove-btn { background: none; border: none; font-size: 1.25rem; line-height: 1; cursor: pointer; min-width: 44px; min-height: 44px; color: var(--color-ink-faint); }
+    .connect-pipeline .doc-select-spacer { width: 1.25rem; flex-shrink: 0; }
+
+    .connect-pipeline .connector-cards { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-3); }
+    .connect-pipeline .connector-card { border: var(--border); background: var(--color-surface); padding: var(--space-3); min-width: 10rem; display: flex; flex-direction: column; gap: var(--space-1); text-decoration: none; color: inherit; cursor: pointer; font: inherit; text-align: left; }
+    .connect-pipeline .connector-card-muted { cursor: default; background: var(--color-bg); }
+    .connect-pipeline .connector-card-name { font-weight: 700; }
+    .connect-pipeline .connector-card-state { font-family: var(--font-mono); font-size: var(--text-mono-sm); color: var(--color-ink-faint); }
+    .connect-pipeline .connector-card-setup { font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 700; }
+
+    .connect-pipeline .disclosure { border-top: var(--border-thin); padding-top: var(--space-3); }
+    .connect-pipeline .disclosure summary { cursor: pointer; color: var(--rm-sage); font-size: var(--text-sm); margin-bottom: var(--space-3); }
+
+    /* starter-corpus block has no scoped rule of its own — it is just a heading + button + hint */
+    .connect-pipeline .page-import-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2 class="card-title">ConnectSourcesPanel</h2>
+    <p class="card-desc">
+      The Sources step: import documents from a web page, S3, Google Drive, SharePoint, or a multi-page crawl —
+      documents accumulate in the workspace and you select which parsed ones go into the next ingest run. Shown
+      embedded in the wizard below with a populated inventory, then the first-run empty state.
+    </p>
+
+    <div class="variant">
+      <p class="variant-label">Populated — documents imported, selection in progress</p>
+      <div class="stage connect-pipeline">
+        <div class="wizard-panel">
+          <div class="starter-corpus">
+            <h3 class="preview-sub">First graph starter corpus</h3>
+            <div class="actions">
+              <button type="button" class="btn btn-primary">Reload starter documents</button>
+            </div>
+            <p class="field-hint">Restormel-authored CC0 passages — safe to use for first runs and demos.</p>
+          </div>
+
+          <section class="doc-inventory" aria-labelledby="doc-inventory-heading">
+            <div class="doc-inventory-head">
+              <h3 id="doc-inventory-heading" class="preview-sub">Your documents</h3>
+              <span class="doc-inventory-count">2 selected for next run · 3 parsed · 4 total</span>
+            </div>
+            <div class="doc-selection-actions">
+              <button type="button" class="btn btn-inline btn-outline">Select all parsed</button>
+              <button type="button" class="btn btn-inline btn-outline">Clear selection</button>
+            </div>
+            <ul class="doc-inventory-list">
+              <li class="doc-inventory-row">
+                <label class="doc-select">
+                  <input type="checkbox" checked />
+                  <span class="visually-hidden">Include in next run</span>
+                </label>
+                <div class="doc-inventory-main">
+                  <div class="doc-title-row">
+                    <span class="doc-name" title="Existentialism — Stanford Encyclopedia">Existentialism — Stanford Encyclopedia</span>
+                    <span class="tag tag-source">URL</span>
+                    <span class="tag tag-status tag-status-ok">Parsed</span>
+                  </div>
+                  <span class="doc-inventory-meta">42 chunks · 86,310 chars</span>
+                </div>
+                <button type="button" class="doc-remove-btn" aria-label="Remove Existentialism — Stanford Encyclopedia">×</button>
+              </li>
+              <li class="doc-inventory-row">
+                <label class="doc-select">
+                  <input type="checkbox" checked />
+                  <span class="visually-hidden">Include in next run</span>
+                </label>
+                <div class="doc-inventory-main">
+                  <div class="doc-title-row">
+                    <span class="doc-name" title="Starter: Phenomenology primer">Starter: Phenomenology primer</span>
+                    <span class="tag tag-source">Starter</span>
+                    <span class="tag tag-status tag-status-ok">Parsed</span>
+                  </div>
+                  <span class="doc-inventory-meta">8 chunks · 12,004 chars</span>
+                </div>
+                <button type="button" class="doc-remove-btn" aria-label="Remove Starter: Phenomenology primer">×</button>
+              </li>
+              <li class="doc-inventory-row">
+                <label class="doc-select">
+                  <input type="checkbox" />
+                  <span class="visually-hidden">Include in next run</span>
+                </label>
+                <div class="doc-inventory-main">
+                  <div class="doc-title-row">
+                    <span class="doc-name" title="q3-handbook.pdf">q3-handbook.pdf</span>
+                    <span class="tag tag-source">S3</span>
+                    <span class="tag tag-status tag-status-ok">Parsed</span>
+                  </div>
+                  <span class="doc-inventory-meta">120 chunks · 240,889 chars</span>
+                </div>
+                <button type="button" class="doc-remove-btn" aria-label="Remove q3-handbook.pdf">×</button>
+              </li>
+              <li class="doc-inventory-row">
+                <span class="doc-select-spacer" aria-hidden="true"></span>
+                <div class="doc-inventory-main">
+                  <div class="doc-title-row">
+                    <span class="doc-name" title="broken-export.html">broken-export.html</span>
+                    <span class="tag tag-source">URL</span>
+                    <span class="tag tag-status tag-status-err">Error</span>
+                  </div>
+                  <span class="doc-inventory-meta">0 chunks · 0 chars</span>
+                </div>
+                <button type="button" class="doc-remove-btn" aria-label="Remove broken-export.html">×</button>
+                <span class="doc-inventory-error" title="Could not parse: empty document body">Could not parse: empty document body</span>
+              </li>
+            </ul>
+          </section>
+
+          <section class="page-import" aria-labelledby="page-import-heading">
+            <h3 id="page-import-heading" class="preview-sub">Import a web page</h3>
+            <p class="muted">Fetch and parse one URL — no link following. Preview metadata (title, authors, canonical link) before the full parse.</p>
+            <div class="form">
+              <label class="field">
+                <span class="field-label">Page URL</span>
+                <input class="input" type="url" placeholder="https://plato.stanford.edu/entries/existentialism/" />
+              </label>
+              <div class="page-import-actions">
+                <button type="button" class="btn btn-outline">Preview metadata</button>
+                <button type="button" class="btn btn-primary">Import page</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="connector-cards">
+            <button type="button" class="connector-card">
+              <span class="connector-card-name">S3 bucket</span>
+              <span class="connector-card-state">Add connection</span>
+            </button>
+            <div class="connector-card connector-card-muted">
+              <span class="connector-card-name">Google Drive</span>
+              <span class="connector-card-state">Not configured</span>
+              <a class="connector-card-setup" href="#">Set up →</a>
+            </div>
+            <div class="connector-card connector-card-muted">
+              <span class="connector-card-name">SharePoint</span>
+              <span class="connector-card-state">Not configured</span>
+              <a class="connector-card-setup" href="#">Set up →</a>
+            </div>
+          </div>
+
+          <ul class="packs">
+            <li class="pack">
+              <span class="pack-title">Docs bucket</span>
+              <code class="pack-slug">s3</code>
+              <span class="badge status-success">connected</span>
+              <span style="margin-left:auto; display:flex; gap:var(--space-2);">
+                <button type="button" class="btn btn-inline btn-secondary">Browse</button>
+                <button type="button" class="btn btn-inline btn-danger">Remove</button>
+              </span>
+            </li>
+            <li class="pack">
+              <span class="pack-title">Marketing Drive</span>
+              <code class="pack-slug">google_drive</code>
+              <span class="badge status-warning">needs_auth</span>
+              <span style="margin-left:auto; display:flex; gap:var(--space-2);">
+                <button type="button" class="btn btn-inline btn-secondary">Browse</button>
+                <button type="button" class="btn btn-inline btn-danger">Remove</button>
+              </span>
+            </li>
+          </ul>
+
+          <details class="disclosure">
+            <summary>Crawl a website (multiple pages)</summary>
+            <p class="muted disclosure-lede">Follow links or sitemap.xml from a root URL. For one article only, use <strong>Import a web page</strong> above.</p>
+            <form class="form">
+              <label class="field"><span class="field-label">Root URL</span><input class="input" type="url" placeholder="https://docs.example.com" /></label>
+              <div class="row">
+                <label class="field"><span class="field-label">Max pages</span><input class="input" type="number" min="1" max="50" value="10" /></label>
+                <label class="field"><span class="field-label" style="display:flex;gap:var(--space-2);align-items:center;"><input type="checkbox" checked /> Same host only</span></label>
+                <label class="field"><span class="field-label" style="display:flex;gap:var(--space-2);align-items:center;"><input type="checkbox" checked /> Use sitemap.xml</span></label>
+              </div>
+              <div class="actions">
+                <button type="submit" class="btn btn-primary">Crawl &amp; import</button>
+              </div>
+            </form>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <div class="variant">
+      <p class="variant-label">Empty — first run, no documents yet</p>
+      <div class="stage connect-pipeline">
+        <div class="wizard-panel">
+          <section class="doc-inventory" aria-labelledby="doc-inventory-heading-2">
+            <div class="doc-inventory-head">
+              <h3 id="doc-inventory-heading-2" class="preview-sub">Your documents</h3>
+              <span class="doc-inventory-count">0 selected for next run</span>
+            </div>
+            <div class="sources-empty" role="status">
+              <span class="sources-empty-icon" aria-hidden="true">□</span>
+              <h4 class="sources-empty-title">No documents yet</h4>
+              <p class="sources-empty-body">Load the starter corpus to try your first run, or import a URL below.</p>
+              <button type="button" class="btn btn-primary">Load 3 starter documents</button>
+              <p class="muted sources-empty-reassure">No keys needed yet — we'll set up models after you've picked sources.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

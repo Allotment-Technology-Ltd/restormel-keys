@@ -1,0 +1,127 @@
+<!-- @dsCard group="Components / Brutalist" -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BrutalPageHeader</title>
+    <link rel="stylesheet" href="../../styles.css" />
+    <style>
+      /* ── card chrome ── */
+      body {
+        margin: 0;
+        padding: var(--space-8);
+        background: var(--color-bg);
+      }
+      .ds-card {
+        max-width: 920px;
+        margin: 0 auto;
+      }
+      .ds-title {
+        font-family: var(--font-display);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: var(--text-display-tracking);
+        font-size: var(--text-display-md);
+        margin: 0;
+      }
+      .ds-desc {
+        font-family: var(--font-body);
+        font-size: var(--text-body-md);
+        color: var(--color-ink-muted);
+        margin: var(--space-2) 0 var(--space-8);
+        max-width: 46rem;
+      }
+      .ds-caption {
+        font-family: var(--font-mono);
+        font-size: var(--text-mono-sm);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: var(--text-mono-tracking);
+        color: var(--color-ink-faint);
+        margin: var(--space-8) 0 var(--space-3);
+      }
+
+      /* ── BrutalPageHeader.svelte <style> (extracted verbatim) ── */
+      .brutal-page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: var(--space-4);
+        flex-wrap: wrap;
+        margin: 0 0 var(--space-6);
+        padding: 0 0 var(--space-4);
+        border-bottom: var(--border);
+      }
+      .brutal-page-title {
+        font-family: var(--font-display);
+        font-size: var(--text-display-hero);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: var(--text-display-tracking);
+        line-height: var(--text-display-line-height);
+        margin: var(--space-2) 0 0;
+        color: var(--color-ink);
+      }
+      .brutal-page-desc {
+        margin: var(--space-2) 0 0;
+        max-width: 48rem;
+        font-family: var(--font-body);
+        font-size: var(--text-body-md);
+        line-height: var(--text-body-line-height);
+      }
+      .brutal-page-header-actions {
+        display: flex;
+        gap: var(--space-2);
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ds-card">
+      <h2 class="ds-title">BrutalPageHeader</h2>
+      <p class="ds-desc">
+        The canonical dashboard / docs page header: an oversized display-font
+        <code>title</code> over an ink rule, with an optional uppercase
+        <code>kicker</code> chip, a muted <code>description</code>, and a
+        trailing <code>actions</code> slot that wraps below on narrow screens.
+      </p>
+
+      <p class="ds-caption">Full — kicker + title + description + actions</p>
+      <header class="brutal-page-header">
+        <div class="brutal-page-header-text">
+          <p class="brut-kicker">Dashboard</p>
+          <h1 class="brutal-page-title">Routes</h1>
+          <p class="brutal-page-desc brut-muted">
+            Resolve, simulate, and bind multi-step routes across your providers.
+            Every binding is versioned and auditable.
+          </p>
+        </div>
+        <div class="brutal-page-header-actions">
+          <button type="button" class="btn btn-ghost">Simulate</button>
+          <button type="button" class="btn btn-primary">New route</button>
+        </div>
+      </header>
+
+      <p class="ds-caption">Title + description, no kicker, single action</p>
+      <header class="brutal-page-header">
+        <div class="brutal-page-header-text">
+          <h1 class="brutal-page-title">Keys</h1>
+          <p class="brutal-page-desc brut-muted">
+            BYOK credentials, encrypted at rest and bound per environment.
+          </p>
+        </div>
+        <div class="brutal-page-header-actions">
+          <button type="button" class="btn btn-primary">Add key</button>
+        </div>
+      </header>
+
+      <p class="ds-caption">Title only (no description, kicker, or actions)</p>
+      <header class="brutal-page-header">
+        <div class="brutal-page-header-text">
+          <h1 class="brutal-page-title">Records</h1>
+        </div>
+      </header>
+    </div>
+  </body>
+</html>

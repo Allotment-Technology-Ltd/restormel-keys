@@ -1,0 +1,141 @@
+<!-- @dsCard group="Components / Brutalist" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BrutalBadge — Restormel Brutalist</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Component-scoped CSS (extracted from BrutalBadge.svelte <style>) ── */
+    .brutal-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-sm);
+      font-weight: 700;
+      letter-spacing: var(--text-mono-tracking);
+      text-transform: uppercase;
+      border: var(--border-thin);
+      border-radius: 0;
+    }
+    .brutal-badge-primary {
+      background: var(--color-yellow);
+      color: var(--color-ink);
+    }
+    .brutal-badge-secondary {
+      background: transparent;
+      color: var(--color-ink);
+    }
+
+    /* ── Card chrome (layout + labels only) ── */
+    body {
+      background: var(--color-bg);
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: var(--space-8);
+    }
+    .ds-title {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-display-md);
+      line-height: 0.95;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      margin: 0 0 var(--space-2);
+    }
+    .ds-desc {
+      font-size: var(--text-body-md);
+      color: var(--color-ink-muted);
+      max-width: 62ch;
+      margin: 0 0 var(--space-8);
+    }
+    .ds-section-label {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: var(--text-mono-md);
+      text-transform: uppercase;
+      letter-spacing: var(--text-mono-tracking);
+      border-bottom: var(--border);
+      padding-bottom: var(--space-2);
+      margin: var(--space-8) 0 var(--space-5);
+    }
+    .ds-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-6) var(--space-6);
+      align-items: flex-start;
+    }
+    .ds-cell {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      align-items: flex-start;
+    }
+    .ds-caption {
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-sm);
+      font-weight: 700;
+      letter-spacing: var(--text-mono-tracking);
+      text-transform: uppercase;
+      color: var(--color-ink-faint);
+    }
+    .ds-inline-demo {
+      font-size: var(--text-body-sm);
+      line-height: 1.9;
+      max-width: 58ch;
+    }
+  </style>
+</head>
+<body>
+  <h2 class="ds-title">BrutalBadge</h2>
+  <p class="ds-desc">
+    Small mono uppercase status pill with a thin 1.5px ink border and square corners.
+    Two visual treatments: <code>brutal-badge-primary</code> (yellow fill, used by
+    <code>primary</code> + <code>neon</code>) and <code>brutal-badge-secondary</code>
+    (transparent, used by <code>secondary</code>, <code>blue</code>, <code>coral</code>,
+    <code>canvas</code>).
+  </p>
+
+  <div class="ds-section-label">Variants</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <span class="brutal-badge brutal-badge-primary">Verified</span>
+      <span class="ds-caption">primary</span>
+    </div>
+    <div class="ds-cell">
+      <span class="brutal-badge brutal-badge-primary">Active</span>
+      <span class="ds-caption">neon (= primary)</span>
+    </div>
+    <div class="ds-cell">
+      <span class="brutal-badge brutal-badge-secondary">Draft</span>
+      <span class="ds-caption">secondary</span>
+    </div>
+    <div class="ds-cell">
+      <span class="brutal-badge brutal-badge-secondary">Routing</span>
+      <span class="ds-caption">blue (= secondary)</span>
+    </div>
+    <div class="ds-cell">
+      <span class="brutal-badge brutal-badge-secondary">Stalled</span>
+      <span class="ds-caption">coral (= secondary)</span>
+    </div>
+    <div class="ds-cell">
+      <span class="brutal-badge brutal-badge-secondary">Idle</span>
+      <span class="ds-caption">canvas (= secondary)</span>
+    </div>
+  </div>
+
+  <div class="ds-section-label">In context</div>
+  <p class="ds-inline-demo">
+    Pipeline <code>connect-ingest</code> is
+    <span class="brutal-badge brutal-badge-primary">Verified</span>
+    and currently
+    <span class="brutal-badge brutal-badge-secondary">Routing</span>
+    — last 3 runs
+    <span class="brutal-badge brutal-badge-primary">Green</span>,
+    one source flagged
+    <span class="brutal-badge brutal-badge-secondary">Review</span>.
+  </p>
+</body>
+</html>

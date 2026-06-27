@@ -1,0 +1,344 @@
+<!-- @dsCard group="Surfaces / Dashboard" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ProjectReadinessCard — Restormel Dashboard</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Tokens the product defines in base/brutalist layers but styles.css
+         doesn't inline. Resolved to their real product values so the component
+         CSS below renders faithfully. ── */
+    :root {
+      --text-base: 1rem;
+      --text-sm: 0.875rem;
+      --text-xs: 0.75rem;
+      --text-lg: 1.125rem;
+      --rm-sage: var(--color-blue);
+      --brut-ink: var(--color-ink);
+      --brut-white: var(--color-surface);
+      --brut-neon: var(--color-yellow);
+      --brut-canvas: var(--color-bg);
+      --brut-canvas-deep: var(--color-bg-deep);
+      --brut-border-width: var(--border-width);
+      --brut-border-micro: 1.5px;
+      --brut-shadow: var(--shadow-md);
+    }
+
+    /* ── Card chrome (layout + labels only; not product CSS) ── */
+    body {
+      background: var(--color-bg);
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: var(--space-8);
+    }
+    .ds-title {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-display-md);
+      line-height: 0.95;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      margin: 0 0 var(--space-2);
+    }
+    .ds-desc {
+      font-size: var(--text-body-md);
+      color: var(--color-ink-muted);
+      max-width: 64ch;
+      margin: 0 0 var(--space-8);
+    }
+    .ds-section-label {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: var(--text-mono-md);
+      text-transform: uppercase;
+      letter-spacing: var(--text-mono-tracking);
+      color: var(--color-ink);
+      border-bottom: var(--border);
+      padding-bottom: var(--space-2);
+      margin: var(--space-10) 0 var(--space-5);
+    }
+    .ds-caption {
+      font-family: var(--font-mono);
+      font-size: var(--text-mono-sm);
+      font-weight: 700;
+      letter-spacing: var(--text-mono-tracking);
+      text-transform: uppercase;
+      color: var(--color-ink-faint);
+      margin: 0 0 var(--space-3);
+    }
+    .ds-stage {
+      max-width: 640px;
+      margin: 0 0 var(--space-8);
+    }
+
+    /* ── dashboard-surfaces.css: .section* rules (scoped to .app-main) ── */
+    .app-main .section-desc {
+      font-size: var(--text-body-md);
+      line-height: var(--text-body-line-height);
+      color: var(--color-ink-muted);
+      max-width: 48rem;
+      margin: 0 0 var(--space-5);
+    }
+    .app-main .section { border-top: var(--border); padding-top: var(--space-6); margin-top: var(--space-6); }
+    .app-main .section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+    .app-main .section-title {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-display-sm);
+      text-transform: uppercase;
+      letter-spacing: var(--text-display-tracking);
+      color: var(--color-ink);
+      margin: 0 0 var(--space-3);
+    }
+
+    /* ── btn-sm (defined per-page in product; common pattern) ── */
+    .btn-sm {
+      min-height: 32px;
+      padding: var(--space-1) var(--space-3);
+      font-size: var(--text-xs);
+      box-shadow: 1px 1px 0 var(--brut-ink);
+    }
+
+    /* ── BrutalLoadingState scoped CSS ── */
+    .brutal-loading {
+      border: var(--brut-border-width) solid var(--brut-ink);
+      background: var(--brut-white);
+      padding: var(--space-4);
+      box-shadow: var(--brut-shadow);
+    }
+    .brutal-loading-msg {
+      display: flex; align-items: center; gap: var(--space-2);
+      margin: 0; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.06em; font-size: var(--text-xs);
+    }
+    .brutal-loading-bar {
+      display: inline-block; width: 1.5rem; height: 0.75rem;
+      background: var(--brut-neon);
+      border: var(--brut-border-micro) solid var(--brut-ink);
+      animation: brutal-pulse 1s steps(2) infinite;
+    }
+    .brutal-skeletons { margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+    .brutal-skeleton-row {
+      height: 1.25rem;
+      border: var(--brut-border-micro) solid var(--brut-ink);
+      background: repeating-linear-gradient(45deg,
+        var(--brut-canvas), var(--brut-canvas) 6px,
+        var(--brut-canvas-deep) 6px, var(--brut-canvas-deep) 12px);
+    }
+    @keyframes brutal-pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+    /* ── BrutalErrorBanner scoped CSS ── */
+    .brutal-error {
+      border: var(--brut-border-width) solid var(--brut-ink);
+      background: var(--brut-coral);
+      color: var(--brut-ink);
+      padding: var(--space-4);
+      box-shadow: var(--brut-shadow);
+      margin: 0 0 var(--space-4);
+    }
+    .brutal-error-title {
+      display: flex; align-items: center; gap: var(--space-2);
+      margin: 0 0 var(--space-2); font-weight: 900;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .brutal-error-title span {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 1.5rem; height: 1.5rem; background: var(--brut-ink);
+      color: var(--brut-coral); font-weight: 900;
+    }
+    .brutal-error-msg { margin: 0; font-weight: 600; }
+    .brutal-error-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+
+    /* ── ProjectReadinessCard scoped CSS (from component <style>) ── */
+    .readiness-card { margin: 0 0 var(--space-5); }
+    .readiness-head {
+      display: flex; flex-wrap: wrap; align-items: center;
+      gap: var(--space-3); margin: 0 0 var(--space-3);
+    }
+    .readiness-status {
+      font-family: var(--font-mono); font-size: var(--text-mono-sm);
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      border: var(--border); padding: 2px var(--space-2);
+    }
+    .readiness-status--ok { background: var(--state-ok-bg); color: var(--state-ok-fg); }
+    .readiness-status--warn { background: var(--state-warn-bg); color: var(--state-warn-fg); }
+    .readiness-status--fail { background: var(--state-fail-bg); color: var(--state-fail-fg); }
+    .readiness-summary {
+      font-family: var(--font-mono); font-size: var(--text-mono-sm);
+      color: var(--color-ink-muted);
+    }
+    .readiness-clear { margin: 0; font-size: var(--text-sm); color: var(--color-ink-muted); }
+    .readiness-issues {
+      list-style: none; margin: 0 0 var(--space-3); padding: 0;
+      border: var(--border); background: var(--color-surface);
+    }
+    .readiness-issue {
+      display: grid; grid-template-columns: auto 1fr auto;
+      align-items: center; gap: var(--space-2) var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border-bottom: var(--border-thin); min-height: 44px;
+    }
+    .readiness-issue:last-child { border-bottom: none; }
+    .readiness-issue--high { background: color-mix(in oklab, var(--state-fail-bg) 35%, var(--color-surface)); }
+    .readiness-issue--medium { background: color-mix(in oklab, var(--state-warn-bg) 30%, var(--color-surface)); }
+    .readiness-severity {
+      font-family: var(--font-mono); font-size: var(--text-mono-sm);
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      border: var(--border-thin); padding: 1px var(--space-2); white-space: nowrap;
+    }
+    .readiness-issue--high .readiness-severity { background: var(--state-fail-bg); color: var(--state-fail-fg); }
+    .readiness-issue--medium .readiness-severity { background: var(--state-warn-bg); color: var(--state-warn-fg); }
+    .readiness-message { font-size: var(--text-sm); line-height: 1.4; min-width: 0; }
+    .readiness-fix {
+      font-family: var(--font-mono); font-size: var(--text-mono-sm);
+      font-weight: 700; color: var(--color-ink);
+      text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
+    }
+    .readiness-recs summary {
+      cursor: pointer; font-family: var(--font-mono); font-size: var(--text-mono-sm);
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+      min-height: 44px; display: flex; align-items: center;
+    }
+    .readiness-recs ul { margin: var(--space-2) 0 0; padding-left: var(--space-5); font-size: var(--text-sm); }
+    .readiness-rec-reason { color: var(--color-ink-muted); }
+  </style>
+</head>
+<body>
+  <h2 class="ds-title">ProjectReadinessCard</h2>
+  <p class="ds-desc">
+    The first standing UI consumer of <code>GET /api/projects/[id]/readiness</code>. Answers
+    "can this project resolve, route, and serve Connect runs?" as a headline status plus issue
+    receipts — each issue links to the exact repair. Renders loading / error / clear / issues
+    states. (<code>.section</code> · <code>.readiness-*</code>)
+  </p>
+
+  <div class="ds-section-label">State · action needed (fail) with issues + recommendations</div>
+  <div class="ds-stage">
+    <div class="app-main">
+      <section class="section readiness-card" aria-labelledby="rd1">
+        <h2 id="rd1" class="section-title">Readiness</h2>
+        <p class="section-desc">
+          Can this project resolve, route, and serve Connect runs? Issues below link to the exact repair.
+        </p>
+        <div class="readiness-head">
+          <span class="readiness-status readiness-status--fail">Action needed</span>
+          <span class="readiness-summary">2 bindings · 3 routes · 5 steps · 1 policy bound</span>
+        </div>
+        <ul class="readiness-issues">
+          <li class="readiness-issue readiness-issue--high">
+            <span class="readiness-severity" aria-label="high severity">High</span>
+            <span class="readiness-message">Route "sophia-ingest" has a step with no provider binding.</span>
+            <a class="readiness-fix" href="#">Bind provider →</a>
+          </li>
+          <li class="readiness-issue readiness-issue--medium">
+            <span class="readiness-severity" aria-label="medium severity">Med</span>
+            <span class="readiness-message">Connect preflight: provider "anthropic" key not verified for this environment.</span>
+            <a class="readiness-fix" href="#">Verify key →</a>
+          </li>
+          <li class="readiness-issue readiness-issue--low">
+            <span class="readiness-severity" aria-label="low severity">Low</span>
+            <span class="readiness-message">No project policy bound — runs fall back to workspace defaults.</span>
+            <a class="readiness-fix" href="#">Bind policy →</a>
+          </li>
+        </ul>
+        <details class="readiness-recs" open>
+          <summary>Recommendations (1)</summary>
+          <ul>
+            <li><strong>Add a fallback step to single-step routes</strong>
+              <span class="readiness-rec-reason">A single-step route has no failover if the primary provider errors.</span></li>
+          </ul>
+        </details>
+      </section>
+    </div>
+  </div>
+
+  <div class="ds-section-label">State · check (warn)</div>
+  <div class="ds-stage">
+    <div class="app-main">
+      <section class="section readiness-card" aria-labelledby="rd2">
+        <h2 id="rd2" class="section-title">Readiness</h2>
+        <p class="section-desc">
+          Can this project resolve, route, and serve Connect runs? Issues below link to the exact repair.
+        </p>
+        <div class="readiness-head">
+          <span class="readiness-status readiness-status--warn">Check</span>
+          <span class="readiness-summary">2 bindings · 2 routes · 3 steps · 1 policy bound</span>
+        </div>
+        <ul class="readiness-issues">
+          <li class="readiness-issue readiness-issue--medium">
+            <span class="readiness-severity" aria-label="medium severity">Med</span>
+            <span class="readiness-message">Route "default" has only one enabled step — no failover configured.</span>
+            <a class="readiness-fix" href="#">Open route →</a>
+          </li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <div class="ds-section-label">State · ready (ok), no issues</div>
+  <div class="ds-stage">
+    <div class="app-main">
+      <section class="section readiness-card" aria-labelledby="rd3">
+        <h2 id="rd3" class="section-title">Readiness</h2>
+        <p class="section-desc">
+          Can this project resolve, route, and serve Connect runs? Issues below link to the exact repair.
+        </p>
+        <div class="readiness-head">
+          <span class="readiness-status readiness-status--ok">Ready</span>
+          <span class="readiness-summary">3 bindings · 4 routes · 9 steps · 2 policies bound</span>
+        </div>
+        <p class="readiness-clear" role="status">
+          No readiness issues — bindings, routes, and policies are in place.
+          <a href="#">Open the Connect readiness ledger →</a>
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <div class="ds-section-label">State · loading</div>
+  <div class="ds-stage">
+    <div class="app-main">
+      <section class="section readiness-card" aria-labelledby="rd4">
+        <h2 id="rd4" class="section-title">Readiness</h2>
+        <p class="section-desc">
+          Can this project resolve, route, and serve Connect runs? Issues below link to the exact repair.
+        </p>
+        <div class="brutal-loading" role="status" aria-live="polite">
+          <p class="brutal-loading-msg">
+            <span class="brutal-loading-bar" aria-hidden="true"></span>
+            Checking project readiness…
+          </p>
+          <div class="brutal-skeletons" aria-hidden="true">
+            <div class="brutal-skeleton-row"></div>
+            <div class="brutal-skeleton-row"></div>
+            <div class="brutal-skeleton-row"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="ds-section-label">State · error</div>
+  <div class="ds-stage">
+    <div class="app-main">
+      <section class="section readiness-card" aria-labelledby="rd5">
+        <h2 id="rd5" class="section-title">Readiness</h2>
+        <p class="section-desc">
+          Can this project resolve, route, and serve Connect runs? Issues below link to the exact repair.
+        </p>
+        <div class="brutal-error" role="alert">
+          <p class="brutal-error-title"><span aria-hidden="true">!</span> Readiness unavailable</p>
+          <p class="brutal-error-msg">Could not load project readiness (HTTP 503).</p>
+          <div class="brutal-error-actions">
+            <button type="button" class="btn btn-primary btn-sm">Try again</button>
+            <a class="btn btn-outline btn-sm" href="#">Open Connect readiness ledger</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

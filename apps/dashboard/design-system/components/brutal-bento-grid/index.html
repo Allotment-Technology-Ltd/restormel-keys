@@ -1,0 +1,270 @@
+<!-- @dsCard group="Components / Brutalist" -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BrutalBentoGrid / BrutalBentoCell</title>
+    <link rel="stylesheet" href="../../styles.css" />
+    <style>
+      /*
+       * Legacy --brut-* aliases + --text-xs that the component <style> blocks
+       * reference. They live in keys-tokens/brutalist-rm.css + base.css in the
+       * product but are not inlined in the standalone styles.css, so we re-point
+       * them here to the canonical tokens that ARE in styles.css.
+       */
+      :root {
+        --brut-ink: var(--color-ink);
+        --brut-white: var(--color-surface);
+        --brut-canvas: var(--color-bg);
+        --brut-canvas-deep: var(--color-bg-deep);
+        --brut-neon: var(--color-yellow);
+        --brut-blue: var(--color-blue);
+        --brut-border-width: var(--border-width);
+        --brut-border-micro: 1.5px;
+        --brut-shadow: var(--shadow-md);
+      }
+
+      /* ── card chrome (not part of the product component) ── */
+      body {
+        margin: 0;
+        padding: var(--space-8);
+        background: var(--color-bg);
+      }
+      .ds-card {
+        max-width: 920px;
+        margin: 0 auto;
+      }
+      .ds-title {
+        font-family: var(--font-display);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: var(--text-display-tracking);
+        font-size: var(--text-display-md);
+        margin: 0;
+      }
+      .ds-desc {
+        font-family: var(--font-body);
+        font-size: var(--text-body-md);
+        color: var(--color-ink-muted);
+        margin: var(--space-2) 0 var(--space-8);
+        max-width: 46rem;
+      }
+      .ds-caption {
+        font-family: var(--font-mono);
+        font-size: var(--text-mono-sm);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: var(--text-mono-tracking);
+        color: var(--color-ink-faint);
+        margin: var(--space-8) 0 var(--space-3);
+      }
+
+      /* ── BrutalBentoGrid.svelte <style> (extracted) ── */
+      .brutal-bento {
+        display: grid;
+        grid-template-columns: repeat(var(--bento-cols), 1fr);
+        gap: 0;
+        border: var(--brut-border-width) solid var(--brut-ink);
+        background: var(--brut-ink);
+      }
+      @media (max-width: 900px) {
+        .brutal-bento {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* ── BrutalBentoCell.svelte <style> (extracted) ── */
+      .brutal-bento-cell {
+        grid-column: span var(--cell-span);
+        padding: var(--space-4);
+        border: var(--brut-border-micro) solid var(--brut-ink);
+      }
+      .bento-full {
+        grid-column: 1 / -1;
+      }
+      .bento-dense {
+        padding: var(--space-2);
+      }
+      .brutal-bento-label {
+        margin: 0 0 var(--space-3);
+        font-family: var(--font-mono);
+        font-size: var(--text-mono-md);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: var(--text-mono-tracking);
+      }
+      @media (max-width: 900px) {
+        .brutal-bento-cell,
+        .bento-full {
+          grid-column: 1;
+        }
+      }
+
+      /* ── sample-content helpers (card-local, product-faithful tokens only) ── */
+      .cell-metric {
+        font-family: var(--font-display);
+        font-weight: 900;
+        font-size: var(--text-display-md);
+        line-height: var(--text-display-line-height);
+        letter-spacing: var(--text-display-tracking);
+        margin: 0;
+      }
+      .cell-sub {
+        font-family: var(--font-body);
+        font-size: var(--text-body-sm);
+        color: var(--color-ink-muted);
+        margin: var(--space-1) 0 0;
+      }
+      .brut-fill-blue .cell-sub,
+      .brut-fill-coral .cell-sub {
+        color: inherit;
+        opacity: 0.85;
+      }
+      .cell-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-family: var(--font-mono);
+        font-size: var(--text-mono-md);
+        line-height: 1.9;
+      }
+      .cell-list span {
+        float: right;
+        font-weight: 700;
+      }
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ds-card">
+      <h2 class="ds-title">BrutalBentoGrid + BrutalBentoCell</h2>
+      <p class="ds-desc">
+        A zero-gap grid of hard-bordered cells sharing a single ink frame. The
+        grid sets <code>--bento-cols</code> column count; each cell sets its own
+        <code>span</code>, optional <code>full</code> (1 / -1), <code>dense</code>
+        padding, an uppercase mono <code>label</code>, and one of five
+        <code>fill</code> variants (canvas / white / blue / coral / neon).
+      </p>
+
+      <p class="ds-caption">3-column grid · mixed fills, spans, full + dense cells</p>
+
+      <div class="brutal-bento" style="--bento-cols: 3" role="list">
+        <!-- fill="neon", span 1 -->
+        <section
+          class="brutal-bento-cell brut-fill-neon"
+          style="--cell-span: 1"
+          role="listitem"
+          aria-label="Routes resolved"
+        >
+          <h3 class="brutal-bento-label">Routes resolved</h3>
+          <p class="cell-metric">1,284</p>
+          <p class="cell-sub">last 24h</p>
+        </section>
+
+        <!-- fill="white", span 1 -->
+        <section
+          class="brutal-bento-cell brut-fill-white"
+          style="--cell-span: 1"
+          role="listitem"
+          aria-label="Success rate"
+        >
+          <h3 class="brutal-bento-label">Success rate</h3>
+          <p class="cell-metric">99.2%</p>
+          <p class="cell-sub">+0.4 vs prev</p>
+        </section>
+
+        <!-- fill="blue", span 1 -->
+        <section
+          class="brutal-bento-cell brut-fill-blue"
+          style="--cell-span: 1"
+          role="listitem"
+          aria-label="P95 latency"
+        >
+          <h3 class="brutal-bento-label">P95 latency</h3>
+          <p class="cell-metric">412ms</p>
+          <p class="cell-sub">resolve + simulate</p>
+        </section>
+
+        <!-- fill="canvas", span 2 -->
+        <section
+          class="brutal-bento-cell brut-fill-canvas"
+          style="--cell-span: 2"
+          role="listitem"
+          aria-label="Top providers"
+        >
+          <h3 class="brutal-bento-label">Top providers (span 2)</h3>
+          <ul class="cell-list">
+            <li>anthropic <span>61%</span></li>
+            <li>mistral (eu) <span>24%</span></li>
+            <li>self-host / k3s <span>15%</span></li>
+          </ul>
+        </section>
+
+        <!-- fill="coral", span 1 -->
+        <section
+          class="brutal-bento-cell brut-fill-coral"
+          style="--cell-span: 1"
+          role="listitem"
+          aria-label="Errors"
+        >
+          <h3 class="brutal-bento-label">Errors (24h)</h3>
+          <p class="cell-metric">7</p>
+          <p class="cell-sub">2 keys, 5 upstream</p>
+        </section>
+
+        <!-- full-width cell -->
+        <section
+          class="brutal-bento-cell brut-fill-white bento-full"
+          style="--cell-span: 1"
+          role="listitem"
+          aria-label="Active keys"
+        >
+          <h3 class="brutal-bento-label">Active keys (full)</h3>
+          <div class="chip-row">
+            <span class="brut-stat-chip">rk_live_••••a91f · prod</span>
+            <span class="brut-stat-chip">rk_live_••••7c20 · sophia</span>
+            <span class="brut-stat-chip">rk_test_••••0d3e · ci</span>
+          </div>
+        </section>
+
+        <!-- dense cell -->
+        <section
+          class="brutal-bento-cell brut-fill-canvas bento-dense"
+          style="--cell-span: 1"
+          role="listitem"
+          aria-label="Region"
+        >
+          <h3 class="brutal-bento-label">Region (dense)</h3>
+          <p class="cell-sub">fsn1 · EU/UK</p>
+        </section>
+
+        <!-- dense neon cell -->
+        <section
+          class="brutal-bento-cell brut-fill-neon bento-dense"
+          style="--cell-span: 1"
+          role="listitem"
+          aria-label="Status"
+        >
+          <h3 class="brutal-bento-label">Status (dense)</h3>
+          <p class="cell-sub">all systems go</p>
+        </section>
+
+        <!-- dense white cell -->
+        <section
+          class="brutal-bento-cell brut-fill-white bento-dense"
+          style="--cell-span: 1"
+          role="listitem"
+          aria-label="Build"
+        >
+          <h3 class="brutal-bento-label">Build (dense)</h3>
+          <p class="cell-sub">@874e38a</p>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

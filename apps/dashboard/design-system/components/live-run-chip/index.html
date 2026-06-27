@@ -1,0 +1,148 @@
+<!-- @dsCard group="Surfaces / Dashboard" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LiveRunChip — Restormel Dashboard</title>
+  <link rel="stylesheet" href="../../styles.css" />
+  <style>
+    /* ── Tokens the product defines elsewhere; resolved to real values ── */
+    :root {
+      --text-xs: 0.75rem;
+      --brut-ink: var(--color-ink);
+      --brut-white: var(--color-surface);
+      --brut-neon: var(--color-yellow);
+      /* --brut-amber is inlined in styles.css */
+      --brut-border-micro: 1.5px;
+    }
+
+    /* ── Card chrome (layout + labels only) ── */
+    body { background: var(--color-bg); color: var(--color-ink); font-family: var(--font-body); margin: 0; padding: var(--space-8); }
+    .ds-title {
+      font-family: var(--font-display); font-weight: 900; font-size: var(--text-display-md);
+      line-height: 0.95; letter-spacing: -0.01em; text-transform: uppercase; margin: 0 0 var(--space-2);
+    }
+    .ds-desc { font-size: var(--text-body-md); color: var(--color-ink-muted); max-width: 64ch; margin: 0 0 var(--space-8); }
+    .ds-section-label {
+      font-family: var(--font-mono); font-weight: 700; font-size: var(--text-mono-md);
+      text-transform: uppercase; letter-spacing: var(--text-mono-tracking); color: var(--color-ink);
+      border-bottom: var(--border); padding-bottom: var(--space-2); margin: var(--space-10) 0 var(--space-5);
+    }
+    .ds-grid { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-6); align-items: flex-start; }
+    .ds-cell { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+    .ds-caption {
+      font-family: var(--font-mono); font-size: var(--text-mono-sm); font-weight: 700;
+      letter-spacing: var(--text-mono-tracking); text-transform: uppercase; color: var(--color-ink-faint);
+    }
+    /* Topbar mock to show the chip in its real chrome context */
+    .ds-topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+      padding: var(--space-2) var(--space-4); border: var(--border);
+      background: var(--color-surface); box-shadow: var(--shadow-sm);
+    }
+    .ds-topbar-brand {
+      font-family: var(--font-display); font-weight: 900; text-transform: uppercase;
+      letter-spacing: -0.01em; font-size: var(--text-display-sm);
+    }
+    .ds-topbar-right { display: flex; align-items: center; gap: var(--space-3); }
+
+    /* ── LiveRunChip scoped CSS (from component <style>) ── */
+    .live-run-chip {
+      display: inline-flex; align-items: center; gap: var(--space-2);
+      border: var(--brut-border-micro) solid var(--brut-ink);
+      background: var(--brut-white); color: var(--brut-ink);
+      padding: var(--space-1) var(--space-3); min-height: 44px;
+      font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 800;
+      letter-spacing: 0.04em; text-transform: uppercase; text-decoration: none;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .live-run-chip:hover,
+    .live-run-chip.demo-hover { background: var(--brut-neon); color: var(--brut-ink); text-decoration: none; }
+    .live-run-chip:focus-visible { outline: 2px solid var(--brut-ink); outline-offset: 2px; }
+    .live-run-chip-stalled {
+      background: color-mix(in oklab, var(--brut-amber) 16%, var(--brut-white));
+      border-color: var(--brut-amber);
+    }
+    .live-run-chip-stalled:hover,
+    .live-run-chip-stalled.demo-hover { background: color-mix(in oklab, var(--brut-amber) 28%, var(--brut-white)); }
+    .live-run-dot {
+      width: 0.55rem; height: 0.55rem; background: var(--brut-ink);
+      border-radius: 999px; flex: 0 0 auto; animation: live-run-pulse 1.4s ease-in-out infinite;
+    }
+    .live-run-chip-stalled .live-run-dot { background: var(--brut-amber); animation: none; }
+    @keyframes live-run-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    @media (prefers-reduced-motion: reduce) { .live-run-dot { animation: none; } }
+  </style>
+</head>
+<body>
+  <h2 class="ds-title">LiveRunChip</h2>
+  <p class="ds-desc">
+    Topbar chip that appears only while an ingest run is active in the workspace — it never renders an
+    empty shell. The dot pulses while live; on stall it turns amber, swaps the label to "STALLED" and
+    holds the dot steady (amber + text carry the meaning, no pulse). Links to the run console at
+    <code>/runs/[id]</code>. (<code>.live-run-chip</code> · <code>.live-run-dot</code>)
+  </p>
+
+  <div class="ds-section-label">States</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <a class="live-run-chip" href="#" aria-label="Ingest running, 62% after 2:41. Open the run console." data-testid="live-run-chip">
+        <span class="live-run-dot" aria-hidden="true"></span>
+        <span class="live-run-text">INGEST 62% · 2:41</span>
+      </a>
+      <span class="ds-caption">live (dot pulses)</span>
+    </div>
+    <div class="ds-cell">
+      <a class="live-run-chip demo-hover" href="#" aria-label="Ingest running, 62% after 2:41. Open the run console.">
+        <span class="live-run-dot" aria-hidden="true"></span>
+        <span class="live-run-text">INGEST 62% · 2:41</span>
+      </a>
+      <span class="ds-caption">live · hover (neon fill)</span>
+    </div>
+    <div class="ds-cell">
+      <a class="live-run-chip live-run-chip-stalled" href="#" aria-label="Ingest run stalled at 62% after 7:13. Open the run console.">
+        <span class="live-run-dot" aria-hidden="true"></span>
+        <span class="live-run-text">STALLED 62% · 7:13</span>
+      </a>
+      <span class="ds-caption">stalled (amber, steady)</span>
+    </div>
+    <div class="ds-cell">
+      <a class="live-run-chip live-run-chip-stalled demo-hover" href="#" aria-label="Ingest run stalled at 62% after 7:13. Open the run console.">
+        <span class="live-run-dot" aria-hidden="true"></span>
+        <span class="live-run-text">STALLED 62% · 7:13</span>
+      </a>
+      <span class="ds-caption">stalled · hover</span>
+    </div>
+  </div>
+
+  <div class="ds-section-label">Early run (low progress)</div>
+  <div class="ds-grid">
+    <div class="ds-cell">
+      <a class="live-run-chip" href="#" aria-label="Ingest running, 4% after 0:08. Open the run console.">
+        <span class="live-run-dot" aria-hidden="true"></span>
+        <span class="live-run-text">INGEST 4% · 0:08</span>
+      </a>
+      <span class="ds-caption">just started</span>
+    </div>
+    <div class="ds-cell">
+      <a class="live-run-chip" href="#" aria-label="Ingest running, 99% after 14:52. Open the run console.">
+        <span class="live-run-dot" aria-hidden="true"></span>
+        <span class="live-run-text">INGEST 99% · 14:52</span>
+      </a>
+      <span class="ds-caption">almost done</span>
+    </div>
+  </div>
+
+  <div class="ds-section-label">In context · dashboard topbar</div>
+  <div class="ds-topbar">
+    <span class="ds-topbar-brand">Restormel Keys</span>
+    <div class="ds-topbar-right">
+      <a class="live-run-chip" href="#" aria-label="Ingest running, 62% after 2:41. Open the run console.">
+        <span class="live-run-dot" aria-hidden="true"></span>
+        <span class="live-run-text">INGEST 62% · 2:41</span>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
