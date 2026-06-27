@@ -1,0 +1,32 @@
+# WS6 Stage-C drill — C1 ESO machine-identity, RECREATE-FROM-ESCROW template.
+# REC-PLAN-021. *** TEMPLATE ONLY — NO SECRET MATERIAL. NEVER committed with values. ***
+#
+# This documents the SHAPE the harness produces. The harness does NOT apply this file with
+# values inlined; instead recreate_machine_identity_from_escrow() runs the imperative form so
+# the value is PIPED and never lands in a manifest or a last-applied-configuration annotation:
+#
+#   set -a; . <(age -d -i "$ESCROW_IDENTITY" eso-bootstrap.age); set +a
+#   kubectl -n external-secrets create secret generic infisical-machine-identity \
+#       --save-config=false \
+#       --from-literal=clientId="$INFISICAL_MI_CLIENT_ID" \
+#       --from-literal=clientSecret="$INFISICAL_MI_CLIENT_SECRET"
+#
+# WHY C1: external-secrets/infisical-machine-identity (clientId/clientSecret, Universal Auth) is the
+# ONE credential ESO uses to authenticate to Infisical — the thing that unlocks Infisical, so it
+# cannot be synced FROM Infisical. In a cold start NOTHING in the cluster can recreate it; it must
+# come from the OFFLINE escrow the founder holds (eso-bootstrap.age, opened by the offline age key).
+# The drill asserting that the 5 ClusterSecretStores go Valid *because of* this proves the escrow is
+# sufficient (C1). --save-config=false avoids re-leaking the values into an annotation (Stage-A finding).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infisical-machine-identity
+  namespace: external-secrets
+  labels:
+    restormel.dev/escrow: "offline-age (eso-bootstrap.age)"
+    restormel.dev/control: "C1"
+    restormel.dev/throwaway: "true"
+  annotations:
+    restormel.dev/do-not-sync: "ESO bootstrap root — recreate from sealed offline escrow ONLY; apply with --save-config=false"
+type: Opaque
+# data: INTENTIONALLY OMITTED (clientId / clientSecret). Recreated from escrow at run time.

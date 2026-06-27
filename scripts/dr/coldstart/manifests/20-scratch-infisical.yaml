@@ -1,0 +1,124 @@
+# WS6 Stage-C drill — scratch Postgres + redis + Infisical (THROWAWAY, temp box only).
+# REC-PLAN-021. Applied by the harness with envsubst (${SCRATCH_DOMAIN}, ${INFISICAL_IMAGE}).
+#
+# WHY a plain Postgres here (not CNPG): at Step 1 the CNPG operator is NOT installed yet
+# (it arrives with cluster-addons in Step 4), so Infisical's J4 ciphertext is restored from
+# the restic LOGICAL dump into this plain scratch-pg via pg_restore. The PROD app DBs use
+# CNPG bootstrap.recovery in Step 5. emptyDir + trust-auth are fine: single throwaway box,
+# no external exposure, destroyed within hours.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scratch-pg
+  namespace: dr-drill
+  labels: { app.kubernetes.io/name: scratch-pg, restormel.dev/throwaway: "true" }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: scratch-pg } }
+  template:
+    metadata: { labels: { app.kubernetes.io/name: scratch-pg } }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - { name: POSTGRES_HOST_AUTH_METHOD, value: "trust" }   # throwaway box only
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          ports: [{ containerPort: 5432, name: pg }]
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "postgres"] }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+          resources: { requests: { memory: "256Mi", cpu: "150m" }, limits: { memory: "1Gi", cpu: "1" } }
+      volumes: [{ name: data, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: scratch-pg, namespace: dr-drill }
+spec:
+  selector: { app.kubernetes.io/name: scratch-pg }
+  ports: [{ name: pg, port: 5432, targetPort: pg }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: dr-drill
+  labels: { app.kubernetes.io/name: redis, restormel.dev/throwaway: "true" }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: redis } }
+  template:
+    metadata: { labels: { app.kubernetes.io/name: redis } }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports: [{ containerPort: 6379, name: redis }]
+          resources: { requests: { memory: "64Mi", cpu: "50m" }, limits: { memory: "256Mi", cpu: "500m" } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: redis, namespace: dr-drill }
+spec:
+  selector: { app.kubernetes.io/name: redis }
+  ports: [{ name: redis, port: 6379, targetPort: redis }]
+---
+# ---- Infisical over the restored PG + the escrow-seeded master key. -----------
+# envFrom infisical-master-key (ENCRYPTION_KEY + AUTH_SECRET) is created by the harness
+# (stand_up_scratch_infisical) from the opened escrow bundle — never committed here.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infisical
+  namespace: dr-drill
+  labels: { app.kubernetes.io/name: infisical, restormel.dev/throwaway: "true" }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: infisical } }
+  template:
+    metadata: { labels: { app.kubernetes.io/name: infisical } }
+    spec:
+      containers:
+        - name: infisical
+          image: ${INFISICAL_IMAGE}        # pin to the version the J4 schema was written by (ceremony: v0.154.6)
+          envFrom:
+            - secretRef: { name: infisical-master-key }   # ENCRYPTION_KEY + AUTH_SECRET (escrow)
+          env:
+            - { name: DB_CONNECTION_URI, value: "postgres://postgres@scratch-pg.dr-drill.svc.cluster.local:5432/infisical" }
+            - { name: REDIS_URL,         value: "redis://redis.dr-drill.svc.cluster.local:6379" }
+            - { name: SITE_URL,          value: "https://secrets.${SCRATCH_DOMAIN}" }
+            - { name: TELEMETRY_ENABLED, value: "false" }
+          ports: [{ containerPort: 8080, name: http }]
+          readinessProbe:
+            httpGet: { path: /api/status, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 30
+          resources: { requests: { memory: "256Mi", cpu: "150m" }, limits: { memory: "768Mi", cpu: "1" } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: infisical, namespace: dr-drill }
+spec:
+  selector: { app.kubernetes.io/name: infisical }
+  ports: [{ name: http, port: 80, targetPort: http }]
+---
+# Ingress for secrets.${SCRATCH_DOMAIN} — only routes once the ingress controller arrives with
+# cluster-addons (Step 4). The decisive C2 canary read in Step 1 uses a port-forward to the
+# Service above, NOT this Ingress (which isn't up yet) — so the gate does not depend on it.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: infisical
+  namespace: dr-drill
+  labels: { restormel.dev/throwaway: "true" }
+spec:
+  rules:
+    - host: secrets.${SCRATCH_DOMAIN}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: infisical, port: { name: http } } }

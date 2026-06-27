@@ -1,0 +1,39 @@
+# WS6 Stage-C drill — Barman ObjectStore for RECOVERY (THROWAWAY, temp box only).
+# REC-PLAN-021. Copy of cluster/cnpg/objectstore-fsn1-ol.yaml (the OBJECT-LOCKED store
+# the prod clusters write to). Referenced by 10-cnpg-recovery-cluster.yaml for the
+# bootstrap.recovery READ path. The drill never archives WAL here (read-only).
+#
+# Needs the ESO-rendered Secret `s3-backup-creds-fsn1` in cnpg-system — on the scratch
+# box that Secret is materialised once the ESO ClusterSecretStores are Valid (Step 3) and
+# cluster-addons syncs (Step 4); the recovery in Step 5 therefore runs after both.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: backups-fsn1-ol
+  namespace: cnpg-system
+  labels:
+    restormel.dev/role: dr-drill
+    restormel.dev/throwaway: "true"
+spec:
+  retentionPolicy: "30d"
+  configuration:
+    destinationPath: "s3://restormel-cnpg-backups-fsn1-ol/"
+    endpointURL: "https://fsn1.your-objectstorage.com"
+    s3Credentials:
+      accessKeyId:
+        name: s3-backup-creds-fsn1
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: s3-backup-creds-fsn1
+        key: SECRET_ACCESS_KEY
+    wal:
+      compression: gzip
+      maxParallel: 4
+    data:
+      compression: gzip
+      immediateCheckpoint: true
+  instanceSidecarConfiguration:
+    retentionPolicyIntervalSeconds: 1800
+    resources:
+      requests: { memory: "64Mi", cpu: "50m" }
+      limits:   { memory: "256Mi", cpu: "500m" }
