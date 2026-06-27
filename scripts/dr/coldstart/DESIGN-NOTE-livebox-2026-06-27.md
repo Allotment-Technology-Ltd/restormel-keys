@@ -55,8 +55,28 @@ The trap always destroys the box + writes the evidence record (PASS or FAIL). `K
 debugging (manual `hcloud server delete` owed). A full `etcd-s3`-path PASS (apps 200 + C1 + C2 + recorded
 RTO) is what licenses Stage D/E (delete `.150` standbys, cancel BX11, decommission `.150`).
 
+## First box run (2026-06-27) — what it proved + what it caught
+
+A bounded **Step-0 box drill** ran on a real throwaway cx33 (provision → egress-lock → etcd restore →
+verify → destroy):
+
+- ✅ **`lock_box_egress_to_s3` VALIDATED on real hardware** — the box reported `EGRESS LOCKED` and
+  `api.hetzner.cloud` was confirmed **unreachable** from it (`blocked-good`). The prod-protection control
+  works: a restored CCM/external-dns cannot reach the real Hetzner project.
+- ✅ Provision + k3s install + **box teardown** all worked (box destroyed, no orphan).
+- ❌ **The etcd restore loaded an EMPTY cluster** (4 ns, 0 CNPG, 0 Argo apps = fresh k3s). The
+  `k3s_cluster_reset_restore` step masked the reset exit code behind `; systemctl start k3s`, so a failed
+  S3 download/restore silently left the fresh cluster, and `assert_etcd_loaded` was too weak to catch it.
+
+**Fixed this commit:** `k3s_cluster_reset_restore` now captures the reset rc, requires restore-evidence in
+`/var/log/dr-etcd-restore.log`, and tails it on failure; `assert_etcd_loaded` now HARD-FAILS unless the
+prod expected-key-set (≥5 CNPG clusters or app-of-apps `root`) is present. The next box run will surface the
+**actual** restore error in the log — likely the `--cluster-reset-restore-path` + `--etcd-s3` download
+semantics (run with `KEEP_BOX=1` to inspect, or download the snapshot to a local path first and pass that).
+
 ## What is validated vs pending
 
-- **Validated (this session, REC-EVID-005):** all DB jewels + C1/C2 (barman) + J10 etcd cluster-state, locally.
-- **Pending first box run:** `lock_box_egress_to_s3`, `k3s_cluster_reset_restore` on real hardware, the
-  Steps 1–2 Barman rewire, and Steps 3–6 (ESO/Argo/platform/apps-200) end-to-end.
+- **Validated:** all DB jewels + C1/C2 (barman) + J10 etcd cluster-state locally (REC-EVID-005); the
+  **egress safety lock on real hardware**; box provision/install/teardown.
+- **Pending next box run:** the actual `k3s_cluster_reset_restore` restore (debug via the now-surfaced log),
+  the Steps 1–2 Barman rewire, and Steps 3–6 (ESO/Argo/platform/apps-200) end-to-end.
