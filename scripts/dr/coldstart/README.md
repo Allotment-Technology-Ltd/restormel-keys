@@ -32,7 +32,8 @@ Tools on the workstation (the harness preflight asserts them):
 You hold:
 - the **offline** age key `~/restormel-escrow-primary.key` (opens `eso-bootstrap.age` → C1 MI + C2 J5),
 - the **restic passphrase**, the **fsn1 S3 keys** (read-only-scoped if you provisioned one — F2),
-- an **hcloud token** and the **name of an hcloud SSH key** for the temp box.
+- an **hcloud token** and an **hcloud-registered SSH key** for the temp box — the existing
+  `adam@allotment-hetzner` (local private half `~/.ssh/id_hetzner_allotment`) works; no new key needed.
 
 ## Run it (one command, after the env preamble)
 
@@ -47,11 +48,19 @@ export RESTIC_PASSWORD="$(infisical secrets get RESTIC_PASSWORD $INF)"
 export AWS_ACCESS_KEY_ID="$(infisical secrets get HETZNER_S3_FSN1_ACCESS_KEY_ID $INF)"
 export AWS_SECRET_ACCESS_KEY="$(infisical secrets get HETZNER_S3_FSN1_SECRET_ACCESS_KEY $INF)"
 export AWS_DEFAULT_REGION=fsn1
-export DR_DRILL_SSH_KEY="<your hcloud ssh-key name>"
+# Existing Hetzner key (no new key needed): hcloud-registered name + matching local private key.
+export DR_DRILL_SSH_KEY="adam@allotment-hetzner"
+export DR_DRILL_SSH_PRIVKEY="$HOME/.ssh/id_hetzner_allotment"
 export ESCROW_IDENTITY="$HOME/restormel-escrow-primary.key"   # OFFLINE key — stays on this machine
 
 bash scripts/dr/coldstart/dr-coldstart-drill.sh
 ```
+
+`DR_DRILL_SSH_KEY` is the name of the public key already registered in Hetzner Cloud; the harness
+injects it into the temp box. `DR_DRILL_SSH_PRIVKEY` is the **matching local private key** the harness
+uses to SSH in — set it and you don't need the key in ssh-agent. (If omitted, the harness falls back to
+ssh-agent / your default `~/.ssh/id_*`.) The two must be a pair — `adam@allotment-hetzner` ↔
+`~/.ssh/id_hetzner_allotment` (verified same fingerprint `da:1f:…`).
 
 That's it. The script provisions the box, runs Steps 0–6, prints `STEP n: PASS`, writes the evidence
 record into a temp dir (path printed at the end), and destroys the box.
@@ -68,6 +77,7 @@ record into a temp dir (path printed at the end), and destroys the box.
 | `CANARY_PROJECT_ID` / `CANARY_ENV` | `f0165998…` / `prod` | if the canary lives elsewhere |
 | `J2_SAMPLE_REPO` | `dashboard` | a repo present in the registry mirror |
 | `PG_ROW_FLOOR` / `PG_FLOOR_TABLE` / `SURREAL_FLOOR_TABLE` | `1` / `information_schema.tables` / `source` | tighten the row-count floor to a real table |
+| `DR_DRILL_SSH_PRIVKEY` | _(unset → ssh-agent)_ | local private key to SSH the temp box (e.g. `~/.ssh/id_hetzner_allotment`) — must pair with `DR_DRILL_SSH_KEY` |
 | `DRILL_FULL_ROUNDTRIP` | `0` | `1` for the deepest push→CI→registry→Argo check (adds RTO — F4) |
 | `KEEP_BOX` | `0` | `1` to inspect the box after (you then destroy it manually) |
 

@@ -26,8 +26,9 @@
 #                                 (default: ~/restormel-escrow-primary.key — NEVER leaves the founder)
 # Optional overrides (sane defaults baked in — see the block below):
 #   ESCROW_BUNDLE  CANARY_SECRET_PATH  CANARY_EXPECTED_SHA256  SCRATCH_STORAGECLASS
-#   SCRATCH_DOMAIN  TEMP_BOX_TYPE  DR_DRILL_SSH_KEY  INFISICAL_IMAGE  FORGEJO_IMAGE
-#   J2_SAMPLE_REPO  DRILL_FULL_ROUNDTRIP  KEEP_BOX
+#   SCRATCH_DOMAIN  TEMP_BOX_TYPE  DR_DRILL_SSH_KEY  DR_DRILL_SSH_PRIVKEY  INFISICAL_IMAGE
+#   FORGEJO_IMAGE  J2_SAMPLE_REPO  DRILL_FULL_ROUNDTRIP  KEEP_BOX
+#   DR_DRILL_SSH_PRIVKEY = local private key to SSH the temp box (else uses ssh-agent/default)
 # Tools required on the workstation (preflight asserts them): age, hcloud, aws,
 #   restic, skopeo, kubectl, jq, ssh, git, curl, sha256sum|shasum.
 # =============================================================================
