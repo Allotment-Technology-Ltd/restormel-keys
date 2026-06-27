@@ -63,6 +63,16 @@ CANARY_PATH="${CANARY_PATH:-/}"
 CANARY_NAME="${CANARY_NAME:-DR_CANARY}"
 CANARY_EXPECTED_SHA="${CANARY_EXPECTED_SHA:-fa3444cbb7d1deebd11875b62bd992cc9728632913e261a81217121b875276e2}"
 
+# J10 etcd (native K3s --etcd-s3 raw snapshots; restored into a STANDALONE etcd —
+# no K3s, no controllers, no cloud token: booting prod controllers from prod etcd
+# could let the Hetzner CCM/external-dns mutate or tear down REAL prod, so the safe
+# automatable proof restores the snapshot offline and enumerates the keyspace.)
+ETCD_BUCKET="${ETCD_BUCKET:-restormel-etcd-snapshots-fsn1}"
+ETCD_FOLDER="${ETCD_FOLDER:-k3s}"
+ETCD_SNAP_MATCH="${ETCD_SNAP_MATCH:-master1}"          # which node's snapshot to restore
+ETCD_IMAGE="${ETCD_IMAGE:-quay.io/coreos/etcd:v3.6.1}" # >= prod etcd (3.6.x)
+ETCD_MIN_NS="${ETCD_MIN_NS:-15}"                        # floor: estate namespaces
+
 OPS_PID=f0165998-e695-428e-bf20-b776279a6832
 NET=dr-jewels-net
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/dr-jewels.XXXXXX")"
@@ -74,11 +84,14 @@ faild(){ FAILED+=("$1"); log "FAIL  $1"; }
 
 cleanup(){
   log "CLEANUP: removing dr-* containers/volumes/network + scratch"
-  docker rm -f dr-infisical dr-redis >/dev/null 2>&1 || true
+  docker rm -f dr-infisical dr-redis dr-etcd >/dev/null 2>&1 || true
   for c in $(docker ps -aq --filter name=dr-pg- 2>/dev/null); do docker rm -f "$c" >/dev/null 2>&1 || true; done
   docker volume ls -q --filter name=dr-pg 2>/dev/null | while read -r v; do docker volume rm "$v" >/dev/null 2>&1 || true; done
+  docker volume rm dr-etcd-data >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
+  # the etcd snapshot holds plaintext cluster secrets — shred it like the escrow bundle
   find "$WORK" -name '*.age' -exec shred -u {} \; 2>/dev/null || true
+  find "$WORK" -name 'etcd-snapshot.db' -exec shred -u {} \; 2>/dev/null || true
   rm -rf "$WORK" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
@@ -180,6 +193,42 @@ restore_cluster(){  # $1=cluster  $2=target  -> leaves container dr-$1 running
 }
 
 psql_q(){ docker exec -u 26 "dr-$1" psql -h /tmp -U postgres -d "${2:-postgres}" -tAc "$3" 2>/dev/null; }
+etcdctl_q(){ docker exec dr-etcd etcdctl get "$1" --prefix --keys-only 2>/dev/null | grep -c . ; }
+
+# J10: restore the latest etcd snapshot into a STANDALONE etcd + enumerate the
+# /registry keyspace. Proves the whole cluster state recovers from S3 — without
+# ever booting the prod-token controllers (CCM/external-dns) that could harm prod.
+prove_etcd_jewel(){
+  local snap
+  # match ONLY real etcd-snapshot-<node>-<epoch> objects (a stray verify-s3-* probe
+  # also contains the node name and would sort later, picking a stale state)
+  snap="$(aws --endpoint-url "$S3_ENDPOINT" s3 ls "s3://${ETCD_BUCKET}/${ETCD_FOLDER}/" --recursive 2>/dev/null \
+          | awk '{print $4}' | grep -E "etcd-snapshot-.*${ETCD_SNAP_MATCH}-[0-9]+$" | sort | tail -1)"
+  [ -n "$snap" ] || { faild "J10 etcd: no snapshot matching ${ETCD_SNAP_MATCH}"; return 1; }
+  aws --endpoint-url "$S3_ENDPOINT" s3 cp "s3://${ETCD_BUCKET}/${snap}" "$WORK/etcd-snapshot.db" >/dev/null 2>&1 \
+    || { faild "J10 etcd: download failed"; return 1; }
+  docker rm -f dr-etcd >/dev/null 2>&1 || true; docker volume rm dr-etcd-data >/dev/null 2>&1 || true
+  docker volume create dr-etcd-data >/dev/null
+  docker run --rm -v dr-etcd-data:/etcd-data -v "$WORK/etcd-snapshot.db":/snap/snapshot.db:ro \
+    --entrypoint etcdutl "$ETCD_IMAGE" snapshot restore /snap/snapshot.db --data-dir /etcd-data/restored --skip-hash-check >/dev/null 2>&1 \
+    || { faild "J10 etcd: etcdutl restore failed"; return 1; }
+  docker run -d --name dr-etcd -v dr-etcd-data:/etcd-data --entrypoint etcd "$ETCD_IMAGE" \
+    --data-dir /etcd-data/restored --name dr \
+    --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://0.0.0.0:2379 >/dev/null
+  local i ok=no
+  for i in $(seq 1 20); do docker exec dr-etcd etcdctl endpoint health >/dev/null 2>&1 && { ok=yes; break; }; sleep 2; done
+  [ "$ok" = yes ] || { faild "J10 etcd: restored etcd unhealthy"; return 1; }
+  local ns cnpg total
+  ns="$(etcdctl_q /registry/namespaces/)"
+  cnpg="$(etcdctl_q /registry/postgresql.cnpg.io/clusters/)"
+  total="$(etcdctl_q /registry/)"
+  if [ "${ns:-0}" -ge "$ETCD_MIN_NS" ] && [ "${cnpg:-0}" -ge 5 ]; then
+    pass "J10 etcd restored → ${total} objects, ${ns} namespaces, ${cnpg} CNPG clusters (cluster state recovers)"
+  else
+    faild "J10 etcd: keyspace too sparse (ns=$ns cnpg=$cnpg total=$total)"
+  fi
+  docker rm -f dr-etcd >/dev/null 2>&1 || true; docker volume rm dr-etcd-data >/dev/null 2>&1 || true
+}
 
 # ── main ─────────────────────────────────────────────────────────────────────
 log "JEWELS-PROOF LOCAL DRILL START  store=$CNPG_BUCKET"
@@ -260,6 +309,10 @@ if restore_cluster pg-infisical "$REPLAY"; then
 else
   faild "J4 pg-infisical restore"
 fi
+
+# Step 4: J10 etcd — the cluster state itself recovers from S3 (safe, offline)
+log "STEP 4: J10 etcd snapshot → standalone etcd → enumerate cluster state"
+prove_etcd_jewel || true
 
 # ── summary ──────────────────────────────────────────────────────────────────
 echo "──────────────────────────────────────────────────────────────"

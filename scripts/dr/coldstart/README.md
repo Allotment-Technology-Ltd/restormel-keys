@@ -14,13 +14,20 @@ Stage D/E ( `.150` standby delete → BX11 cancel → `.150` decommission ).
 
 | Drill | Script | Proves | Cost |
 |-------|--------|--------|------|
-| **Full cold-start** (this runbook) | `dr-coldstart-drill.sh` | whole-estate orchestration + RTO on a real throwaway box via the `etcd-s3` path — the Stage-C **box** gate | a temp Hetzner box |
-| **Local jewels-proof** (§3d weekly) | `jewels-proof-local.sh` | every **DB jewel** (J3/J4/J6/J7/J8) restores to a live Postgres + the escrow **C1/C2** conditions, via `barman-cloud-restore` into throwaway Docker | **£0**, ~3 min |
+| **Full cold-start** (this runbook) | `dr-coldstart-drill.sh` | whole-estate orchestration + RTO on a real throwaway box via the `etcd-s3` path — the Stage-C **box** gate; apps live + 200 | a temp Hetzner box, **founder-supervised** |
+| **Local jewels-proof** (§3d weekly) | `jewels-proof-local.sh` | **9/10 jewels**: DB jewels J3/J4/J6/J7/J8 → live Postgres (`barman-cloud-restore`), escrow **C1/C2**, and **J10** etcd → cluster state recovers — all in throwaway Docker | **£0**, ~3 min |
 
 Run the **local jewels-proof weekly** (it needs only Docker + age + aws + the escrow key; no box, no
 prod touch — values never printed, full teardown on exit). It is the fast, cheap confidence that the
-*data* recovers; the full cold-start is the periodic proof that the *orchestration* recovers. First
-green run recorded as evidence `REC-EVID-005` (2026-06-27).
+*data + cluster-state* recover; the full cold-start is the periodic proof that the *orchestration*
+recovers live. First green run recorded as evidence `REC-EVID-005` (2026-06-27); wired as a weekly macOS
+launchd agent (`tech.allotmentology.dr-jewels-proof`).
+
+> **Why the live cold-start stays founder-supervised (never unattended):** restoring the prod etcd into a
+> *networked* K3s starts the Hetzner **CCM** (cloud token) + **external-dns**, which could reconcile
+> against the real Hetzner project and **mutate/tear down prod**. The full box drill must therefore be run
+> with the box **egress-firewalled to the S3 store only** before the restore. The weekly local drill avoids
+> this entirely by restoring etcd into a *standalone* etcd (no controllers, no token).
 
 ```bash
 # weekly (fetches S3 creds from Infisical); REPLAY_TO_LATEST=1 for current-state instead of backup-end
