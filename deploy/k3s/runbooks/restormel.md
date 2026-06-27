@@ -54,8 +54,8 @@
       `restormel-dashboard-env` Secret (and the worker's equivalent). Confirm without printing
       the value (compare hashes, not plaintext).
 - [ ] dashboard + worker images built and pushed to `registry.allotmentology.tech/restormel/*`;
-      the image tag is bumped in `restormel-gitops`; both Argo apps show **OutOfSync** and ready
-      for a manual sync (DEPLOY-PIPELINE.md).
+      the image tag is bumped in `restormel-gitops`; prod **auto-syncs** the reviewed artefact
+      (REC-ADR-011 — was "OutOfSync, ready for a manual sync"; DEPLOY-PIPELINE.md).
 - [ ] A fresh, independent, restorable base backup of the source `restormel_ops` exists
       (separate from this window — the rollback floor).
 - [ ] Maintenance banner / status-page entry staged; window communicated.

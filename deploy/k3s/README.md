@@ -69,9 +69,12 @@ bootstrap→fold-in→retire sequence and why `masters_pool.instance_count: 1`.
 8. **Fold the boxes in & retire the temp node** — per `cluster/nodes-target.md`
    (`.166` → `.150` → `.167`), then delete the temp CX43.
 
-> GitOps (Argo CD) takes over routine syncs after bootstrap (design §8). Prod
-> sync stays **manual / gated** (prod is never main-auto-deploy). Forgejo +
-> Infisical stay **off-cluster permanently** (bootstrap anchors).
+> GitOps (Argo CD) takes over routine syncs after bootstrap (design §8). Prod now
+> **auto-syncs** the reviewed artefact — the deploy gate is upstream (PR + CI + the
+> `deploy-k3s` pipeline gate); rollback = revert the gitops image-bump commit. *(The earlier
+> "prod sync stays manual/gated" rule was relaxed 2026-06-27 — see
+> `docs/decisions/prod-argo-autosync.md`, REC-ADR-011.)* Forgejo + Infisical stay
+> **off-cluster permanently** (bootstrap anchors).
 
 ## Pinned tool versions (verified 2026-06-20)
 

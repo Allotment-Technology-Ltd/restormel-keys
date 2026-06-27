@@ -125,10 +125,12 @@ section 4. The runner must support exactly that job, which is **outbound-only**:
                       commit "deploy(<env>): ... <sha>", push to restormel-gitops main
         |
         v
-[ Argo CD -- IN-CLUSTER ]  pulls -> staging auto-syncs; PROD OutOfSync -> operator Sync
+[ Argo CD -- IN-CLUSTER ]  pulls -> staging + PROD auto-sync the reviewed artefact (REC-ADR-011)
 ```
 
-There is **no step 4 on the runner** -- Argo CD pulls. This is the REC-INC-006 invariant in code.
+There is **no step 4 on the runner** -- Argo CD pulls. This is the REC-INC-006 invariant in code
+(preserved: the runner is still outbound-only; only the final reconcile is now automatic, not a
+manual operator Sync -- REC-ADR-011).
 
 ---
 
@@ -142,7 +144,7 @@ REG=registry.allotmentology.tech; SHA="$(git rev-parse --short=12 HEAD)"
 echo "<FORGEJO_REGISTRY_TOKEN>" | docker login "$REG" -u "<FORGEJO_REGISTRY_USER>" --password-stdin
 docker build -f Dockerfile.dashboard -t "$REG/restormel/dashboard:$SHA" . && docker push "$REG/restormel/dashboard:$SHA"
 docker build -f Dockerfile.worker -t "$REG/restormel/worker:$SHA" . && docker push "$REG/restormel/worker:$SHA"
-# Then bump image.tag in restormel-gitops by hand and push; Argo shows OutOfSync; operator syncs prod.
+# Then bump image.tag in restormel-gitops by hand and push; Argo auto-syncs prod (REC-ADR-011).
 ```
 
 Satisfies the `restormel.md` pre-check "images built and pushed to the Forgejo registry" without

@@ -23,5 +23,9 @@ skill**. **Filing an incident record after any incident is mandatory** (REC-TPL-
   **`restormel-high-risk-security`** review before opening the PR.
 - The local main checkout **auto-resets to `origin/main`** — do isolated work in a `git worktree`,
   never edit the live main checkout while a run is in flight.
-- **Prod is not main-auto-deploy** (deliberate tag / `workflow_dispatch=prod`); deploys
-  auto-apply pending DB migrations, fail-closed.
+- **Prod Argo CD app auto-syncs** the reviewed artefact — the deploy gate is **upstream**
+  (PR review + CI: security scan / full build / bundled-asset guard + the `deploy-k3s` pipeline
+  gate), not an operator hand-sync. Rollback = **revert the gitops image-bump commit** (Argo
+  re-syncs). Deploys still auto-apply pending DB migrations, **fail-closed** (bad migration →
+  unready pods → old ReplicaSet keeps serving). This relaxes the former operator-gated rule —
+  see `docs/decisions/prod-argo-autosync.md` (REC-ADR-011, traces to REC-INC-006).

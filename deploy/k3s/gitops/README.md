@@ -15,8 +15,9 @@ The GitOps control plane for the K3s cluster:
 - **Argo CD** install (Helm values, **pinned**: chart `9.5.22` → appVersion **`v3.4.4`**, the
   version named in the design doc).
 - An **app-of-apps** root `Application` that renders every child `Application`.
-- **Per-app `Application` manifests** for the workloads, with **prod sync = MANUAL**
-  (prod is never main-auto-deploy) and **auto-sync only on staging**.
+- **Per-app `Application` manifests** for the workloads. **As of 2026-06-27 prod
+  AUTO-SYNCS** the reviewed artefact (REC-ADR-011 — see "Prod sync" below); this section
+  describes the original manual-gate design.
 - The **prod PBI lifecycle PostSync hook** Job (in the prod dashboard chart) — flips
   `status/ready-deploy` PBIs → `status/deployed`+close on the operator's prod Sync success.
 
@@ -99,10 +100,22 @@ restormel-gitops/                       (Forgejo, manifests + values, NO secrets
 └── values/<app>-<env>.yaml             env values — image.tag is the bumped line
 ```
 
-## Prod = MANUAL gate (the core invariant)
+## Prod sync (UPDATED 2026-06-27 — now AUTO-SYNC)
 
-`planning/k3s-cluster-target-design.md` §8: **"Prod sync stays manual/gated (prod is
-never main-auto-deploy)."** How it's enforced here, in layers:
+> **Control change — REC-ADR-011 (`docs/decisions/prod-argo-autosync.md`).** Prod
+> (`restormel-app-prod`) now runs `syncPolicy.automated` (`prune` + `selfHeal` +
+> `allowEmpty:false`): it **auto-syncs the reviewed artefact**. The deploy gate moved
+> **upstream** — PR review + CI (security scan / full build / bundled-asset guard) + the
+> `deploy-k3s` pipeline gate — so by the time an image bump reaches Argo it is already
+> reviewed and green; the operator hand-sync added latency, not safety. Safety is carried at
+> runtime (RollingUpdate + readiness probes, PDB `minAvailable:1` + node anti-affinity,
+> selfHeal, retry/backoff, `revisionHistoryLimit:5`, fail-closed migration entrypoint).
+> **Rollback = revert the gitops image-bump commit** (Argo re-syncs). The REC-INC-006
+> outbound-only / pull-based invariant is preserved (Argo *pulls*). The remainder of this
+> section documents the **original manual-gate design** for history.
+
+`planning/k3s-cluster-target-design.md` §8 originally specified: **"Prod sync stays
+manual/gated (prod is never main-auto-deploy)."** It *was* enforced here, in layers:
 
 1. **No `syncPolicy.automated` block** on any prod `Application`
    (`*-prod.yaml`). Argo tracks git and shows **OutOfSync** when CI bumps the image
@@ -142,7 +155,7 @@ and design §10).
 
 See [`DEPLOY-PIPELINE.md`](./DEPLOY-PIPELINE.md) "Bootstrap order". Summary:
 ESO + per-project Infisical SecretStores → Argo CD (Helm, pinned) → AppProjects + repo
-ExternalSecret → `root-app.yaml` → Argo renders addons + workloads → operator syncs prod by
-hand (the prod dashboard Sync then runs the PBI lifecycle PostSync hook on success).
+ExternalSecret → `root-app.yaml` → Argo renders addons + workloads → prod auto-syncs the
+reviewed artefact (REC-ADR-011; the PBI lifecycle PostSync hook runs on Sync success).
 **Forgejo + Infisical + the CI runner stay OFF-cluster through migration** (design §8) so
 the thing that deploys the cluster never depends on the cluster being healthy.
