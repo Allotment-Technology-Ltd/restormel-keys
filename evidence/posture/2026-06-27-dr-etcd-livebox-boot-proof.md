@@ -85,11 +85,14 @@ hardened). The reused-IP SSH failure (Hetzner recycles IPs; a stale `known_hosts
 
 - **PASS on hardware:** J10 etcd restore + full control-plane boot (this record); egress safety lock.
 - **PASS locally (REC-EVID-005):** all DB jewels J3/J4/J6/J7/J8 + escrow C1/C2 + J1/J2/J9/J10 read-only.
-- **Remaining for a full `etcd-s3`-path Stage-C PASS:** the full-drill **Steps 1-2 Barman rewire**
-  (`restore_scratch_postgres` now fails fast with a pointer — the DB jewels are CNPG-Barman, proven in
-  `jewels-proof-local.sh`, not restic), and Steps 3-6 (ESO/Argo/platform/apps-200) end-to-end with a
-  recorded RTO. Until that lands + the §3d weekly drill stays GREEN, **Stage D/E remains gated**
-  (no `.150` standby delete, no BX11 cancel, no `.150` decommission).
+- **Code-complete (same PR #367):** the full-drill **Steps 1-2 Barman rewire** — `restore_scratch_postgres`
+  now `barman-cloud-restore`s `pg-infisical`/`pg-forgejo` host-side in Docker (the proven
+  `jewels-proof-local.sh` lane), recovers, `pg_dump`s, and `pg_restore`s into scratch-pg; the canary
+  coordinates were also corrected (`/DR_CANARY` at root, not `/dr/canary`). Pending only its first
+  supervised box run.
+- **Backlog (founder decision 2026-06-27, nice-to-have):** Steps 3-6 (ESO/Argo/platform/apps-200) +
+  recorded RTO. Until the full `etcd-s3` PASS lands + the §3d weekly drill stays GREEN, **Stage D/E
+  remains gated** (no `.150` standby delete, no BX11 cancel, no `.150` decommission).
 
 ## Custody note
 

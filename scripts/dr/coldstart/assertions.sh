@@ -48,7 +48,7 @@ assert_no_prod_dns(){
 preflight_checks(){
   echo "  PREFLIGHT: required tools"
   local miss=0 t
-  for t in age hcloud aws restic skopeo kubectl helm jq ssh git curl envsubst; do
+  for t in age hcloud aws restic skopeo kubectl helm jq ssh git curl envsubst docker; do
     command -v "$t" >/dev/null 2>&1 || { echo "    MISSING tool: $t"; miss=1; }
   done
   [ -r "${ESCROW_IDENTITY}" ] || { echo "    MISSING offline escrow key: ${ESCROW_IDENTITY}"; miss=1; }
@@ -251,18 +251,99 @@ open_escrow_bundle(){
 # ── shared scratch-Postgres restore (Step 1/2 — restic logical dump lane) ────
 # At Steps 1/2 the CNPG operator is NOT installed yet, so we restore the logical
 # dump into the plain `scratch-pg` Postgres (20-...). Step 5 uses CNPG recovery.
-restore_scratch_postgres(){      # $1 = jewel name (infisical|forgejo) → CNPG cluster pg-<name>
-  # ⚠️ KNOWN REMAINING GAP (the one piece NOT yet proven on hardware — see DESIGN-NOTE-livebox + REC-EVID-006).
-  # This used to `restic restore` a logical pg_dump from a restic prefix `infisical`/`forgejo`. Those
-  # prefixes DO NOT EXIST: every DB jewel (J3/J4/J6/J7/J8) is a CNPG-**Barman** physical backup under the
-  # object-locked store ${CNPG_BUCKET_OL}/pg-<name> (preflight verifies their base/ backups exist). The
-  # WORKING Barman restore lives in `jewels-proof-local.sh` (build_image → restore_cluster → write_recovery_conf,
-  # using dr-barman:local = postgresql:16.8 + `pip install barman[cloud]`, then barman-cloud-restore +
-  # recovery.signal + recovery_target=immediate). Porting that to the on-box scratch-pg is the remaining
-  # Stage-C full-drill task; until it lands, fail FAST with this pointer rather than a confusing restic error.
-  # For the DB-jewel *recovery proof itself*, run the (passing) weekly jewels-proof — REC-EVID-005.
+# ── CNPG-Barman restore (host-side Docker) — the proven jewels-proof-local.sh lane ───
+# DB jewels (J3/J4/J6/J7/J8) are CNPG-**Barman** physical backups under the object-locked
+# ${CNPG_BUCKET_OL}/pg-<name> store (NOT restic — the old `infisical`/`forgejo` restic prefixes never
+# existed). We restore host-side in throwaway Docker (the harness's documented default; the egress-locked
+# box can't pull/build the barman image), exactly as `jewels-proof-local.sh` does — build PG16.8 + an
+# upgraded barman (prod `backup.info` carries an `encryption` field barman<3.14 can't parse),
+# barman-cloud-restore the latest base backup, recover to consistency, then `pg_dump -Fc` the app DB. The
+# downstream scratch-pg load (kubectl exec pg_restore) is unchanged — we just replaced the dead restic
+# SOURCE of the dump with the real Barman one. Ports REC-EVID-005's proven path into the full drill.
+DR_BARMAN_IMAGE_BUILT=0
+build_dr_barman_image(){
+  [ "${DR_BARMAN_IMAGE_BUILT}" = 1 ] && return 0
+  command -v docker >/dev/null 2>&1 || fail_step "docker-required-for-barman-restore (Steps 1-2 restore DB jewels host-side)"
+  cat > "${WORK}/Dockerfile.drbarman" <<EOF
+FROM ${PG_IMAGE_BASE:-ghcr.io/cloudnative-pg/postgresql:16.8}
+USER root
+RUN pip install --no-cache-dir --upgrade 'barman[cloud,aws]'
+EOF
+  docker build -q -t dr-barman:local -f "${WORK}/Dockerfile.drbarman" "${WORK}" >/dev/null 2>&1 \
+    || fail_step "dr-barman-image-build-failed (needs Docker + internet on the workstation)"
+  DR_BARMAN_IMAGE_BUILT=1
+}
+barman_restore_db_to_dump(){     # $1 = db/jewel name (infisical|forgejo) → ${WORK}/$1.dump
+  local name="$1" cluster
+  cluster="pg-${name}"
+  local vol ctr
+  vol="dr-${cluster}-data"; ctr="dr-${cluster}"
+  build_dr_barman_image
+  docker rm -f "${ctr}" >/dev/null 2>&1 || true; docker volume rm "${vol}" >/dev/null 2>&1 || true
+  docker volume create "${vol}" >/dev/null
+  # restore latest base backup — READ-only against the object-locked CNPG store (no forget/prune/delete).
+  docker run --rm -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -v "${vol}":/recovery dr-barman:local bash -c "
+    set -e
+    barman-cloud-restore --cloud-provider aws-s3 --endpoint-url ${S3_ENDPOINT} s3://${CNPG_BUCKET_OL} ${cluster} latest /recovery/pgdata
+    chown -R 26:26 /recovery/pgdata && chmod 700 /recovery/pgdata
+  " >/dev/null 2>&1 || { docker volume rm "${vol}" >/dev/null 2>&1 || true; fail_step "barman-cloud-restore-${cluster}"; }
+  # standalone recovery to backup-end consistency (enough for a logical dump); neutralise CNPG /controller cfg.
+  docker run --rm --user 26:26 -v "${vol}":/recovery dr-barman:local bash -c "
+cat > /recovery/pgdata/custom.conf <<CONF
+listen_addresses = '*'
+unix_socket_directories = '/tmp'
+max_worker_processes = 64
+max_parallel_workers = 64
+max_replication_slots = 64
+max_wal_senders = 64
+max_locks_per_transaction = 256
+hot_standby = on
+wal_level = logical
+archive_mode = off
+ssl = off
+logging_collector = off
+shared_preload_libraries = ''
+restart_after_crash = off
+CONF
+cat > /recovery/pgdata/override.conf <<CONF
+recovery_target = 'immediate'
+recovery_target_action = 'promote'
+recovery_target_timeline = 'latest'
+restore_command = 'barman-cloud-wal-restore --cloud-provider aws-s3 --endpoint-url ${S3_ENDPOINT} s3://${CNPG_BUCKET_OL} ${cluster} %f %p'
+CONF
+touch /recovery/pgdata/recovery.signal
+" >/dev/null 2>&1 || { docker volume rm "${vol}" >/dev/null 2>&1 || true; fail_step "barman-recovery-conf-${cluster}"; }
+  docker run -d --name "${ctr}" --user 26:26 -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
+    -v "${vol}":/recovery --entrypoint postgres dr-barman:local -D /recovery/pgdata >/dev/null 2>&1 \
+    || { docker volume rm "${vol}" >/dev/null 2>&1 || true; fail_step "barman-pg-start-${cluster}"; }
+  local i ok=0
+  for i in $(seq 1 80); do
+    docker logs "${ctr}" 2>&1 | grep -qi 'database system is ready to accept connections' && { ok=1; break; }
+    docker logs "${ctr}" 2>&1 | grep -qiE 'FATAL|PANIC' && break
+    sleep 3
+  done
+  if [ "${ok}" != 1 ]; then
+    docker logs "${ctr}" 2>&1 | grep -iE 'FATAL|PANIC|insufficient|max_' | tail -3
+    docker rm -f "${ctr}" >/dev/null 2>&1 || true; docker volume rm "${vol}" >/dev/null 2>&1 || true
+    fail_step "barman-pg-not-ready-${cluster}"
+  fi
+  docker exec -u 26 "${ctr}" pg_dump -h /tmp -U postgres -Fc -d "${name}" > "${WORK}/${name}.dump" 2>/dev/null \
+    || { docker rm -f "${ctr}" >/dev/null 2>&1 || true; docker volume rm "${vol}" >/dev/null 2>&1 || true; fail_step "pg_dump-${name}-from-restored-cluster"; }
+  docker rm -f "${ctr}" >/dev/null 2>&1 || true; docker volume rm "${vol}" >/dev/null 2>&1 || true
+  [ -s "${WORK}/${name}.dump" ] || fail_step "barman-empty-dump-${name}"
+  echo "  ${cluster} barman-restored → recovered PG → pg_dump ${name}.dump ($(wc -c < "${WORK}/${name}.dump") bytes)"
+}
+restore_scratch_postgres(){      # $1 = jewel/db name (infisical|forgejo) → CNPG cluster pg-<name>
   local name="$1"
-  fail_step "step1-2-barman-rewire-pending:${name} — DB jewels are CNPG-Barman (${CNPG_BUCKET_OL}/pg-${name}), not restic. The proven Barman restore is jewels-proof-local.sh (REC-EVID-005); port restore_cluster() here to complete the full-drill Steps 1-2. (etcd J10 + escrow C1/C2 ARE proven on hardware — REC-EVID-006.)"
+  # ensure the shared scratch namespaces + scratch-pg/redis/infisical are up (idempotent).
+  k apply -f "${MANIFESTS}/00-scratch-namespaces.yaml" >/dev/null
+  envsubst < "${MANIFESTS}/20-scratch-infisical.yaml" | k apply -f - >/dev/null
+  k -n dr-drill rollout status deploy/scratch-pg --timeout=180s >/dev/null 2>&1 || fail_step "scratch-pg-not-ready"
+  barman_restore_db_to_dump "${name}"                    # CNPG-Barman → ${WORK}/${name}.dump (NOT restic)
+  k -n dr-drill exec deploy/scratch-pg -- createdb -U postgres "${name}" 2>/dev/null || true
+  k -n dr-drill exec -i deploy/scratch-pg -- pg_restore -U postgres -d "${name}" --no-owner --no-acl < "${WORK}/${name}.dump" \
+    >/dev/null 2>&1 || fail_step "pg_restore-${name}"
+  echo "  ${name} restored from CNPG-Barman → scratch-pg (db=${name})"
 }
 
 # ── STEP 1 — Infisical / C2 ──────────────────────────────────────────────────

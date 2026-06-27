@@ -21,24 +21,28 @@ hosts — is dropped. It runs in Step 0 **after** k3s install (which needs open 
 `k3s_cluster_reset_restore` (which boots the controllers), and it self-verifies that metadata is unreachable.
 So from the instant the restored controllers start, they fail closed. **Validate on the first box run.**
 
-## STILL TO DO before a passing run (Steps 1–2 Barman rewire)
+## Steps 1–2 Barman rewire — DONE (implemented; pending its first box run)
 
-Steps 1–2 currently call `restore_scratch_postgres "infisical"/"forgejo"`, which `restic restore`s a
-`<prefix>.dump` (pg_dump -Fc) from restic prefixes `infisical`/`forgejo`. **Those restic prefixes do not
-exist** — the DB jewels are CNPG-**Barman** physical backups (see DESIGN-NOTE-topology). The proven restore
-path is in `jewels-proof-local.sh`: `barman-cloud-restore` the cluster (e.g. `pg-infisical`) into a Postgres
-**data dir**, recover to consistency, serve it. The rewire:
+Steps 1–2 used to `restic restore` a `<prefix>.dump` from non-existent restic prefixes `infisical`/`forgejo`.
+**Rewired** (`restore_scratch_postgres` + new `barman_restore_db_to_dump`/`build_dr_barman_image` in
+assertions.sh): for each DB jewel it now `barman-cloud-restore`s `pg-<name>` host-side in throwaway Docker
+(`dr-barman:local` = `postgresql:16.8` + upgraded `barman[cloud,aws]`), recovers to backup-end consistency
+(recovery.signal + `recovery_target=immediate`), `pg_dump -Fc`s the app DB, tears the container/volume down,
+then `kubectl exec pg_restore`s the dump into the box's scratch-pg — the **identical proven path the weekly
+`jewels-proof-local.sh` uses** (REC-EVID-005). Host-side (not on the box) because the egress-locked box
+can't pull/build the barman image; the harness already restores host-side by default. The downstream
+scratch-pg + scratch-Infisical wiring is untouched — only the dead restic SOURCE of the dump changed.
 
-1. Replace the `scratch-pg` + `pg_restore` lane (manifest `20-scratch-infisical.yaml`) with a scratch
-   Postgres whose data dir is a **barman-cloud-restore of `pg-infisical`** (init-container or a pre-seeded
-   PVC), exactly as the local drill does. The Infisical image must match prod (`v0.154.6`); on a current
-   restore "No migrations pending" confirms the version.
-2. Step 2 Forgejo DB likewise restores from Barman `pg-forgejo` (not restic). Forgejo **repos** (J1) remain
-   restic `forgejo-data-k3s`; Surreal (J9) restic `surreal-k3s` — those are already correct.
-3. Step 5's `cnpg_bootstrap_recovery` (CNPG operator path) is already Barman-correct; it's only the
-   *early* Steps 1–2 (pre-operator) that used the dead restic-dump lane.
+Also fixed in the same pass: the **canary coordinates** — `CANARY_SECRET_PATH` default was `/dr/canary`
+(wrong; C2 would fail), corrected to `/DR_CANARY` (secret `DR_CANARY` at root path `/`, per REC-EVID-005).
+`docker` added to the preflight tool list; `PG_IMAGE_BASE` added (must match prod PG major).
 
-Until that rewire lands, a full run fails at Step 1.
+Forgejo **repos** (J1) remain restic `forgejo-data-k3s`; Surreal (J9) restic `surreal-k3s` — already correct.
+Step 5's `cnpg_bootstrap_recovery` (CNPG-operator path) was already Barman-correct.
+
+What's left is **not** code: the first supervised full-box run to confirm Steps 1-2 → C2 end-to-end on the
+box (each piece — the etcd J10 path on hardware, the Barman restore in the weekly drill — is already proven
+in isolation), plus Steps 3-6 (apps-200) + RTO, which are explicitly backlog.
 
 ## Box-run procedure (supervised; founder present with the offline escrow key)
 
@@ -113,6 +117,7 @@ destroyed; prod untouched.
 - **Validated:** all DB jewels + C1/C2 (barman) + J10 etcd cluster-state locally (REC-EVID-005); the
   **egress safety lock on real hardware**; box provision/install/teardown; **and now J10 etcd restore +
   full control-plane boot on real hardware (REC-EVID-006)** via local-path + token + tls-removal.
-- **Pending for a full `etcd-s3`-path Stage-C PASS:** the Steps 1–2 **Barman rewire** (the one remaining
-  gap — `restore_scratch_postgres` now fails fast with a pointer instead of a confusing restic error), and
-  Steps 3–6 (ESO/Argo/platform/apps-200) end-to-end. Steps 0 (J10) + escrow C1/C2 are proven.
+- **Code-complete:** Steps 1–2 **Barman rewire** (host-side CNPG-Barman → scratch-pg) + canary-coords fix —
+  implemented + syntax-checked, reusing the weekly drill's proven restore. Pending only its first box run.
+- **Backlog (founder decision 2026-06-27, nice-to-have not essential):** Steps 3–6 (ESO/Argo/platform/
+  apps-200) end-to-end + recorded RTO. Steps 0 (J10, hardware) + escrow C1/C2 (REC-EVID-005) are proven.

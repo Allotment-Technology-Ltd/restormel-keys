@@ -74,7 +74,8 @@ DR_S3_ACCESS_KEY_ID=… DR_S3_SECRET_ACCESS_KEY=… bash scripts/dr/coldstart/je
 ## Prerequisites
 
 Tools on the workstation (the harness preflight asserts them):
-`age hcloud aws restic skopeo kubectl helm jq ssh git curl` + `sha256sum`/`shasum`.
+`age hcloud aws restic skopeo kubectl helm jq ssh git curl docker envsubst` + `sha256sum`/`shasum`.
+(`docker` is needed for the Steps 1-2 host-side CNPG-Barman restore — same lane as the weekly jewels-proof.)
 
 You hold:
 - the **offline** age key `~/.config/restormel/dr-kit/escrow-primary.key` (opens `eso-bootstrap.age` → C1 MI + C2 J5),
@@ -125,7 +126,7 @@ record into a temp dir (path printed at the end), and destroys the box.
 | `SCRATCH_DOMAIN` | `dr-drill.internal` | only if it collides with something you use |
 | `SCRATCH_STORAGECLASS` | `local-path` | fresh k3s default; change only for a custom box image |
 | `INFISICAL_IMAGE` / `FORGEJO_IMAGE` | ceremony pins (`v0.154.6` / `8.0.3`) | if the live versions rotated |
-| `CANARY_SECRET_PATH` | `/dr/canary` | confirm the canary's location in the `restormel` project |
+| `CANARY_SECRET_PATH` | `/DR_CANARY` | secret `DR_CANARY` at root path `/` in the `restormel` project (proven REC-EVID-005) |
 | `CANARY_PROJECT_ID` / `CANARY_ENV` | `f0165998…` / `prod` | if the canary lives elsewhere |
 | `J2_SAMPLE_REPO` | `dashboard` | a repo present in the registry mirror |
 | `PG_ROW_FLOOR` / `PG_FLOOR_TABLE` / `SURREAL_FLOOR_TABLE` | `1` / `information_schema.tables` / `source` | tighten the row-count floor to a real table |
@@ -140,8 +141,8 @@ record into a temp dir (path printed at the end), and destroys the box.
 | Step | Proves | Jewels | Decisive assertion |
 |------|--------|--------|--------------------|
 | 0 | etcd restores from S3 **+ cluster boots** (local-path; needs the K3s token) | J10 | ≥5 CNPG clusters / app-of-apps `root` present (PROVEN on hardware — REC-EVID-006) |
-| 1 | **Infisical decrypts from restored ciphertext + escrow key** | J4, J5 | **C2 canary sha256 MATCH** _(Barman rewire pending — see below)_ |
-| 2 | Forgejo repos + registry mirror restore | J1, J2, J3 | `git fsck` clean; image manifest+layer pull _(DB J3 = Barman rewire pending)_ |
+| 1 | **Infisical decrypts from restored ciphertext + escrow key** (J4 DB via host-side CNPG-Barman) | J4, J5 | **C2 canary sha256 MATCH** |
+| 2 | Forgejo DB (CNPG-Barman) + repos + registry mirror restore | J1, J2, J3 | `git fsck` clean; image manifest+layer pull |
 | 3 | **ESO root recreatable from escrow alone** | C1 | 5 ClusterSecretStores → Valid |
 | 4 | platform rebuilds | — | 0 ImagePullBackOff; 0 ExternalSecret SyncError |
 | 5 | data restores | J6/7/8, J9 | CNPG `-dr` healthy; row counts ≥ floor |
@@ -174,11 +175,15 @@ via the **`etcd-s3`** path (not gitops-fallback), **C2 = MATCH**, **C1 recreated
   in-datastore bootstrap data with it — and (b) removes the box's freshly-generated `tls/`+`cred/` so they
   regenerate from the **restored** CA. The restored apiserver serves with the prod CA, so the harness
   re-fetches the kubeconfig after boot.
-- **Known remaining gap — Steps 1-2 Barman rewire.** The DB jewels (J3/J4/J6/J7/J8) are CNPG-**Barman**
-  physical backups (`restormel-cnpg-backups-fsn1-ol/pg-*`), *not* restic logical dumps. `restore_scratch_postgres`
-  still references the old (non-existent) restic prefixes and now **fails fast with a pointer** rather than
-  a confusing error. The proven Barman restore lives in `jewels-proof-local.sh` (REC-EVID-005, GREEN
-  weekly) — porting `restore_cluster()` into Steps 1-2 is the last piece for a clean full-drill PASS.
+- **Steps 1-2 use the CNPG-Barman lane** (rewired from the dead restic-prefix lane). The DB jewels
+  (J3/J4/J6/J7/J8) are CNPG-**Barman** physical backups (`restormel-cnpg-backups-fsn1-ol/pg-*`), *not*
+  restic dumps. `restore_scratch_postgres` now `barman-cloud-restore`s the cluster host-side in throwaway
+  Docker (`dr-barman:local` = `postgresql:16.8` + upgraded `barman[cloud]`), recovers to consistency,
+  `pg_dump`s the app DB, then `kubectl exec pg_restore`s it into the box's scratch-pg — the **same proven
+  path as the weekly `jewels-proof-local.sh`** (REC-EVID-005). Host-side because the egress-locked box
+  can't pull/build the barman image. _Implemented + syntax-checked; pending its first supervised full-box
+  run to confirm Steps 1-2 → C2 end-to-end on the box (the etcd path J10 + the Barman lane in isolation
+  are both already proven on hardware / in the weekly drill)._
 - The harness restores **host-side** by default (restic creds stay on the workstation). `manifests/50-`
   is the in-cluster alternative if you prefer the fetch to run on the box.
 - A few coordinates (exact canary location, per-jewel dump filename, image pins) are run-time values you
