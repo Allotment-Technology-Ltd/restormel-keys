@@ -36,6 +36,16 @@ bash scripts/dr/coldstart/jewels-proof-local.sh
 DR_S3_ACCESS_KEY_ID=… DR_S3_SECRET_ACCESS_KEY=… bash scripts/dr/coldstart/jewels-proof-local.sh
 ```
 
+### The offline DR kit (founder-held)
+
+- **Local working copy** (what the drills read): `~/.config/restormel/dr-kit/escrow-primary.key`
+  (`0600`, protected at rest by FileVault). The harness defaults to this path, falling back to the legacy
+  `~/restormel-escrow-primary.key`. The weekly drill gets the S3 creds + restic passphrase from Infisical.
+- **Encrypted backup** (Mac-loss / Infisical-down): an `age -p` passphrase-encrypted `dr-kit.age`
+  (escrow key + `RESTIC_PASSWORD` + fsn1 S3 read keys + a recovery README) in Google Drive
+  `…/Restormel-DR-Kit/`. Drive holds only ciphertext; the passphrase lives in a password manager / safe,
+  never in Drive. Decrypting it does not touch the automation (which uses the local key) — that's the point.
+
 ## What it guarantees (safety)
 
 - **Read-only against the store.** Only `restic restore` / `aws s3 cp|ls|sync` (GET/LIST). Never

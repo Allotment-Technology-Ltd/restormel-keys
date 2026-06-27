@@ -49,7 +49,9 @@ CNPG_BUCKET="${CNPG_BUCKET:-restormel-cnpg-backups-fsn1-ol}"
 DB_CLUSTERS="${DB_CLUSTERS:-pg-forgejo pg-restormel pg-platform pg-plotbudget}"  # J4 handled separately
 ESCROW_BUCKET="${ESCROW_BUCKET:-restormel-restic-backups}"
 ESCROW_OBJECT="${ESCROW_OBJECT:-escrow/eso-bootstrap.age}"
-ESCROW_KEY="${ESCROW_KEY:-$HOME/restormel-escrow-primary.key}"
+# offline escrow key — grouped DR-kit location, with legacy-path fallback
+ESCROW_KEY="${ESCROW_KEY:-$HOME/.config/restormel/dr-kit/escrow-primary.key}"
+[ -f "$ESCROW_KEY" ] || ESCROW_KEY="$HOME/restormel-escrow-primary.key"
 
 # Infisical app — keep in sync with cluster/infisical/10-infisical-app.yaml.
 # If the recovered DB needs migrations on boot, the script WARNS (version drift).

@@ -51,7 +51,8 @@ ETCD_BUCKET="restormel-etcd-snapshots-fsn1"                 # J10 — native K3s
 ETCD_FOLDER="k3s"                                           # prefix inside the etcd bucket
 
 # ── escrow (single bundle, opened ONCE with the founder offline key) ────────
-ESCROW_IDENTITY="${ESCROW_IDENTITY:-$HOME/restormel-escrow-primary.key}"
+ESCROW_IDENTITY="${ESCROW_IDENTITY:-$HOME/.config/restormel/dr-kit/escrow-primary.key}"
+[ -f "${ESCROW_IDENTITY}" ] || ESCROW_IDENTITY="$HOME/restormel-escrow-primary.key"   # grouped DR-kit path, legacy fallback
 ESCROW_BUNDLE="${ESCROW_BUNDLE:-eso-bootstrap.age}"          # C1 MI + C2 J5; offline key only
 ESCROW_ENV="${WORK}/.escrow.env"                            # tmpfs-ish; 600; shredded in cleanup
 
