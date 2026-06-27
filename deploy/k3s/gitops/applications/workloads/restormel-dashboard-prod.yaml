@@ -1,15 +1,21 @@
-# Restormel dashboard — PRODUCTION.  SYNC = MANUAL (design §8 hard rule).
+# Restormel dashboard — PRODUCTION.  SYNC = AUTO (REC-ADR-011, 2026-06-27).
 # ---------------------------------------------------------------------------
-# Prod is NEVER main-auto-deploy. There is deliberately NO `syncPolicy.automated`
-# block here: Argo tracks git and shows OutOfSync when CI bumps the image tag in
-# restormel-gitops, but the rollout only happens when the operator clicks Sync
-# (or runs `argocd app sync restormel-dashboard-prod`). This is the GitOps
-# equivalent of the old "tag-gated workflow_dispatch=prod" Coolify deploy.
+# Reference manifest for the documented gitops layout. The live prod Application is
+# `restormel-app-prod` in restormel-gitops; this file mirrors its sync policy.
+#
+# As of 2026-06-27 prod AUTO-SYNCS the reviewed artefact (see
+# docs/decisions/prod-argo-autosync.md — REC-ADR-011). The deploy gate is UPSTREAM:
+# PR review + CI (security scan / full build / bundled-asset guard) + the deploy-k3s
+# pipeline gate (K3S_DEPLOY_ENABLED + build-must-go-green). An operator hand-sync added
+# latency, not safety. Rollback = revert the gitops image-bump commit (Argo re-syncs).
+# (Was: NO `syncPolicy.automated` block → manual operator Sync — the manual gate that
+# traced to REC-INC-006; that control was deliberately relaxed by REC-ADR-011. The
+# REC-INC-006 outbound-only/pull-based invariant is preserved — Argo pulls.)
 #
 # Image tag bump flow (DEPLOY-PIPELINE.md):
 #   CI builds → pushes registry.allotmentology.tech/restormel/dashboard:<sha>
 #            → bumps image.tag in values-dashboard-prod.yaml in restormel-gitops
-#            → Argo shows OutOfSync → OPERATOR SYNCS (manual gate).
+#            → Argo AUTO-SYNCS prod.
 #
 # MIGRATIONS FAIL-CLOSED: the dashboard image runs pending DB migrations on start
 # against CNPG (pg-restormel); if a migration fails the pod crash-loops and the
@@ -25,9 +31,9 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   # NOTE: Argo CD Image Updater is INTENTIONALLY NOT enabled on prod (no
-  # argocd-image-updater.argoproj.io/* annotations). Auto-writing a tag to git +
-  # auto-sync would defeat the manual gate. Prod tags are bumped by the CI step
-  # and synced by hand. See staging app for the Image-Updater opt-in.
+  # argocd-image-updater.argoproj.io/* annotations). The deterministic, auditable,
+  # revertable path is "CI bumps the tag in git" — every prod release is a revertable
+  # gitops commit. Argo then auto-syncs that reviewed commit (REC-ADR-011).
 spec:
   project: restormel-prod
   source:
@@ -40,13 +46,20 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: restormel-prod
-  # NO automated block → MANUAL SYNC. syncOptions still apply on a manual sync.
+  # AUTO-SYNC the reviewed artefact (REC-ADR-011, 2026-06-27). prune + selfHeal +
+  # allowEmpty:false. Safety is carried at runtime (RollingUpdate + readiness probes,
+  # PDB minAvailable:1 + node anti-affinity, fail-closed migration entrypoint,
+  # revisionHistoryLimit). Rollback = revert the gitops image-bump commit.
+  # prune verified safe: every Argo-tracked prod resource is in git.
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
     retry:
       limit: 3
       backoff: { duration: 15s, factor: 2, maxDuration: 3m }
-  # Surface drift loudly even though we don't auto-heal it (operator decides).
   ignoreDifferences: []

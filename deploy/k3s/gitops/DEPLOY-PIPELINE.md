@@ -11,6 +11,16 @@ The §4 sketch below is the design rationale; the live code is the workflow + sc
 
 Source of truth: `planning/k3s-cluster-target-design.md` §8.
 
+> **UPDATED 2026-06-27 — prod is now AUTO-SYNC (REC-ADR-011,
+> `docs/decisions/prod-argo-autosync.md`).** This doc was written for the manual-gate design;
+> read every **"PROD → OPERATOR SYNCS BY HAND / manual sync"** below as **historical**. Prod
+> (`restormel-app-prod`) now runs `syncPolicy.automated` and **auto-syncs the reviewed
+> artefact**: CI still ends at "tag bumped + committed", but Argo then rolls prod
+> automatically — no operator click. The deploy gate is **upstream** (PR + CI + the
+> `deploy-k3s` pipeline gate); **rollback = revert the gitops image-bump commit**. The PBI
+> lifecycle PostSync hook still fires on Sync success (now an *automatic* sync). The
+> REC-INC-006 outbound-only / pull-based invariant is unchanged (Argo pulls).
+
 ## 1. Today (Coolify)
 
 `.forgejo/workflows/deploy-dashboard.yml` (read it for the exact code) does:
@@ -42,7 +52,8 @@ push to main / dashboard-v* tag
         ▼
 [ Argo CD — IN-CLUSTER ]
   4a. STAGING : auto-sync (or Image Updater writes the tag) → rolls automatically
-  4b. PROD    : Application is OutOfSync → ***OPERATOR SYNCS BY HAND*** (manual gate)
+  4b. PROD    : auto-sync (REC-ADR-011) → rolls automatically once CI commits the tag bump
+               (was: OutOfSync → operator syncs by hand — manual gate, retired 2026-06-27)
         │
         ▼
   5. PBI lifecycle callback — flip status/ready-deploy PBIs → status/deployed + close
@@ -65,9 +76,9 @@ push to main / dashboard-v* tag
 
 | Trigger | Today | Target |
 |---|---|---|
-| main merge (app paths) | `auto-tag-release.yml` → `dashboard-v*` tag → Coolify prod deploy | `auto-tag-release.yml` stays; tag build/push image + bump **prod** values → **Argo OutOfSync → manual sync** |
+| main merge (app paths) | `auto-tag-release.yml` → `dashboard-v*` tag → Coolify prod deploy | `auto-tag-release.yml` stays; tag build/push image + bump **prod** values → **Argo auto-syncs** (REC-ADR-011) |
 | `workflow_dispatch=staging` | Coolify staging deploy | build/push + bump **staging** values → Argo **auto-syncs** |
-| `workflow_dispatch=prod` | Coolify prod deploy | build/push + bump **prod** values → **manual Argo sync** (or run `argocd app sync restormel-dashboard-prod`) |
+| `workflow_dispatch=prod` | Coolify prod deploy | build/push + bump **prod** values → **Argo auto-syncs** (REC-ADR-011; was a manual `argocd app sync`) |
 | preview (`preview-deploy.yml`) | point Coolify preview app at ref | bump `values/restormel-preview.yaml` (tag + replicaCount) → **manual sync** |
 
 The `dashboard-v*` tag stays the prod release artifact: the build/push/bump job keys off it
@@ -175,8 +186,9 @@ the workflow guard.
    registry creds via ESO — both from `infisical-infra`).
 4. **`root/root-app.yaml`** (`kubectl apply -n argocd -f …`) — renders addons + workloads.
 5. **cluster-addons** auto-syncs (CNPG, Surreal, Supabase[B], ingress, cert-manager, ESO).
-6. Workloads: staging auto-syncs; **operator syncs prod by hand**. The prod dashboard sync
-   then runs the **PBI lifecycle PostSync hook** automatically on success.
+6. Workloads: staging auto-syncs; **prod auto-syncs** the reviewed artefact (REC-ADR-011 —
+   was "operator syncs prod by hand"). The prod sync then runs the **PBI lifecycle PostSync
+   hook** automatically on success.
 
 **Forgejo + Infisical + the CI runner stay OFF-cluster** through migration (design §8) — the
 deployer must not depend on the cluster it deploys.

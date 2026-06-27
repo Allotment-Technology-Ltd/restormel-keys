@@ -177,13 +177,14 @@ jobs:
 
   # ===========================================================================
   # PROD — build → push → bump prod manifests. CI STOPS HERE.
-  #   Argo shows restormel-app-prod OutOfSync.
-  #   *** THE OPERATOR SYNCS BY HAND *** (design §8 hard rule: prod is never
-  #   main-auto-deploy). The PBI status flip fires as the Argo PostSync hook on the
-  #   operator's Sync success, not here. "deployed == synced", not "tag bumped".
+  #   Argo then AUTO-SYNCS restormel-app-prod (REC-ADR-011, 2026-06-27 — the former
+  #   "operator syncs by hand" manual gate was relaxed; the deploy gate is upstream:
+  #   PR + CI + this pipeline's K3S_DEPLOY_ENABLED / build-must-go-green). The PBI
+  #   status flip fires as the Argo PostSync hook on Sync success, not here.
+  #   "deployed == synced", not "tag bumped". Rollback = revert the gitops bump commit.
   # ===========================================================================
   deploy-prod:
-    name: Build, push, bump (prod) — operator syncs Argo by hand
+    name: Build, push, bump (prod) — Argo auto-syncs
     runs-on: ubuntu-latest
     container:
       image: moby/buildkit:v0.16.0

@@ -32,8 +32,11 @@ Verify live infra via the **restormel-infra-access** skill (never trust remember
    (NetworkPolicy isolates prod DB traffic on shared nodes); **no paid LB by default** (single-node
    ingress via Traefik DaemonSet); **no paid registry** (use Forgejo's).
 8. **GitOps = Argo CD** (UI visibility for solo ops; Flux is the lighter fallback). The deploy step
-   replaces the Coolify-API call but **preserves the PBI lifecycle callbacks**. **Prod sync stays
-   manual/gated** (prod is never main-auto-deploy); DB migrations fail-closed.
+   replaces the Coolify-API call but **preserves the PBI lifecycle callbacks**. **Prod AUTO-SYNCS
+   the reviewed artefact** — the deploy gate is upstream (PR + CI + the `deploy-k3s` pipeline
+   gate), rollback = revert the gitops image-bump commit; DB migrations fail-closed. *(The former
+   "prod sync stays manual/gated" rule was relaxed 2026-06-27 — see `docs/decisions/prod-argo-autosync.md`,
+   REC-ADR-011; the REC-INC-006 outbound-only/pull-based invariant is preserved.)*
 9. **`surreal.restormel.dev` is a hard invariant** — keep it resolving to the cluster ingress for
    UseSophia. SurrealDB is a **1-replica StatefulSet** (rocksdb single-writer); DR is
    `surreal export`→restic→BX11; retire the shared root cred for scoped users (route auth changes through

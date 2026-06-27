@@ -237,8 +237,13 @@ existing Phase-8 restore-drill muscle.
 operator; Flux is the lighter fallback). `restormel-gitops` repo on Forgejo (manifests + Helm values, no
 secrets). **Flow:** push → Forgejo Action builds image (off-cluster runner / burst node) → push to
 **Forgejo's built-in registry** (€0) → bump tag in gitops repo → **Argo syncs**. Replaces the
-Coolify-API deploy call. **Preserve the PBI lifecycle callbacks** — only the deploy *step* swaps. **Prod
-sync stays manual/gated** (prod is never main-auto-deploy); migrations fail-closed.
+Coolify-API deploy call. **Preserve the PBI lifecycle callbacks** — only the deploy *step* swaps.
+**Prod now AUTO-SYNCS the reviewed artefact** — the deploy gate is upstream (PR + CI + the
+`deploy-k3s` pipeline gate); rollback = revert the gitops image-bump commit; migrations
+fail-closed. *(Originally specified as "prod sync stays manual/gated, prod is never
+main-auto-deploy"; that control was deliberately relaxed on 2026-06-27 once the empty-DB cutover
+gate closed and review moved upstream — see `docs/decisions/prod-argo-autosync.md`, REC-ADR-011,
+which preserves the REC-INC-006 outbound-only/pull-based invariant.)*
 
 **Forgejo + CI placement (decision 4, cost-constrained): stays OFF-cluster** on the `.166` host (16 GB,
 most headroom) as docker-compose — bootstrap safety + €0 + keeps the noisy CI neighbour off the prod

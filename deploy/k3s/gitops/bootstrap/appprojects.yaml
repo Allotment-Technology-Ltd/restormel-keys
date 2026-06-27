@@ -2,7 +2,8 @@
 # ---------------------------------------------------------------------------
 # Two projects so prod and non-prod can't accidentally touch each other's
 # namespaces, and so prod-targeting Applications inherit stricter policy.
-# Design §8: "prod sync stays manual/gated"; §2: role=prod/.167, role=ops/.150,
+# Prod sync is AUTO as of 2026-06-27 (REC-ADR-011); the deploy gate is upstream
+# (PR + CI + the deploy-k3s pipeline gate). §2: role=prod/.167, role=ops/.150,
 # role=data/.166.
 # ---------------------------------------------------------------------------
 apiVersion: argoproj.io/v1alpha1
@@ -14,8 +15,9 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   description: >-
-    Production workloads. Sync is MANUAL/GATED — no Application in this project
-    may carry an automated syncPolicy (enforced by review, see DEPLOY-PIPELINE.md).
+    Production workloads. Sync is AUTO (REC-ADR-011, 2026-06-27) — Applications carry an
+    automated syncPolicy (prune + selfHeal); the deploy gate is upstream (PR + CI). See
+    docs/decisions/prod-argo-autosync.md and DEPLOY-PIPELINE.md.
   sourceRepos:
     - https://git.allotmentology.tech/Allotment-Technology-Ltd/restormel-gitops.git
   destinations:

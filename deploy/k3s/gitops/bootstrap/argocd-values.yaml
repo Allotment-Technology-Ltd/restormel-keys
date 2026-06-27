@@ -68,9 +68,10 @@ server:
 
 configs:
   params:
-    # Prod is NEVER auto-synced (design §8: "prod sync stays manual/gated").
-    # This is belt-and-braces at the controller level; per-Application syncPolicy
-    # (applications/workloads/*) is the primary control.
+    # Sync policy is per-Application (applications/workloads/* — syncPolicy). As of
+    # 2026-06-27 prod auto-syncs the reviewed artefact (REC-ADR-011,
+    # docs/decisions/prod-argo-autosync.md); the deploy gate is upstream (PR + CI +
+    # the deploy-k3s pipeline gate). No controller-level prod sync block is set here.
     server.insecure: true
   cm:
     # Repo + project wiring. The actual repo CREDENTIAL is an ExternalSecret
