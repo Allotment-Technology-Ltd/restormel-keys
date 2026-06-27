@@ -3,12 +3,14 @@ id: REC-ADR-013
 title: "Onboarding as a learn-by-doing milestone ladder (M0–M4)"
 class: decision
 owner: founder
-status: draft
+status: approved
 classification: internal
 control-tier: 1
 created: 2026-06-27
 last-reviewed: 2026-06-27
 review-interval: P12M
+approved-by: founder
+approved-on: 2026-06-27
 retention: permanent
 related: [REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-ADR-018, REC-ADR-019]
 ---
@@ -16,6 +18,8 @@ related: [REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-ADR-018, REC-A
 # ADR: Onboarding as a learn-by-doing milestone ladder (M0–M4)
 
 ## Status
+
+**Approved as the product direction — founder steer, 2026-06-27:** the Claude Design onboarding handoff is the hard-won, iterative *direction of travel for the product — stick as close to it as possible*. This record’s decision stands as approved; the capture note below is retained for context, and faithful-realisation tensions (e.g. trust-meter/EBV honesty, M3/M4 backend) are tracked in the RES-113 review, not in this decision.
 
 **Draft.** Design intent captured from the Restormel onboarding handoff bundle; pending product confirmation before any build commitment. This ADR is the *decision of record* for the onboarding journey's shape; the authoritative rationale lives in the cited handoff artefacts. Tracked as **RES-113** — https://huly.allotmentology.tech/workbench/allotment-pm/tracker/RES-113.
 
@@ -52,8 +56,8 @@ Every screen leads with the aha, not the mechanism: headlines are outcomes ("Bui
 
 ## Source artefact
 
-- **Primary structural artefacts** (under `design_handoff_restormel_onboarding/designs/`): `Onboarding Journey.html` — the five-milestone ladder (per rung: need, aha, gate, what it reveals; plus first-run vs returning-user home frames); `Navigation Model.html` — the ruthless-efficiency IA (≈13 → 4-item spine + tucked Settings, and the rail↔home coexistence / redoable-actions map). Supporting: `Archetype Analysis.html` (personas × screens, the mandatory M0→M1→M4 spine with M2/M3 as opt-in depth) and `Restormel Prototype.html` (the synthesised end-to-end clickable reference).
-- **Screenshots:** `design_handoff_restormel_onboarding/screenshots/09-onboarding-journey.png` and `12-navigation-model.png`.
+- **Primary structural artefacts** (under `docs/design/onboarding-handoff/designs/`): `Onboarding Journey.html` — the five-milestone ladder (per rung: need, aha, gate, what it reveals; plus first-run vs returning-user home frames); `Navigation Model.html` — the ruthless-efficiency IA (≈13 → 4-item spine + tucked Settings, and the rail↔home coexistence / redoable-actions map). Supporting: `Archetype Analysis.html` (personas × screens, the mandatory M0→M1→M4 spine with M2/M3 as opt-in depth) and `Restormel Prototype.html` (the synthesised end-to-end clickable reference).
+- **Screenshots:** `docs/design/onboarding-handoff/screenshots/09-onboarding-journey.png` and `12-navigation-model.png`.
 - **Explanatory docs:** `01_CONCEPT.md` §2 (sequence ahas, not features), §4 (opinionated rails → persistent home) and §5.9 (ruthless-efficiency nav); `02_IA_AND_NAV.md` (the final 4-item IA and state-derived routing); and the provenance map in `08_ARTEFACTS.md` ("Sequence ahas, not features", "Guided rail → persistent home", "Ruthless-efficiency nav (4 + Settings)").
 
 ## Consequences

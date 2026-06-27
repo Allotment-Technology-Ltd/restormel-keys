@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — M4 · Connect your app</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root { --teal-ink:#1c7c72; --hairline:#d8cfb0; }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; color: #4a4538; max-width: 76ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+  .arch { margin: 9px 0 0; font-family: var(--font-mono); font-size: 11px; color: #5a5446; line-height: 1.65; max-width: 76ch; }
+  .arch .t { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #221f18; }
+  .arch .aha { color: var(--teal-ink); }
+
+  .scr { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); overflow: hidden; }
+  .led-strip { display: flex; border-bottom: 2px solid var(--color-ink); background: var(--color-surface); }
+  .led-cell { flex: 1; padding: 9px 12px; border-right: 1.5px solid var(--hairline); display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .led-cell:last-child { border-right: none; }
+  .led-cell .d { width: 16px; height: 16px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-size: 9px; flex: 0 0 auto; }
+  .led-cell.done { color: var(--color-ink); } .led-cell.done .d { background: var(--signal-teal); }
+  .led-cell.now { color: var(--color-ink); background: color-mix(in oklab, var(--color-yellow) 22%, var(--color-surface)); } .led-cell.now .d { background: var(--color-yellow); }
+
+  .body { padding: 22px 26px 26px; }
+  .crumb { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-ink-faint); margin: 0 0 14px; }
+  .crumb a { color: var(--teal-ink); text-decoration: none; }
+  .crumb .sep { color: var(--color-ink-faint); }
+  .crumb .here { color: var(--color-ink); }
+  .h-eyebrow { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 9px; }
+  .h-title { font-family: var(--font-display); font-weight: 900; font-size: 36px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 10px; }
+  .h-desc { font-family: var(--font-body); font-size: 14.5px; line-height: 1.55; color: var(--color-ink-muted); margin: 0 0 20px; max-width: 56ch; }
+  .h-desc b { color: var(--color-ink); font-weight: 600; }
+
+  .sec-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 2px solid var(--color-ink); padding-bottom: 8px; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; }
+  .sec-h .hint { font-weight: 400; font-size: 10px; color: var(--color-ink-faint); text-transform: none; letter-spacing: 0; }
+
+  /* access chooser */
+  .acc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+  .acc { display: grid; grid-template-columns: auto 1fr; gap: 11px; border: 2px solid var(--color-ink); background: var(--color-bg); padding: 14px 15px; cursor: pointer; }
+  .acc.on { background: color-mix(in oklab, var(--signal-teal) 12%, var(--color-surface)); box-shadow: var(--shadow-sm); }
+  .acc .rd { width: 18px; height: 18px; border-radius: 999px; border: 2px solid var(--color-ink); margin-top: 2px; display: grid; place-items: center; flex: 0 0 auto; }
+  .acc.on .rd { background: var(--signal-teal); } .acc.on .rd::after { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--color-ink); }
+  .acc .at { font-family: var(--font-display); font-weight: 900; font-size: 19px; text-transform: uppercase; line-height: 1; }
+  .acc .ak { display: inline-block; margin-top: 6px; font-family: var(--font-mono); font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; border: 1.5px solid var(--color-ink); padding: 2px 6px; }
+  .acc.on .ak { background: var(--signal-teal); }
+  .acc .ad { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-muted); margin-top: 8px; line-height: 1.5; }
+
+  /* method cards */
+  .m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .meth { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 15px 15px 14px; cursor: pointer; position: relative; }
+  .meth.sel { background: var(--color-yellow); }
+  .meth .mt { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .meth .mn { font-family: var(--font-display); font-weight: 900; font-size: 21px; text-transform: uppercase; line-height: 1; }
+  .meth .tag { font-family: var(--font-mono); font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; border: 1.5px solid var(--color-ink); padding: 2px 6px; background: var(--color-bg); white-space: nowrap; }
+  .meth.sel .tag { background: var(--color-surface); }
+  .meth .md { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-muted); margin-top: 9px; line-height: 1.5; }
+  .meth .whatlink { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--teal-ink); text-decoration: underline; margin-top: 8px; display: inline-block; }
+  .meth.sel .whatlink { color: var(--color-ink); }
+
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 2px solid var(--color-ink); padding-top: 16px; margin-top: 22px; }
+  .foot-note { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); max-width: 46ch; line-height: 1.45; }
+  .btn-cont { display: inline-flex; align-items: center; gap: 9px; background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 13px 22px; text-decoration: none; white-space: nowrap; }
+
+  /* ── Frame 2: connection management ── */
+  .ok-banner { display: flex; align-items: center; gap: 12px; border: 2px solid var(--color-ink); border-left: 8px solid var(--signal-teal); background: color-mix(in oklab, var(--signal-teal) 10%, var(--color-surface)); padding: 13px 16px; margin-bottom: 18px; }
+  .ok-banner .dot { width: 11px; height: 11px; border-radius: 999px; background: var(--signal-teal); border: 1.5px solid var(--color-ink); flex: 0 0 auto; box-shadow: 0 0 0 4px color-mix(in oklab, var(--signal-teal) 30%, transparent); }
+  .ok-banner .txt { font-family: var(--font-mono); font-size: 12px; line-height: 1.5; } .ok-banner .txt b { color: var(--color-ink); }
+  .ok-banner .acc-badge { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border: 2px solid var(--color-ink); background: var(--color-surface); padding: 6px 10px; white-space: nowrap; }
+  .ok-banner .acc-badge a { color: var(--teal-ink); text-decoration: underline; }
+
+  .tabs { display: flex; gap: 0; border: 2px solid var(--color-ink); border-bottom: none; }
+  .tab { flex: 1; padding: 10px 8px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border-right: 2px solid var(--color-ink); background: var(--color-bg); cursor: pointer; color: var(--color-ink-faint); }
+  .tab:last-child { border-right: none; }
+  .tab.on { background: var(--color-ink); color: var(--color-surface); }
+  .tab small { display: block; font-weight: 400; font-size: 8px; margin-top: 2px; letter-spacing: 0; }
+  .tab.on small { color: #bdb6a8; }
+
+  .panel { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 16px; margin-bottom: 18px; }
+  .ep-row { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+  .ep-row .lab { font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ink-faint); flex: 0 0 64px; }
+  .ep-row .url { flex: 1; border: 2px solid var(--color-ink); background: var(--color-bg); padding: 9px 11px; font-family: var(--font-mono); font-size: 11.5px; color: var(--color-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ep-row .copy { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: 2px 2px 0 var(--color-ink); font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 9px 12px; cursor: pointer; }
+  .code { background: var(--code-bg); border: 2px solid var(--color-ink); padding: 14px 15px; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.7; color: var(--code-fg); overflow-x: auto; }
+  .code .k { color: var(--code-keyword); } .code .s { color: var(--code-value); } .code .c { color: var(--code-comment); } .code .p { color: #b8b0a4; }
+
+  .cap-list { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); }
+  .cap { display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1.5px solid var(--hairline); }
+  .cap:last-child { border-bottom: none; }
+  .cap .ci { width: 22px; height: 22px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-size: 11px; background: var(--color-bg); }
+  .cap .cn { font-family: var(--font-display); font-weight: 900; font-size: 17px; text-transform: uppercase; line-height: 1.05; }
+  .cap .cd { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-muted); margin-top: 2px; }
+  .cap .mc { font-family: var(--font-mono); font-size: 9px; font-weight: 700; color: var(--color-ink-faint); border: 1.5px solid var(--hairline); padding: 3px 7px; white-space: nowrap; }
+  .cap.routes .ci { background: var(--color-yellow); }
+  .cap.locked { opacity: 0.55; }
+  .cap.locked .ci { background: var(--color-bg); border-style: dashed; }
+  .cap.locked .mc { border-color: var(--hairline); }
+  .cap .rchips { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+  .cap .rchips span { font-family: var(--font-mono); font-size: 8.5px; font-weight: 700; text-transform: uppercase; border: 1.5px solid var(--color-ink); background: var(--color-bg); padding: 2px 6px; }
+
+  .mgmt { display: flex; align-items: center; gap: 10px; border-top: 2px solid var(--color-ink); padding-top: 16px; margin-top: 18px; flex-wrap: wrap; }
+  .mbtn { display: inline-flex; align-items: center; gap: 7px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: 2px 2px 0 var(--color-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 13px; cursor: pointer; text-decoration: none; color: var(--color-ink); }
+  .mbtn.danger { color: var(--brut-coral); }
+  .mgmt .home { margin-left: auto; color: var(--teal-ink); }
+</style>
+</head>
+<body>
+
+<!-- ════════════ M4 · FRAME 1 — CONNECT YOUR APP (the choice) ════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:760px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M4 · ship it</span><span class="name">Connect your app — the job, not the jargon</span></div>
+    <p class="sub">Reframed: the user isn't "turning a graph on." They're <b>letting their own app, agent, or site ask the graph questions and answer from their knowledge</b>. So lead with that job, make <b>how</b> you connect a plain choice, and never require knowing what MCP is to ship.</p>
+    <p class="arch"><span class="t">AHA-min:</span> <span class="aha">my app answers from my graph.</span> · <span class="t">Initial / Learning:</span> the chat widget — paste one snippet, done. · <span class="t">Advanced:</span> MCP for agents, REST for any app, GraphQL for direct queries, read+write for agents that grow the graph.</p>
+  </div>
+  <div class="scr" data-screen-label="M4 frame 1 — Connect your app">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell done"><span class="d">✓</span>M2</div>
+      <div class="led-cell done"><span class="d">✓</span>M3</div>
+      <div class="led-cell now"><span class="d">▸</span>M4 · Connect</div>
+    </div>
+    <div class="body">
+      <div class="crumb"><a href="#">← Graph home</a><span class="sep">/</span><span class="here">Connect your app</span></div>
+      <p class="h-eyebrow">M4 · ship it</p>
+      <h1 class="h-title">Connect your app</h1>
+      <p class="h-desc">Your graph is ready. Now let your app, agent, or website <b>ask it questions</b> and answer from your own knowledge — with citations. Pick what your app can do, then how it connects.</p>
+
+      <div class="sec-h">1 · What can your app do?</div>
+      <div class="acc-grid">
+        <div class="acc on">
+          <span class="rd"></span>
+          <div><div class="at">Look things up</div><span class="ak">Read-only</span><div class="ad">Your app asks questions and pulls back ideas. Nothing in the graph changes. Right for chatbots, search, Q&amp;A.</div></div>
+        </div>
+        <div class="acc">
+          <span class="rd"></span>
+          <div><div class="at">Look up &amp; contribute</div><span class="ak">Read + write</span><div class="ad">Your agent can also add and edit ideas as it works — so the graph grows. Right for agents that learn.</div></div>
+        </div>
+      </div>
+
+      <div class="sec-h">2 · How does it connect? <span class="hint">pick one — you can add more later</span></div>
+      <div class="m-grid">
+        <div class="meth sel">
+          <div class="mt"><span class="mn">Chat widget</span><span class="tag">No code · easiest</span></div>
+          <div class="md">Drop a ready-made chat box on your site or app. Paste one snippet — no backend.</div>
+        </div>
+        <div class="meth">
+          <div class="mt"><span class="mn">MCP server</span><span class="tag">For AI agents</span></div>
+          <div class="md">Plug your graph into Claude, Cursor, or any AI agent as a tool it can call.</div>
+          <span class="whatlink">What's MCP?</span>
+        </div>
+        <div class="meth">
+          <div class="mt"><span class="mn">API &amp; SDK</span><span class="tag">Any app</span></div>
+          <div class="md">Call your graph over REST from any language. Libraries for JS &amp; Python.</div>
+        </div>
+        <div class="meth">
+          <div class="mt"><span class="mn">GraphQL</span><span class="tag">Advanced</span></div>
+          <div class="md">Query the graph structure directly — nodes, links, and clusters.</div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note">Read-only · Chat widget — the no-code path. Change either anytime.</span>
+        <a class="btn-cont" href="#">Create connection →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ M4 · FRAME 2 — YOUR CONNECTION (persistent area) ════════════ -->
+<div class="frame" style="position:absolute; left:900px; top:80px; width:840px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M4 · connected</span><span class="name">Your connection — a place you return to, not a finish line</span></div>
+    <p class="sub">Answering your questions directly: the cryptic <b>query_graph / retrieve_ideas / get_idea</b> chips are now <b>human-named capabilities</b> with a plain "what it does," and the machine name sits quietly beside them. This screen is a <b>persistent area</b> — reachable from Graph home anytime to copy keys, switch method, change access, or check usage. The tabs switch the <b>connection method</b>, not unrelated views.</p>
+    <p class="arch"><span class="t">Re-entry:</span> Graph home → Connect. <span class="t">Redoable:</span> rotate key · change access (read↔write) · switch method · disconnect — all without redoing the journey.</p>
+  </div>
+  <div class="scr" data-screen-label="M4 frame 2 — Your connection">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell done"><span class="d">✓</span>M2</div>
+      <div class="led-cell done"><span class="d">✓</span>M3</div>
+      <div class="led-cell done"><span class="d">✓</span>M4 · Connected</div>
+    </div>
+    <div class="body">
+      <div class="crumb"><a href="#">← Graph home</a><span class="sep">/</span><span class="here">Connect your app</span></div>
+      <p class="h-eyebrow">M4 · your connection</p>
+      <h1 class="h-title">Your app can use your graph</h1>
+
+      <div class="ok-banner">
+        <span class="dot"></span>
+        <span class="txt"><b>acme-graph</b> is reachable by your app — 1,204 ideas, trust 97. Reads are answered with citations.</span>
+        <span class="acc-badge">Read-only · <a href="#">change</a></span>
+      </div>
+
+      <div class="sec-h">Connection method <span class="hint">switch anytime — same graph underneath</span></div>
+      <div class="tabs">
+        <div class="tab">Widget<small>no code</small></div>
+        <div class="tab on">MCP server<small>for agents</small></div>
+        <div class="tab">API &amp; SDK<small>any app</small></div>
+        <div class="tab">GraphQL<small>advanced</small></div>
+      </div>
+      <div class="panel">
+        <div class="ep-row">
+          <span class="lab">Endpoint</span>
+          <span class="url">https://mcp.restormel.ai/acme-graph</span>
+          <button type="button" class="copy">Copy</button>
+        </div>
+        <div class="code"><span class="c">// add to your agent's MCP config</span><br />
+<span class="p">{</span> <span class="k">"mcpServers"</span><span class="p">: {</span><br />
+&nbsp;&nbsp;<span class="k">"acme-graph"</span><span class="p">: {</span> <span class="k">"url"</span><span class="p">:</span> <span class="s">"https://mcp.restormel.ai/acme-graph"</span><span class="p">,</span><br />
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="k">"headers"</span><span class="p">: {</span> <span class="k">"Authorization"</span><span class="p">:</span> <span class="s">"Bearer rk_live_••••3f9a"</span> <span class="p">} } } }</span></div>
+      </div>
+
+      <div class="sec-h">What your app can now do <span class="hint">human name · what it does · tool name</span></div>
+      <div class="cap-list">
+        <div class="cap">
+          <span class="ci">?</span>
+          <div><div class="cn">Ask a question</div><div class="cd">Natural-language question in → grounded answer + citations out.</div></div>
+          <span class="mc">query_graph</span>
+        </div>
+        <div class="cap">
+          <span class="ci">⌕</span>
+          <div><div class="cn">Search ideas</div><div class="cd">Semantic search — returns the most relevant ideas &amp; passages.</div></div>
+          <span class="mc">retrieve_ideas</span>
+        </div>
+        <div class="cap">
+          <span class="ci">▤</span>
+          <div><div class="cn">Look up an idea</div><div class="cd">Fetch one specific idea and its links by id.</div></div>
+          <span class="mc">get_idea</span>
+        </div>
+        <div class="cap routes">
+          <span class="ci">★</span>
+          <div><div class="cn">Your routes</div><div class="cd">Named shortcuts you built — one call runs the whole saved query.</div>
+            <div class="rchips"><span>Exec summary</span><span>Customer signal</span><span>Risk scan</span></div>
+          </div>
+          <span class="mc">list_routes</span>
+        </div>
+        <div class="cap locked">
+          <span class="ci">＋</span>
+          <div><div class="cn">Add / edit an idea</div><div class="cd">Let an agent write back into the graph — enable read + write to turn on.</div></div>
+          <span class="mc">write · off</span>
+        </div>
+      </div>
+
+      <div class="mgmt">
+        <button type="button" class="mbtn">⟳ Rotate key</button>
+        <button type="button" class="mbtn">▦ Usage &amp; logs</button>
+        <button type="button" class="mbtn danger">✕ Disconnect</button>
+        <a href="#" class="mbtn home">← Back to Graph home</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

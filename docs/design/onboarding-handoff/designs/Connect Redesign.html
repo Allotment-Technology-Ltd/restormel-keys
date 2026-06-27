@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — Connect Redesign Mockups</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* ════════════ Canvas backdrop + legacy token bridge ════════════ */
+  html, body { margin: 0; background: #b8b09a; }
+  :root {
+    --brut-ink: #0c0c0c; --brut-white: #fffef0; --brut-canvas: #f3ead0;
+    --brut-neon: #ffd600; --brut-blue: #1a3f8a; --brut-coral: #d94e47;
+    --brut-font: "Space Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --hairline: #d8cfb0;
+    --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 1rem;
+    --rm-surface-raised: var(--color-surface); --rm-surface: var(--color-surface);
+    --rm-text: var(--color-ink); --rm-muted: var(--color-ink-muted); --rm-dim: var(--color-ink-faint);
+    --rm-sage: var(--color-blue); --rm-border: var(--color-ink); --rm-radius: 0;
+    --rm-font-ui: var(--font-body);
+  }
+
+  /* ════════════ Frame chrome on the canvas ════════════ */
+  .frame { width: 1280px; }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num {
+    background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase;
+  }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub {
+    margin: 7px 0 0; font-size: 12px; font-weight: 400; letter-spacing: 0.02em;
+    color: #4a4538; max-width: 78ch; line-height: 1.5;
+  }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+
+  /* ════════════ Screen shell (sidebar + content) ════════════ */
+  .screen {
+    display: grid; grid-template-columns: 232px 1fr; background: var(--color-bg);
+    border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12, 12, 12, 0.9); overflow: hidden;
+  }
+  .sidebar {
+    background: var(--color-surface); border-right: 2px solid var(--color-ink);
+    padding: 20px 14px 18px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .side-logo { padding: 4px 6px 16px; border-bottom: 2px solid var(--color-ink); margin-bottom: 14px; }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav a {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--color-ink); text-decoration: none; padding: 10px 12px;
+    border: 2px solid transparent; display: flex; align-items: center; gap: 11px;
+  }
+  .nav a .tick { width: 8px; height: 8px; border: 1.5px solid var(--color-ink); background: transparent; flex: 0 0 auto; }
+  .nav a:hover { background: var(--color-bg-deep); }
+  .nav a.active { background: var(--color-ink); color: var(--color-bg); }
+  .nav a.active .tick { background: var(--signal-teal); border-color: var(--color-bg); }
+  .nav-spacer { margin-top: auto; }
+  .nav-divider { height: 0; border-top: 2px solid var(--color-ink); margin: 12px 4px; }
+
+  .content { display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 11px 28px; border-bottom: 2px solid var(--color-ink); background: var(--color-bg);
+  }
+  .workspace {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--color-ink-muted); display: flex; gap: 9px; align-items: center;
+  }
+  .workspace .sep { color: var(--color-ink-faint); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .avatar {
+    width: 36px; height: 36px; border: 2px solid var(--color-ink); background: var(--color-yellow);
+    display: flex; align-items: center; justify-content: center; font-family: var(--font-mono);
+    font-weight: 700; font-size: 12px; box-shadow: var(--shadow-sm);
+  }
+  .main { padding: 26px 28px 32px; display: flex; flex-direction: column; }
+
+  /* page header */
+  .page-header {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+    border-bottom: 2px solid var(--color-ink); padding-bottom: 18px; margin-bottom: 22px;
+  }
+  .kicker {
+    display: inline-block; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-ink);
+    border: 1.5px solid var(--color-ink); padding: 3px 9px; margin-bottom: 12px;
+  }
+  .page-title {
+    font-family: var(--font-display); font-weight: 900; font-size: 58px; line-height: 0.9;
+    letter-spacing: -0.01em; text-transform: uppercase; margin: 0;
+  }
+  .page-desc {
+    font-family: var(--font-body); font-size: 14.5px; color: var(--color-ink-muted);
+    margin: 11px 0 0; max-width: 52ch; line-height: 1.5;
+  }
+  .page-desc b { color: var(--color-ink); font-weight: 600; }
+
+  /* live-run-chip (from DS) */
+  .live-run-chip {
+    display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--color-ink);
+    background: var(--color-surface); color: var(--color-ink); padding: 6px 12px; min-height: 36px;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 800; letter-spacing: 0.04em;
+    text-transform: uppercase; text-decoration: none; white-space: nowrap;
+  }
+  .live-run-dot { width: 0.55rem; height: 0.55rem; background: var(--color-ink); border-radius: 999px; animation: live-run-pulse 1.4s ease-in-out infinite; }
+  @keyframes live-run-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .live-run-dot { animation: none; } }
+
+  /* cohort selector (mono dropdown-button) */
+  .cohort-select {
+    display: inline-flex; align-items: center; gap: 9px; border: 2px solid var(--color-ink);
+    background: var(--color-surface); color: var(--color-ink); box-shadow: var(--shadow-sm);
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 9px 14px; cursor: pointer; white-space: nowrap;
+  }
+  .cohort-select .caret { font-size: 11px; }
+
+  /* ════════════ THE SPINE — five-stage ledger ════════════ */
+  .spine-wrap { margin-bottom: 24px; }
+  .spine-cap {
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--color-ink-faint); margin: 0 0 9px 1px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .spine {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+    border: 2px solid var(--color-ink); background: var(--color-ink); box-shadow: var(--shadow-md);
+  }
+  .tile {
+    background: var(--color-bg); border: 1.5px solid var(--color-ink); padding: 14px 15px 13px;
+    display: flex; flex-direction: column; gap: 9px; min-height: 148px; position: relative;
+  }
+  .tile.done { background: var(--color-surface); }
+  .tile.active { background: var(--color-surface); }
+  .tile.active::before {
+    content: ""; position: absolute; left: -1.5px; right: -1.5px; top: -1.5px; height: 6px;
+    background: var(--color-yellow); border-bottom: 1.5px solid var(--color-ink);
+  }
+  .tile.inert { background: var(--color-bg-deep); }
+  .tile-top { display: flex; align-items: center; gap: 10px; padding-top: 2px; }
+  .tile.active .tile-top { padding-top: 7px; }
+  .tile-num {
+    width: 24px; height: 24px; flex: 0 0 auto; border: 2px solid var(--color-ink);
+    display: grid; place-items: center; font-family: var(--font-mono); font-weight: 700; font-size: 12px;
+    background: var(--color-surface);
+  }
+  .tile.done .tile-num { background: var(--signal-teal); }
+  .tile.active .tile-num { background: var(--color-yellow); }
+  .tile.inert .tile-num { background: transparent; color: var(--color-ink-faint); border-style: dashed; border-color: var(--color-ink-faint); }
+  .tile-name { font-family: var(--font-display); font-weight: 900; font-size: 19px; line-height: 0.95; text-transform: uppercase; }
+  .tile.inert .tile-name { color: var(--color-ink-faint); }
+  .tile-sub { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--color-ink-muted); line-height: 1.45; }
+  .tile.inert .tile-sub { color: var(--color-ink-faint); }
+  .tile-state { margin-top: auto; }
+  .tchip {
+    display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px;
+    font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 9px; border: 1.5px solid var(--color-ink);
+  }
+  .tchip.done { background: var(--signal-teal); color: var(--color-ink); }
+  .tchip.here { background: var(--color-ink); color: var(--color-yellow); }
+  .tchip.count { background: var(--amber-insight); color: var(--color-ink); }
+  .tchip.inert { background: transparent; color: var(--color-ink-faint); border-style: dashed; border-color: var(--color-ink-faint); }
+  .tile-cta {
+    display: inline-flex; align-items: center; gap: 7px; width: 100%; justify-content: center;
+    background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink);
+    box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; text-decoration: none;
+    transition: var(--brut-transition);
+  }
+  .tile-cta:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-md); }
+
+  /* ════════════ Screen 1 — Connect Home ════════════ */
+  .home-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+  .graph-card { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-md); padding: 22px 24px; }
+  .readiness-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .readiness-status {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; border: 2px solid var(--color-ink); padding: 3px 9px;
+  }
+  .readiness-status--ok { background: var(--state-ok-bg); color: var(--state-ok-fg); }
+  .readiness-summary { font-family: var(--font-mono); font-size: 11.5px; color: var(--color-ink-muted); letter-spacing: 0.02em; }
+  .graph-figure { display: flex; align-items: baseline; gap: 14px; border-bottom: 2px solid var(--hairline); padding-bottom: 16px; margin-bottom: 16px; }
+  .graph-num { font-family: var(--font-display); font-weight: 900; font-size: 76px; line-height: 0.85; letter-spacing: -0.02em; margin: 0; }
+  .graph-unit { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ink-muted); margin: 0; max-width: 12ch; line-height: 1.4; }
+  .stat-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat-chip { border: 2px solid var(--color-ink); padding: 12px 14px; display: flex; flex-direction: column; gap: 3px; }
+  .stat-chip b { font-family: var(--font-display); font-weight: 900; font-size: 30px; line-height: 1; }
+  .stat-chip span { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-ink-muted); }
+  .stat-chip--ok { background: var(--state-ok-bg); }
+  .stat-chip--warn { background: var(--state-warn-bg); }
+  .stat-chip--fail { background: var(--state-fail-bg); }
+  .graph-note { font-family: var(--font-body); font-size: 14px; line-height: 1.55; color: var(--color-ink-muted); margin: 0; }
+  .graph-note b { color: var(--color-ink); font-weight: 600; }
+
+  /* quick actions (DS .quick-actions) */
+  .quick-actions { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-md); padding: 18px; display: grid; gap: 18px; }
+  .quick-actions h2 { margin: 0; font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .qa-actions { display: grid; gap: 9px; }
+  .action-btn {
+    border: 1.5px solid var(--color-ink); background: var(--color-bg); color: var(--color-ink); padding: 11px 13px;
+    font-family: var(--font-body); font-size: 14px; text-decoration: none; display: flex; align-items: center; justify-content: space-between;
+  }
+  .action-btn:hover { background: var(--color-bg-deep); }
+  .action-btn .ico { font-family: var(--font-mono); color: var(--color-ink-faint); }
+  .qa-recent h3 { margin: 0 0 9px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ink-muted); }
+  .qa-recent ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+  .qa-recent li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-family: var(--font-mono); font-size: 11.5px; }
+  .qa-recent .run { color: var(--color-ink); }
+  .qa-recent .when { color: var(--color-ink-faint); }
+  .qa-recent .ok { color: var(--signal-teal); font-weight: 700; }
+
+  /* ════════════ Screen 4 — Make Ready ════════════ */
+  .cohort-banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    border: 2px solid var(--color-ink); border-left: 8px solid var(--brut-amber);
+    background: color-mix(in oklab, var(--amber-insight) 22%, var(--color-surface));
+    box-shadow: var(--shadow-sm); padding: 13px 18px; margin-bottom: 22px;
+  }
+  .cohort-banner .cb-text { font-family: var(--font-mono); font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--color-ink); }
+  .cohort-banner .cb-text b { color: var(--state-warn-fg); }
+  .cb-switch {
+    border: 2px solid var(--color-ink); background: var(--color-surface); color: var(--color-ink); box-shadow: var(--shadow-sm);
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 8px 12px; cursor: pointer; white-space: nowrap; transition: var(--brut-transition);
+  }
+  .cb-switch:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-md); }
+  .ready-list { display: flex; flex-direction: column; gap: 14px; }
+  .ready-row {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center;
+    border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 18px 22px;
+  }
+  .ready-row.is-active { box-shadow: var(--shadow-md); border-left: 8px solid var(--color-yellow); padding-left: 16px; }
+  .ready-row.is-done { background: color-mix(in oklab, var(--signal-teal) 8%, var(--color-surface)); }
+  .ready-glyph {
+    width: 34px; height: 34px; flex: 0 0 auto; border: 2px solid var(--color-ink); display: grid; place-items: center;
+    font-family: var(--font-mono); font-weight: 900; font-size: 16px; background: var(--color-bg);
+  }
+  .ready-row.is-done .ready-glyph { background: var(--signal-teal); color: var(--color-ink); }
+  .ready-main { min-width: 0; }
+  .ready-label { font-family: var(--font-display); font-weight: 900; font-size: 22px; line-height: 1; text-transform: uppercase; margin: 0 0 6px; }
+  .ready-sub { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.02em; color: var(--color-ink-muted); margin: 0; }
+  .ready-sub .strong { color: var(--color-ink); font-weight: 700; }
+  .ready-action { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; text-align: right; }
+  .ready-reason { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); max-width: 22ch; line-height: 1.4; }
+  .btn-validate {
+    display: inline-flex; align-items: center; gap: 8px; background: var(--color-yellow); color: var(--color-ink);
+    border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 13px;
+    font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 12px 20px; text-decoration: none; transition: var(--brut-transition);
+  }
+  .btn-validate:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-md); }
+  .btn-disabled {
+    display: inline-flex; align-items: center; gap: 8px; background: var(--color-surface); color: var(--color-ink-faint);
+    border: 2px solid var(--color-ink-faint); font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 18px; cursor: not-allowed;
+  }
+  .ready-detail { margin-top: 12px; border-top: 1.5px solid var(--hairline); padding-top: 11px; }
+  .ready-detail summary {
+    cursor: pointer; font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--color-blue); list-style: none;
+  }
+  .ready-detail summary::-webkit-details-marker { display: none; }
+  .ready-detail summary::before { content: "› "; }
+  /* brutal-loading (DS) inline */
+  .brutal-loading { border: 2px solid var(--color-ink-faint); background: var(--color-surface); padding: 9px 13px; }
+  .brutal-loading-msg { display: flex; align-items: center; gap: 9px; margin: 0; font-family: var(--font-mono); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; color: var(--color-ink-faint); }
+  .brutal-loading-bar { display: inline-block; width: 1.5rem; height: 0.7rem; background: var(--color-yellow); border: 1.5px solid var(--color-ink); animation: brutal-pulse 1s steps(2) infinite; }
+  @keyframes brutal-pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+  /* ════════════ Shared: section heading ════════════ */
+  .sec-label {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--color-ink); border-bottom: 2px solid var(--color-ink);
+    padding-bottom: 8px; margin: 0 0 16px;
+  }
+  .footer-link {
+    margin-top: 18px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; color: var(--color-ink-faint);
+  }
+  .footer-link a { color: var(--color-ink-faint); text-decoration-thickness: 1px; }
+
+  /* ════════════ Screen 2 — Ingest Wizard ════════════ */
+  .wizard-steps { list-style: none; margin: 0 0 22px; padding: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0; }
+  .wstep { display: flex; align-items: center; }
+  .wconn { width: 28px; height: 2px; flex-shrink: 0; margin: 0 6px; }
+  .wconn.solid { background: var(--color-ink); }
+  .wconn.dashed { background: repeating-linear-gradient(90deg, var(--color-ink) 0, var(--color-ink) 4px, transparent 4px, transparent 8px); }
+  .wbtn {
+    display: inline-flex; align-items: center; gap: 9px; border: 2px solid var(--color-ink); font-family: var(--font-mono);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 10px 14px; min-height: 44px; color: var(--color-ink);
+  }
+  .wstep.completed .wbtn { background: var(--color-ink); color: var(--color-surface); }
+  .wstep.active .wbtn { background: var(--color-surface); box-shadow: var(--shadow-sm); }
+  .wstep.upcoming .wbtn { background: var(--color-bg); border-style: dashed; color: var(--color-ink-faint); }
+  .wglyph { display: inline-flex; align-items: center; justify-content: center; width: 20px; font-weight: 700; flex-shrink: 0; }
+  .wizard-body { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .provider-verified { display: flex; gap: 14px; padding: 16px 18px; border: 2px solid var(--color-ink); background: color-mix(in oklab, var(--signal-teal) 12%, var(--color-surface)); }
+  .provider-glyph { font-family: var(--font-mono); font-weight: 900; font-size: 22px; line-height: 1; color: var(--color-ink); }
+  .provider-verified-title { font-family: var(--font-display); font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 4px; font-size: 19px; }
+  .provider-verified-receipt { margin: 0 0 4px; font-family: var(--font-mono); font-size: 11px; color: var(--color-ink); }
+  .provider-verified-sub { margin: 0; color: var(--color-ink-muted); font-size: 13px; }
+  .teal-pill { display: inline-flex; align-items: center; gap: 6px; background: var(--signal-teal); color: var(--color-ink); border: 1.5px solid var(--color-ink); padding: 2px 8px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-left: 8px; vertical-align: middle; }
+  .panel { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 18px; }
+  .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+  .panel-title { font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin: 0; }
+  .panel-count { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-muted); }
+  .doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .doc-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; border: 1.5px solid var(--color-ink); padding: 10px 12px; background: var(--color-bg); }
+  .doc-check { width: 18px; height: 18px; border: 2px solid var(--color-ink); display: grid; place-items: center; font-family: var(--font-mono); font-size: 12px; font-weight: 900; background: var(--color-surface); flex: 0 0 auto; }
+  .doc-check.on { background: var(--color-ink); color: var(--color-surface); }
+  .doc-name { font-family: var(--font-body); font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-faint); }
+  .tag { font-family: var(--font-mono); font-size: 9.5px; padding: 1px 7px; border: 1.5px solid var(--color-ink); text-transform: uppercase; letter-spacing: 0.04em; }
+  .tag-ok { background: color-mix(in oklab, var(--signal-teal) 22%, var(--color-surface)); }
+  .tag-src { background: var(--color-bg); }
+  .wizard-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-top: 2px solid var(--color-ink); padding-top: 16px; margin-top: 18px; }
+  .wf-left, .wf-right { display: flex; gap: 10px; }
+  .btn-launch {
+    display: inline-flex; align-items: center; gap: 9px; background: var(--color-yellow); color: var(--color-ink);
+    border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); font-family: var(--font-mono); font-size: 14px;
+    font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 14px 26px; text-decoration: none; transition: var(--brut-transition);
+  }
+  .btn-launch:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--color-ink); }
+  .btn-sec {
+    display: inline-flex; align-items: center; gap: 7px; background: var(--color-surface); color: var(--color-ink);
+    border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 12px;
+    font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; text-decoration: none; cursor: pointer; transition: var(--brut-transition);
+  }
+  .btn-sec:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-md); }
+
+  /* ════════════ Screen 3 — Run Console ════════════ */
+  .odometer { display: flex; align-items: stretch; gap: 0; border: 2px solid var(--color-ink); background: var(--color-ink); box-shadow: var(--shadow-sm); margin-bottom: 20px; overflow: hidden; }
+  .odo { flex: 1; background: var(--color-surface); border: 1.5px solid var(--color-ink); padding: 11px 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .odo.done { background: color-mix(in oklab, var(--signal-teal) 16%, var(--color-surface)); }
+  .odo.run { background: var(--color-yellow); }
+  .odo-idx { font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; color: var(--color-ink-faint); letter-spacing: 0.06em; }
+  .odo.done .odo-idx, .odo.run .odo-idx { color: var(--color-ink); }
+  .odo-name { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.2; }
+  .odo-state { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-top: auto; }
+  .odo.done .odo-state { color: var(--state-ok-fg); }
+  .odo.run .odo-state { color: var(--color-ink); }
+  .odo.wait .odo-state { color: var(--color-ink-faint); }
+  .success-banner {
+    display: flex; align-items: center; gap: 14px; border: 2px solid var(--color-ink);
+    background: var(--signal-teal); box-shadow: var(--shadow-md); padding: 16px 20px; margin-bottom: 20px;
+  }
+  .success-glyph { width: 34px; height: 34px; flex: 0 0 auto; background: var(--color-ink); color: var(--signal-teal); display: grid; place-items: center; font-family: var(--font-mono); font-weight: 900; font-size: 18px; }
+  .success-title { font-family: var(--font-display); font-weight: 900; font-size: 24px; text-transform: uppercase; letter-spacing: -0.01em; margin: 0; line-height: 1; }
+  .success-sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--color-ink); margin: 4px 0 0; }
+  .code-panel {
+    background: var(--code-bg); color: var(--code-fg); border: 2px solid var(--color-ink); box-shadow: var(--shadow-md);
+    font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; padding: 16px 18px; overflow: hidden;
+  }
+  .code-panel .ln { display: block; white-space: pre-wrap; }
+  .code-panel .ts { color: var(--code-comment); }
+  .code-panel .k { color: var(--code-keyword); }
+  .code-panel .v { color: var(--code-value); }
+  .code-panel .c { color: var(--code-comment); }
+  .code-panel .a { color: var(--code-accent); }
+  .code-panel .done { color: var(--signal-teal); }
+  .log-head { display: flex; align-items: center; justify-content: space-between; border: 2px solid var(--color-ink); border-bottom: none; background: var(--color-ink); color: var(--color-surface); padding: 8px 16px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .log-head .dotrow { display: flex; gap: 6px; }
+  .log-head .d { width: 10px; height: 10px; border: 1.5px solid var(--color-surface); }
+  .console-ctas { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 20px; }
+
+  /* ════════════ Screen 5 — Review ════════════ */
+  .review-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+  .review-progress { display: flex; align-items: center; gap: 12px; }
+  .progress-pill { font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; border: 2px solid var(--color-ink); background: var(--amber-insight); color: var(--color-ink); padding: 6px 12px; }
+  .progress-bar { width: 220px; height: 14px; border: 2px solid var(--color-ink); background: var(--color-surface); position: relative; }
+  .progress-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 8%; background: var(--signal-teal); border-right: 2px solid var(--color-ink); }
+  .claim-list { display: flex; flex-direction: column; gap: 14px; }
+  .claim {
+    border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm);
+    padding: 16px 18px; display: grid; grid-template-columns: 1fr auto; gap: 16px 20px; align-items: start;
+  }
+  .claim.saving { box-shadow: var(--shadow-md); border-left: 8px solid var(--brut-amber); padding-left: 12px; }
+  .claim.resolved { background: color-mix(in oklab, var(--signal-teal) 9%, var(--color-surface)); }
+  .claim-body { min-width: 0; }
+  .claim-id { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-ink-faint); margin: 0 0 7px; }
+  .claim-text { font-family: var(--font-mono); font-size: 14px; line-height: 1.5; color: var(--color-ink); margin: 0 0 11px; }
+  .claim-src { border-left: 3px solid var(--color-ink); padding: 4px 0 4px 12px; margin: 0; }
+  .claim-src .q { font-family: var(--font-body); font-size: 12.5px; font-style: italic; color: var(--color-ink-muted); line-height: 1.5; }
+  .claim-src .cite { display: block; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-faint); margin-top: 5px; }
+  .verdicts { display: flex; flex-direction: column; gap: 8px; align-items: stretch; min-width: 168px; }
+  .verdict {
+    display: grid; grid-template-columns: 24px 1fr; align-items: center; gap: 9px; border: 2px solid var(--color-ink);
+    background: var(--color-surface); padding: 9px 12px; cursor: pointer; font-family: var(--font-mono); font-size: 11px;
+    font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink); text-align: left; transition: var(--brut-transition); box-shadow: var(--shadow-sm);
+  }
+  .verdict:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-md); }
+  .verdict .key { width: 24px; height: 24px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-weight: 900; font-size: 12px; }
+  .verdict.a:hover { background: color-mix(in oklab, var(--signal-teal) 22%, var(--color-surface)); }
+  .verdict.w:hover { background: color-mix(in oklab, var(--amber-insight) 28%, var(--color-surface)); }
+  .verdict.u:hover { background: color-mix(in oklab, var(--coral-alert) 22%, var(--color-surface)); }
+  .verdict.chosen { background: var(--signal-teal); }
+  .verdict.chosen .key { background: var(--color-ink); color: var(--signal-teal); }
+  .verdict-saving { display: flex; align-items: center; gap: 9px; border: 2px solid var(--brut-amber); background: color-mix(in oklab, var(--amber-insight) 18%, var(--color-surface)); padding: 11px 13px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--state-warn-fg); }
+  .saving-dot { width: 9px; height: 9px; border-radius: 999px; background: var(--brut-amber); animation: live-run-pulse 1s ease-in-out infinite; }
+  .verdict-done { display: inline-flex; align-items: center; gap: 8px; border: 2px solid var(--color-ink); background: var(--signal-teal); color: var(--color-ink); padding: 9px 13px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .review-complete {
+    display: flex; align-items: center; gap: 14px; border: 2px solid var(--color-ink); background: var(--signal-teal);
+    box-shadow: var(--shadow-md); padding: 16px 20px; margin-top: 18px;
+  }
+  .review-complete .rc-title { font-family: var(--font-display); font-weight: 900; font-size: 22px; text-transform: uppercase; margin: 0; }
+  .review-complete .rc-sub { font-family: var(--font-mono); font-size: 11.5px; margin: 3px 0 0; }
+
+  /* ════════════ Screen 6 — Go Live ════════════ */
+  .publish-card { border: 3px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-lg); padding: 26px; margin-bottom: 20px; }
+  .publish-grid { display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: center; }
+  .publish-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-ink-muted); margin: 0 0 9px; }
+  .publish-title { font-family: var(--font-display); font-weight: 900; font-size: 40px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 12px; }
+  .publish-desc { font-family: var(--font-body); font-size: 14px; line-height: 1.55; color: var(--color-ink-muted); margin: 0 0 20px; max-width: 44ch; }
+  .publish-desc b { color: var(--color-ink); font-weight: 600; }
+  .routes-auto-note { display: flex; align-items: center; gap: 10px; border: 2px solid var(--color-ink); border-left: 8px solid var(--signal-teal); background: color-mix(in oklab, var(--signal-teal) 9%, var(--color-surface)); padding: 11px 16px; margin-bottom: 20px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.02em; color: var(--color-ink); }
+  .routes-auto-note b { font-weight: 700; }
+  .btn-publish {
+    display: inline-flex; align-items: center; gap: 10px; background: var(--color-yellow); color: var(--color-ink);
+    border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); font-family: var(--font-mono); font-size: 15px;
+    font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 16px 28px; text-decoration: none; transition: var(--brut-transition);
+  }
+  .btn-publish:hover { transform: translate(-3px, -3px); box-shadow: 9px 9px 0 var(--color-ink); }
+  /* coverage indicator (DS cov-*) */
+  .cov { border: 2px solid var(--color-ink); background: var(--color-bg); }
+  .cov-head { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ink-muted); padding: 10px 13px; border-bottom: 2px solid var(--color-ink); background: var(--color-surface); }
+  .cov-cells { list-style: none; margin: 0; padding: 0; }
+  .cov-cell { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 13px; border-bottom: 1.5px solid var(--hairline); font-family: var(--font-mono); font-size: 11.5px; }
+  .cov-cell:last-child { border-bottom: none; }
+  .cov-stage { color: var(--color-ink); text-transform: none; letter-spacing: 0.02em; }
+  .cov-mark { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--state-ok-fg); }
+  .cov-mark .sq { width: 10px; height: 10px; background: var(--signal-teal); border: 1.5px solid var(--color-ink); }
+  .advanced { border: 2px solid var(--color-ink); background: var(--color-bg-deep); padding: 0; margin-bottom: 20px; }
+  .advanced summary { cursor: pointer; list-style: none; font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ink); padding: 15px 20px; display: flex; align-items: center; gap: 10px; }
+  .advanced summary::-webkit-details-marker { display: none; }
+  .advanced summary .chev { color: var(--color-ink-faint); }
+  .advanced .adv-body { border-top: 2px solid var(--color-ink); padding: 16px 20px; font-family: var(--font-body); font-size: 13px; color: var(--color-ink-muted); line-height: 1.55; }
+  .adv-steps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .adv-step { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; border: 1.5px solid var(--color-ink-faint); color: var(--color-ink-muted); padding: 5px 10px; }
+  .live-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+  .live-dot-lg { width: 14px; height: 14px; border-radius: 999px; background: var(--signal-teal); border: 2px solid var(--color-ink); animation: live-run-pulse 1.6s ease-in-out infinite; }
+  .live-title { font-family: var(--font-display); font-weight: 900; font-size: 26px; text-transform: uppercase; letter-spacing: -0.01em; margin: 0; white-space: nowrap; }
+  .consume-label { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-ink-faint); margin: 0 0 9px; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════ SCREEN 1 · CONNECT HOME ════════════════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:100px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Screen 01</span>
+      <span class="name">Connect Home — the spine + status</span>
+    </div>
+    <p class="sub">The whole journey on one screen. A five-stage <b>spine</b> answers "where am I / what's next"; stage ③ is lit with the single yellow next action. <b>One primary CTA</b>, no wall of buttons.</p>
+  </div>
+
+  <div class="screen" data-screen-label="Screen 01 — Connect Home">
+    <aside class="sidebar">
+      <div class="side-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="134" height="29" fill="none" role="img" aria-label="Restormel">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white)" stroke="var(--brut-ink)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="2" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink)" />
+          <text x="76" y="43" fill="var(--brut-ink)" font-family="var(--brut-font)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue)" stroke="var(--brut-ink)" stroke-width="1" />
+        </svg>
+      </div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Dashboard</a>
+        <a href="#"><span class="tick"></span>Routes</a>
+        <a href="#"><span class="tick"></span>Keys</a>
+        <a href="#" class="active"><span class="tick"></span>Connect</a>
+        <a href="#"><span class="tick"></span>Records</a>
+        <a href="#"><span class="tick"></span>Usage</a>
+      </nav>
+      <div class="nav-spacer"></div>
+      <div class="nav-divider"></div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Docs</a>
+        <a href="#"><span class="tick"></span>Settings</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="topbar">
+        <div class="workspace"><span>Acme Prod</span><span class="sep">/</span><span>connect</span></div>
+        <div class="topbar-right">
+          <a class="live-run-chip" href="#"><span class="live-run-dot"></span><span>Ingest · stage 4/7 · running</span></a>
+          <div class="avatar">AM</div>
+        </div>
+      </div>
+
+      <div class="main">
+        <header class="page-header">
+          <div>
+            <span class="kicker">Document ingestion</span>
+            <h1 class="page-title">Connect</h1>
+            <p class="page-desc">Point Connect at your documents, build a verified knowledge graph, turn it on. <b>One spine, one next step.</b></p>
+          </div>
+        </header>
+
+        <!-- THE SPINE -->
+        <div class="spine-wrap">
+          <p class="spine-cap">The spine · where you are → what's next</p>
+          <div class="spine">
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Connect</span></div>
+              <p class="tile-sub">Store · provider · routes</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Ingest</span></div>
+              <p class="tile-sub">Run on your documents</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile active">
+              <div class="tile-top"><span class="tile-num">3</span><span class="tile-name">Make ready</span></div>
+              <p class="tile-sub">Link · embed · validate</p>
+              <div class="tile-state"><a class="tile-cta" href="#">Make ready →</a></div>
+            </div>
+            <div class="tile">
+              <div class="tile-top"><span class="tile-num">4</span><span class="tile-name">Review</span></div>
+              <p class="tile-sub">Triage flagged claims</p>
+              <div class="tile-state"><span class="tchip count">12 left</span></div>
+            </div>
+            <div class="tile inert">
+              <div class="tile-top"><span class="tile-num">5</span><span class="tile-name">Go live</span></div>
+              <p class="tile-sub">Turn the graph on</p>
+              <div class="tile-state"><span class="tchip inert">▢ Waiting</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- readiness + quick actions -->
+        <div class="home-grid">
+          <section class="graph-card">
+            <div class="readiness-head">
+              <span class="readiness-status readiness-status--ok">Verified</span>
+              <span class="readiness-summary">Trust 87/100 · 96% evidence-bound · last verified Jun 24</span>
+            </div>
+            <div class="graph-figure">
+              <p class="graph-num">1,204</p>
+              <p class="graph-unit">ideas in your verified graph</p>
+            </div>
+            <div class="stat-chips">
+              <div class="stat-chip stat-chip--ok"><b>350</b><span>Verified</span></div>
+              <div class="stat-chip stat-chip--warn"><b>842</b><span>Unchecked</span></div>
+              <div class="stat-chip stat-chip--fail"><b>12</b><span>Flagged</span></div>
+            </div>
+            <p class="graph-note"><b>842 ideas still need validating</b> before this graph is production-ready — that's exactly what stage ③ does. Everything else is already linked and embedded.</p>
+          </section>
+
+          <aside class="quick-actions">
+            <h2>Quick actions</h2>
+            <div class="qa-actions">
+              <a href="#" class="action-btn">Browse the graph<span class="ico">→</span></a>
+              <a href="#" class="action-btn">Run history<span class="ico">→</span></a>
+              <a href="#" class="action-btn">Import documents<span class="ico">→</span></a>
+            </div>
+            <div class="qa-recent">
+              <h3>Recent runs</h3>
+              <ul>
+                <li><span class="run">Ingest · Jun 27</span><span class="ok">OK</span></li>
+                <li><span class="run">Ingest · Jun 24</span><span class="ok">OK</span></li>
+                <li><span class="run">Ingest · Jun 20</span><span class="when">3d</span></li>
+              </ul>
+            </div>
+          </aside>
+        </div>
+
+        <p class="footer-link"><a href="#">Run history &amp; rollback →</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ SCREEN 4 · MAKE READY ════════════════════════ -->
+<div class="frame" style="position:absolute; left:4280px; top:100px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Screen 04</span>
+      <span class="name">Make Ready — honest, one-at-a-time actions</span>
+    </div>
+    <p class="sub">The promoted sub-wizard, now first-class. A linear checklist with <b>one active step</b>. Every button is enabled-and-works or <b>disabled with a visible reason</b> — never clickable-but-inert. A persistent amber cohort banner shows what you're operating on.</p>
+  </div>
+
+  <div class="screen" data-screen-label="Screen 04 — Make Ready">
+    <aside class="sidebar">
+      <div class="side-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="134" height="29" fill="none" role="img" aria-label="Restormel">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white)" stroke="var(--brut-ink)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="2" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink)" />
+          <text x="76" y="43" fill="var(--brut-ink)" font-family="var(--brut-font)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue)" stroke="var(--brut-ink)" stroke-width="1" />
+        </svg>
+      </div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Dashboard</a>
+        <a href="#"><span class="tick"></span>Routes</a>
+        <a href="#"><span class="tick"></span>Keys</a>
+        <a href="#" class="active"><span class="tick"></span>Connect</a>
+        <a href="#"><span class="tick"></span>Records</a>
+        <a href="#"><span class="tick"></span>Usage</a>
+      </nav>
+      <div class="nav-spacer"></div>
+      <div class="nav-divider"></div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Docs</a>
+        <a href="#"><span class="tick"></span>Settings</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="topbar">
+        <div class="workspace"><span>Acme Prod</span><span class="sep">/</span><span>connect</span><span class="sep">/</span><span>make ready</span></div>
+        <div class="topbar-right">
+          <a class="live-run-chip" href="#"><span class="live-run-dot"></span><span>Ingest · stage 4/7 · running</span></a>
+          <div class="avatar">AM</div>
+        </div>
+      </div>
+
+      <div class="main">
+        <header class="page-header">
+          <div>
+            <span class="kicker">Stage 3 — Make ready</span>
+            <h1 class="page-title">Make your<br />graph ready</h1>
+            <p class="page-desc">Link, embed and validate your ideas — <b>one step at a time</b>. Every action is enabled-and-works, or disabled with a reason.</p>
+          </div>
+          <button type="button" class="cohort-select">Run 1 · 100 ideas <span class="caret">▾</span></button>
+        </header>
+
+        <!-- SPINE (③ active, you-are-here) -->
+        <div class="spine-wrap">
+          <div class="spine">
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Connect</span></div>
+              <p class="tile-sub">Store · provider · routes</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Ingest</span></div>
+              <p class="tile-sub">Run on your documents</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile active">
+              <div class="tile-top"><span class="tile-num">3</span><span class="tile-name">Make ready</span></div>
+              <p class="tile-sub">Link · embed · validate</p>
+              <div class="tile-state"><span class="tchip here">▸ You are here</span></div>
+            </div>
+            <div class="tile">
+              <div class="tile-top"><span class="tile-num">4</span><span class="tile-name">Review</span></div>
+              <p class="tile-sub">Triage flagged claims</p>
+              <div class="tile-state"><span class="tchip count">12 left</span></div>
+            </div>
+            <div class="tile inert">
+              <div class="tile-top"><span class="tile-num">5</span><span class="tile-name">Go live</span></div>
+              <p class="tile-sub">Turn the graph on</p>
+              <div class="tile-state"><span class="tchip inert">▢ Waiting</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- active-cohort banner -->
+        <div class="cohort-banner">
+          <span class="cb-text">▲ Operating on <b>Run 1 — 100 ideas</b>, not the whole workspace</span>
+          <button type="button" class="cb-switch">Switch to whole workspace</button>
+        </div>
+
+        <!-- honest checklist -->
+        <div class="ready-list">
+          <div class="ready-row is-done">
+            <span class="ready-glyph">✓</span>
+            <div class="ready-main">
+              <h3 class="ready-label">Link ideas to their sources</h3>
+              <p class="ready-sub"><span class="strong">1,204 / 1,204</span> linked · every idea traces to a source passage</p>
+            </div>
+            <div class="ready-action"><span class="verdict-done">✓ Done</span></div>
+          </div>
+
+          <div class="ready-row is-done">
+            <span class="ready-glyph">✓</span>
+            <div class="ready-main">
+              <h3 class="ready-label">Embed ideas for retrieval</h3>
+              <p class="ready-sub"><span class="strong">1,204 / 1,204</span> embedded · ready for semantic search</p>
+            </div>
+            <div class="ready-action">
+              <button type="button" class="btn-disabled" disabled>Re-embed</button>
+              <span class="ready-reason">All ideas already embedded</span>
+            </div>
+          </div>
+
+          <div class="ready-row is-active">
+            <span class="ready-glyph">□</span>
+            <div class="ready-main">
+              <h3 class="ready-label">Validate unchecked ideas</h3>
+              <p class="ready-sub"><span class="strong">842 unchecked</span> · each claim is checked against its source passage</p>
+              <details class="ready-detail">
+                <summary>Details — catalog &amp; clusters</summary>
+              </details>
+            </div>
+            <div class="ready-action"><a class="btn-validate" href="#">Validate 842 →</a></div>
+          </div>
+
+          <div class="ready-row">
+            <span class="ready-glyph">□</span>
+            <div class="ready-main">
+              <h3 class="ready-label">Remediate weak claims</h3>
+              <p class="ready-sub">Available once validation flags the weak claims to repair</p>
+            </div>
+            <div class="ready-action">
+              <div class="brutal-loading"><p class="brutal-loading-msg"><span class="brutal-loading-bar"></span>Loading options…</p></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="footer-link"><a href="#">Run history &amp; rollback →</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ SCREEN 2 · INGEST WIZARD ════════════════════════ -->
+<div class="frame" style="position:absolute; left:1480px; top:100px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Screen 02</span>
+      <span class="name">Ingest Wizard — provider → sources → domain → launch</span>
+    </div>
+    <p class="sub">The guided ingest setup, framed by the spine (stage ② active). A four-step stepper, the provider key <b>verified on save</b>, the sources panel, and a preflight that gates the single yellow <b>[ LAUNCH INGEST → ]</b>.</p>
+  </div>
+
+  <div class="screen" data-screen-label="Screen 02 — Ingest Wizard">
+    <aside class="sidebar">
+      <div class="side-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="134" height="29" fill="none" role="img" aria-label="Restormel">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white)" stroke="var(--brut-ink)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="2" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink)" />
+          <text x="76" y="43" fill="var(--brut-ink)" font-family="var(--brut-font)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue)" stroke="var(--brut-ink)" stroke-width="1" />
+        </svg>
+      </div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Dashboard</a>
+        <a href="#"><span class="tick"></span>Routes</a>
+        <a href="#"><span class="tick"></span>Keys</a>
+        <a href="#" class="active"><span class="tick"></span>Connect</a>
+        <a href="#"><span class="tick"></span>Records</a>
+        <a href="#"><span class="tick"></span>Usage</a>
+      </nav>
+      <div class="nav-spacer"></div>
+      <div class="nav-divider"></div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Docs</a>
+        <a href="#"><span class="tick"></span>Settings</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="topbar">
+        <div class="workspace"><span>Acme Prod</span><span class="sep">/</span><span>connect</span><span class="sep">/</span><span>ingest</span></div>
+        <div class="topbar-right"><div class="avatar">AM</div></div>
+      </div>
+
+      <div class="main">
+        <header class="page-header">
+          <div>
+            <span class="kicker">Stage 2 — Ingest</span>
+            <h1 class="page-title">Run an ingest</h1>
+            <p class="page-desc">Four steps, then one launch. The wizard never opens the gateway canvas.</p>
+          </div>
+        </header>
+
+        <!-- SPINE (② active) -->
+        <div class="spine-wrap">
+          <div class="spine">
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Connect</span></div>
+              <p class="tile-sub">Store · provider · routes</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile active">
+              <div class="tile-top"><span class="tile-num">2</span><span class="tile-name">Ingest</span></div>
+              <p class="tile-sub">Run on your documents</p>
+              <div class="tile-state"><span class="tchip here">▸ You are here</span></div>
+            </div>
+            <div class="tile inert">
+              <div class="tile-top"><span class="tile-num">3</span><span class="tile-name">Make ready</span></div>
+              <p class="tile-sub">Link · embed · validate</p>
+              <div class="tile-state"><span class="tchip inert">▢ Up next</span></div>
+            </div>
+            <div class="tile inert">
+              <div class="tile-top"><span class="tile-num">4</span><span class="tile-name">Review</span></div>
+              <p class="tile-sub">Triage flagged claims</p>
+              <div class="tile-state"><span class="tchip inert">▢ Later</span></div>
+            </div>
+            <div class="tile inert">
+              <div class="tile-top"><span class="tile-num">5</span><span class="tile-name">Go live</span></div>
+              <p class="tile-sub">Turn the graph on</p>
+              <div class="tile-state"><span class="tchip inert">▢ Waiting</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WIZARD -->
+        <div class="panel" style="padding:22px;">
+          <ol class="wizard-steps">
+            <li class="wstep completed"><span class="wbtn"><span class="wglyph">✓</span>Provider key</span></li>
+            <li class="wconn solid"></li>
+            <li class="wstep active"><span class="wbtn"><span class="wglyph">2</span>Sources</span></li>
+            <li class="wconn dashed"></li>
+            <li class="wstep upcoming"><span class="wbtn"><span class="wglyph">3</span>Domain</span></li>
+            <li class="wconn dashed"></li>
+            <li class="wstep upcoming"><span class="wbtn"><span class="wglyph">4</span>Review &amp; launch</span></li>
+          </ol>
+
+          <div class="wizard-body">
+            <div class="provider-verified">
+              <span class="provider-glyph">✓</span>
+              <div>
+                <h3 class="provider-verified-title">Provider key connected — verified.</h3>
+                <p class="provider-verified-receipt">Authenticated with openai (HTTP 200). · checked Jun 27, 2:14 PM</p>
+                <p class="provider-verified-sub">Chat and embedding routes are ready. Choose the documents for this run below.</p>
+              </div>
+            </div>
+
+            <div class="panel" style="box-shadow:none;">
+              <div class="panel-head">
+                <h3 class="panel-title">Your documents <span class="teal-pill">Sources step</span></h3>
+                <span class="panel-count">2 selected for next run · 3 parsed · 4 total</span>
+              </div>
+              <ul class="doc-list">
+                <li class="doc-row">
+                  <span class="doc-check on">✓</span>
+                  <div style="min-width:0;">
+                    <div class="doc-name">Existentialism — Stanford Encyclopedia</div>
+                    <div class="doc-meta">42 chunks · 86,310 chars</div>
+                  </div>
+                  <div style="display:flex;gap:7px;align-items:center;"><span class="tag tag-src">URL</span><span class="tag tag-ok">Parsed</span></div>
+                </li>
+                <li class="doc-row">
+                  <span class="doc-check on">✓</span>
+                  <div style="min-width:0;">
+                    <div class="doc-name">Acme employee handbook Q3</div>
+                    <div class="doc-meta">120 chunks · 240,889 chars</div>
+                  </div>
+                  <div style="display:flex;gap:7px;align-items:center;"><span class="tag tag-src">S3</span><span class="tag tag-ok">Parsed</span></div>
+                </li>
+                <li class="doc-row">
+                  <span class="doc-check">□</span>
+                  <div style="min-width:0;">
+                    <div class="doc-name">Phenomenology primer (starter)</div>
+                    <div class="doc-meta">8 chunks · 12,004 chars</div>
+                  </div>
+                  <div style="display:flex;gap:7px;align-items:center;"><span class="tag tag-src">Starter</span><span class="tag tag-ok">Parsed</span></div>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="wizard-footer">
+            <div class="wf-left"><button type="button" class="btn-sec">Back</button></div>
+            <div class="wf-right">
+              <button type="button" class="btn-sec">Skip for now</button>
+              <button type="button" class="btn-sec" style="background:var(--color-yellow);">Sources ready → Continue (2)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- FINAL STEP PREVIEW -->
+        <p class="sec-label" style="margin-top:26px;">Step 4 · review &amp; launch — the payoff</p>
+        <div class="panel">
+          <ul class="doc-list" style="gap:0; border:2px solid var(--color-ink);">
+            <li class="doc-row" style="border:none;border-bottom:1.5px solid var(--hairline);background:var(--color-surface);"><span class="doc-check on" style="background:var(--signal-teal);color:var(--color-ink);border-color:var(--color-ink);">■</span><div><div class="doc-name" style="font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-ink-faint);">Graph store</div><div style="font-size:13.5px;font-weight:600;">Workspace Neon database</div></div><a class="tag tag-src" style="text-decoration:none;color:var(--color-ink);" href="#">Edit →</a></li>
+            <li class="doc-row" style="border:none;border-bottom:1.5px solid var(--hairline);background:var(--color-surface);"><span class="doc-check on" style="background:var(--signal-teal);color:var(--color-ink);border-color:var(--color-ink);">■</span><div><div class="doc-name" style="font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-ink-faint);">Domain pack</div><div style="font-size:13.5px;font-weight:600;">Philosophy &amp; ideas <span class="tag" style="background:var(--color-ink);color:var(--color-surface);">Built-in</span></div></div><a class="tag tag-src" style="text-decoration:none;color:var(--color-ink);" href="#">Edit →</a></li>
+            <li class="doc-row" style="border:none;border-bottom:1.5px solid var(--hairline);background:var(--color-surface);"><span class="doc-check on" style="background:var(--signal-teal);color:var(--color-ink);border-color:var(--color-ink);">■</span><div><div class="doc-name" style="font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-ink-faint);">Documents</div><div style="font-size:13.5px;font-weight:600;">2 documents selected</div></div><a class="tag tag-src" style="text-decoration:none;color:var(--color-ink);" href="#">Edit →</a></li>
+            <li class="doc-row" style="border:none;background:var(--color-surface);"><span class="doc-check on" style="background:var(--signal-teal);color:var(--color-ink);border-color:var(--color-ink);">■</span><div><div class="doc-name" style="font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-ink-faint);">Provider credentials</div><div style="font-size:13.5px;font-weight:600;">2 providers executable · preflight clear</div></div><a class="tag tag-src" style="text-decoration:none;color:var(--color-ink);" href="#">Edit →</a></li>
+          </ul>
+          <div class="wizard-footer">
+            <div class="wf-left"><span class="panel-count">~10–25 min · ~100 LLM calls · 2 documents</span></div>
+            <div class="wf-right"><a class="btn-launch" href="#">Launch ingest →</a></div>
+          </div>
+        </div>
+
+        <p class="footer-link"><a href="#">Run history &amp; rollback →</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ SCREEN 3 · RUN CONSOLE ════════════════════════ -->
+<div class="frame" style="position:absolute; left:2880px; top:100px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Screen 03</span>
+      <span class="name">Run Console — watch one run</span>
+    </div>
+    <p class="sub">A 7-stage odometer and a live SSE log. On completion: a teal success banner and <b>honest CTAs</b> — the real next step <b>[ MAKE READY → ]</b> plus two unambiguous secondaries. Never a single mislabelled "New run".</p>
+  </div>
+
+  <div class="screen" data-screen-label="Screen 03 — Run Console">
+    <aside class="sidebar">
+      <div class="side-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="134" height="29" fill="none" role="img" aria-label="Restormel">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white)" stroke="var(--brut-ink)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="2" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink)" />
+          <text x="76" y="43" fill="var(--brut-ink)" font-family="var(--brut-font)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue)" stroke="var(--brut-ink)" stroke-width="1" />
+        </svg>
+      </div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Dashboard</a>
+        <a href="#"><span class="tick"></span>Routes</a>
+        <a href="#"><span class="tick"></span>Keys</a>
+        <a href="#" class="active"><span class="tick"></span>Connect</a>
+        <a href="#"><span class="tick"></span>Records</a>
+        <a href="#"><span class="tick"></span>Usage</a>
+      </nav>
+      <div class="nav-spacer"></div>
+      <div class="nav-divider"></div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Docs</a>
+        <a href="#"><span class="tick"></span>Settings</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="topbar">
+        <div class="workspace"><span>Acme Prod</span><span class="sep">/</span><span>connect</span><span class="sep">/</span><span>runs / r_8f21</span></div>
+        <div class="topbar-right"><div class="avatar">AM</div></div>
+      </div>
+
+      <div class="main">
+        <header class="page-header">
+          <div>
+            <span class="kicker">Stage 2 — Ingest · run console</span>
+            <h1 class="page-title">Run console</h1>
+            <p class="page-desc">One run, watched end to end — corpus <b>"Acme handbook"</b> · 2 documents.</p>
+          </div>
+        </header>
+
+        <!-- SPINE (② active, complete) -->
+        <div class="spine-wrap">
+          <div class="spine">
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Connect</span></div>
+              <p class="tile-sub">Store · provider · routes</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile active">
+              <div class="tile-top"><span class="tile-num">2</span><span class="tile-name">Ingest</span></div>
+              <p class="tile-sub">Run on your documents</p>
+              <div class="tile-state"><span class="tchip here">▸ You are here</span></div>
+            </div>
+            <div class="tile inert">
+              <div class="tile-top"><span class="tile-num">3</span><span class="tile-name">Make ready</span></div>
+              <p class="tile-sub">Link · embed · validate</p>
+              <div class="tile-state"><span class="tchip inert">▢ Up next</span></div>
+            </div>
+            <div class="tile inert">
+              <div class="tile-top"><span class="tile-num">4</span><span class="tile-name">Review</span></div>
+              <p class="tile-sub">Triage flagged claims</p>
+              <div class="tile-state"><span class="tchip inert">▢ Later</span></div>
+            </div>
+            <div class="tile inert">
+              <div class="tile-top"><span class="tile-num">5</span><span class="tile-name">Go live</span></div>
+              <p class="tile-sub">Turn the graph on</p>
+              <div class="tile-state"><span class="tchip inert">▢ Waiting</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- success banner -->
+        <div class="success-banner">
+          <span class="success-glyph">✓</span>
+          <div>
+            <h2 class="success-title">Ingest complete</h2>
+            <p class="success-sub">1,204 ideas extracted from 2 documents · 12 flagged for review · 6:12 elapsed</p>
+          </div>
+        </div>
+
+        <!-- 7-stage odometer -->
+        <div class="odometer">
+          <div class="odo done"><span class="odo-idx">01</span><span class="odo-name">Extract</span><span class="odo-state">✓ Done</span></div>
+          <div class="odo done"><span class="odo-idx">02</span><span class="odo-name">Relate</span><span class="odo-state">✓ Done</span></div>
+          <div class="odo done"><span class="odo-idx">03</span><span class="odo-name">Group</span><span class="odo-state">✓ Done</span></div>
+          <div class="odo done"><span class="odo-idx">04</span><span class="odo-name">Embed</span><span class="odo-state">✓ Done</span></div>
+          <div class="odo done"><span class="odo-idx">05</span><span class="odo-name">Validate</span><span class="odo-state">✓ Done</span></div>
+          <div class="odo done"><span class="odo-idx">06</span><span class="odo-name">Remediate</span><span class="odo-state">✓ Done</span></div>
+          <div class="odo done"><span class="odo-idx">07</span><span class="odo-name">Store</span><span class="odo-state">✓ Done</span></div>
+        </div>
+
+        <!-- SSE log -->
+        <div class="log-head"><span>Run log · r_8f21 · SSE</span><span class="dotrow"><span class="d" style="background:var(--coral-alert);"></span><span class="d" style="background:var(--amber-insight);"></span><span class="d" style="background:var(--signal-teal);"></span></span></div>
+        <div class="code-panel">
+          <span class="ln"><span class="ts">[06:02:14]</span> <span class="k">▸ run started</span> <span class="c">· corpus "Acme handbook" · 2 docs</span></span>
+          <span class="ln"><span class="ts">[06:02:51]</span> <span class="done">✓ extract</span>    <span class="c">·</span> <span class="v">1,204</span> ideas from <span class="v">162</span> chunks</span>
+          <span class="ln"><span class="ts">[06:03:40]</span> <span class="done">✓ relate</span>     <span class="c">·</span> <span class="v">3,891</span> edges</span>
+          <span class="ln"><span class="ts">[06:04:18]</span> <span class="done">✓ group</span>      <span class="c">·</span> <span class="v">96</span> clusters</span>
+          <span class="ln"><span class="ts">[06:05:02]</span> <span class="done">✓ embed</span>      <span class="c">·</span> <span class="v">1,204</span> vectors</span>
+          <span class="ln"><span class="ts">[06:05:49]</span> <span class="done">✓ validate</span>   <span class="c">·</span> <span class="v">1,192</span> supported <span class="c">·</span> <span class="a">12 flagged</span></span>
+          <span class="ln"><span class="ts">[06:06:08]</span> <span class="done">✓ remediate</span>  <span class="c">·</span> 0 auto-fixes queued</span>
+          <span class="ln"><span class="ts">[06:06:12]</span> <span class="done">✓ store</span>      <span class="c">·</span> graph committed</span>
+          <span class="ln"><span class="ts">[06:06:12]</span> <span class="k">✓ run complete</span> <span class="c">·</span> <span class="v">1,204</span> ideas · <span class="a">12</span> need review</span>
+        </div>
+
+        <!-- honest CTAs -->
+        <div class="console-ctas">
+          <a class="btn-launch" href="#">Make ready →</a>
+          <button type="button" class="btn-sec">Re-run this corpus</button>
+          <button type="button" class="btn-sec">Ingest different documents</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ SCREEN 5 · REVIEW ════════════════════════ -->
+<div class="frame" style="position:absolute; left:5680px; top:100px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Screen 05</span>
+      <span class="name">Review — triage flagged claims</span>
+    </div>
+    <p class="sub">Stage ④. Each flagged claim is one row: the claim, its source snippet, and three keyed verdicts <b>A / W / U</b>. One row is mid-verdict in a resilient <b>SAVING…</b> state — not an optimistic flip-back. At 0 left, the spine advances to ⑤.</p>
+  </div>
+
+  <div class="screen" data-screen-label="Screen 05 — Review">
+    <aside class="sidebar">
+      <div class="side-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="134" height="29" fill="none" role="img" aria-label="Restormel">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white)" stroke="var(--brut-ink)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="2" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink)" />
+          <text x="76" y="43" fill="var(--brut-ink)" font-family="var(--brut-font)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue)" stroke="var(--brut-ink)" stroke-width="1" />
+        </svg>
+      </div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Dashboard</a>
+        <a href="#"><span class="tick"></span>Routes</a>
+        <a href="#"><span class="tick"></span>Keys</a>
+        <a href="#" class="active"><span class="tick"></span>Connect</a>
+        <a href="#"><span class="tick"></span>Records</a>
+        <a href="#"><span class="tick"></span>Usage</a>
+      </nav>
+      <div class="nav-spacer"></div>
+      <div class="nav-divider"></div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Docs</a>
+        <a href="#"><span class="tick"></span>Settings</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="topbar">
+        <div class="workspace"><span>Acme Prod</span><span class="sep">/</span><span>connect</span><span class="sep">/</span><span>review</span></div>
+        <div class="topbar-right"><div class="avatar">AM</div></div>
+      </div>
+
+      <div class="main">
+        <header class="page-header">
+          <div>
+            <span class="kicker">Stage 4 — Review</span>
+            <h1 class="page-title">Triage flagged claims</h1>
+            <p class="page-desc">Validation flagged the claims it couldn't fully support. Give each a verdict — <b>keyboard A / W / U</b>.</p>
+          </div>
+        </header>
+
+        <!-- SPINE (④ active) -->
+        <div class="spine-wrap">
+          <div class="spine">
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Connect</span></div>
+              <p class="tile-sub">Store · provider · routes</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Ingest</span></div>
+              <p class="tile-sub">Run on your documents</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Make ready</span></div>
+              <p class="tile-sub">Link · embed · validate</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile active">
+              <div class="tile-top"><span class="tile-num">4</span><span class="tile-name">Review</span></div>
+              <p class="tile-sub">Triage flagged claims</p>
+              <div class="tile-state"><span class="tchip count">12 left · here</span></div>
+            </div>
+            <div class="tile inert">
+              <div class="tile-top"><span class="tile-num">5</span><span class="tile-name">Go live</span></div>
+              <p class="tile-sub">Turn the graph on</p>
+              <div class="tile-state"><span class="tchip inert">▢ Up next</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="review-top">
+          <div class="review-progress">
+            <span class="progress-pill">12 left</span>
+            <div class="progress-bar"><i></i></div>
+            <span class="panel-count">1 of 13 reviewed</span>
+          </div>
+          <span class="panel-count">Sorted by lowest support first</span>
+        </div>
+
+        <div class="claim-list">
+          <!-- resolved -->
+          <div class="claim resolved">
+            <div class="claim-body">
+              <p class="claim-id">Claim c_1041 · accepted</p>
+              <p class="claim-text">"Existentialism holds that existence precedes essence."</p>
+              <blockquote class="claim-src"><span class="q">"…the human being first exists, encounters himself, and only afterwards defines himself."</span><span class="cite">Existentialism — Stanford Encyclopedia · chunk 12</span></blockquote>
+            </div>
+            <div class="verdicts"><span class="verdict-done">✓ Accepted</span></div>
+          </div>
+
+          <!-- saving -->
+          <div class="claim saving">
+            <div class="claim-body">
+              <p class="claim-id">Claim c_1042 · flagged: weak support</p>
+              <p class="claim-text">"Sartre argued that radical freedom entails total responsibility for the world."</p>
+              <blockquote class="claim-src"><span class="q">"…condemned to be free; because once thrown into the world, he is responsible for everything he does."</span><span class="cite">Existentialism — Stanford Encyclopedia · chunk 31</span></blockquote>
+            </div>
+            <div class="verdicts"><span class="verdict-saving"><span class="saving-dot"></span>Saving… → Weak</span></div>
+          </div>
+
+          <!-- open -->
+          <div class="claim">
+            <div class="claim-body">
+              <p class="claim-id">Claim c_1043 · flagged: weak support</p>
+              <p class="claim-text">"Camus classified the absurd as a strict logical contradiction."</p>
+              <blockquote class="claim-src"><span class="q">"The absurd is born of this confrontation between the human need and the unreasonable silence of the world."</span><span class="cite">Acme handbook · chunk 84</span></blockquote>
+            </div>
+            <div class="verdicts">
+              <button type="button" class="verdict a"><span class="key">A</span>Accept</button>
+              <button type="button" class="verdict w"><span class="key">W</span>Weak</button>
+              <button type="button" class="verdict u"><span class="key">U</span>Unsupported</button>
+            </div>
+          </div>
+
+          <!-- open -->
+          <div class="claim">
+            <div class="claim-body">
+              <p class="claim-id">Claim c_1044 · flagged: no source match</p>
+              <p class="claim-text">"Phenomenology was founded by Heidegger in 1927."</p>
+              <blockquote class="claim-src"><span class="q">No supporting passage was found in the cited document for this claim.</span><span class="cite">Acme handbook · no chunk matched</span></blockquote>
+            </div>
+            <div class="verdicts">
+              <button type="button" class="verdict a"><span class="key">A</span>Accept</button>
+              <button type="button" class="verdict w"><span class="key">W</span>Weak</button>
+              <button type="button" class="verdict u"><span class="key">U</span>Unsupported</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- end state -->
+        <p class="sec-label" style="margin-top:24px;">End state — when the queue clears</p>
+        <div class="review-complete">
+          <span class="success-glyph">✓</span>
+          <div>
+            <h2 class="rc-title">0 left — review complete</h2>
+            <p class="rc-sub">Every flagged claim has a verdict. The spine advances to ⑤ Go live.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ SCREEN 6 · GO LIVE ════════════════════════ -->
+<div class="frame" style="position:absolute; left:7080px; top:100px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Screen 06</span>
+      <span class="name">Go Live — turn the graph on (MCP)</span>
+    </div>
+    <p class="sub">Stage ⑤ turns on the <b>graph itself</b> — published as a live MCP server + query endpoint for your app or agent. <b>Gateway routes are already live automatically</b>, so this is never about publishing routes. One path: <b>[ TURN GRAPH ON → ]</b>, then how to consume it.</p>
+  </div>
+
+  <div class="screen" data-screen-label="Screen 06 — Go Live">
+    <aside class="sidebar">
+      <div class="side-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="134" height="29" fill="none" role="img" aria-label="Restormel">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white)" stroke="var(--brut-ink)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="2" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink)" />
+          <text x="76" y="43" fill="var(--brut-ink)" font-family="var(--brut-font)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue)" stroke="var(--brut-ink)" stroke-width="1" />
+        </svg>
+      </div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Dashboard</a>
+        <a href="#"><span class="tick"></span>Routes</a>
+        <a href="#"><span class="tick"></span>Keys</a>
+        <a href="#" class="active"><span class="tick"></span>Connect</a>
+        <a href="#"><span class="tick"></span>Records</a>
+        <a href="#"><span class="tick"></span>Usage</a>
+      </nav>
+      <div class="nav-spacer"></div>
+      <div class="nav-divider"></div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Docs</a>
+        <a href="#"><span class="tick"></span>Settings</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="topbar">
+        <div class="workspace"><span>Acme Prod</span><span class="sep">/</span><span>connect</span><span class="sep">/</span><span>go live</span></div>
+        <div class="topbar-right"><div class="avatar">AM</div></div>
+      </div>
+
+      <div class="main">
+        <header class="page-header">
+          <div>
+            <span class="kicker">Stage 5 — Go live</span>
+            <h1 class="page-title">Go live</h1>
+            <p class="page-desc">Your graph is verified and reviewed. Turn it on as a live <b>MCP server + query endpoint</b> — one click. Your gateway routes are already live and managed for you.</p>
+          </div>
+        </header>
+
+        <!-- SPINE (⑤ active) -->
+        <div class="spine-wrap">
+          <div class="spine">
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Connect</span></div>
+              <p class="tile-sub">Store · provider · routes</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Ingest</span></div>
+              <p class="tile-sub">Run on your documents</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Make ready</span></div>
+              <p class="tile-sub">Link · embed · validate</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Review</span></div>
+              <p class="tile-sub">Triage flagged claims</p>
+              <div class="tile-state"><span class="tchip done">✓ 0 left</span></div>
+            </div>
+            <div class="tile active">
+              <div class="tile-top"><span class="tile-num">5</span><span class="tile-name">Go live</span></div>
+              <p class="tile-sub">Turn the graph on</p>
+              <div class="tile-state"><span class="tchip here">▸ You are here</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- publish card -->
+        <p class="routes-auto-note">✓ Your gateway routes are already live and managed automatically — <b>nothing to publish there</b>. Go Live turns on the graph.</p>
+        <div class="publish-card">
+          <div class="publish-grid">
+            <div>
+              <p class="publish-eyebrow">Recommended production setup</p>
+              <h2 class="publish-title">Turn your<br />graph on</h2>
+              <p class="publish-desc">Publishes your verified graph as a live <b>MCP server</b> and query endpoint your app, agent, or CLI can consume. Recommended defaults — tune later, nothing blocks going live.</p>
+              <a class="btn-publish" href="#">Turn graph on →</a>
+            </div>
+            <div class="cov">
+              <div class="cov-head">What goes live · 3 surfaces</div>
+              <ul class="cov-cells">
+                <li class="cov-cell"><span class="cov-stage">MCP server</span><span class="cov-mark"><span class="sq"></span>Goes live</span></li>
+                <li class="cov-cell"><span class="cov-stage">Graph query API</span><span class="cov-mark"><span class="sq"></span>Goes live</span></li>
+                <li class="cov-cell"><span class="cov-stage">Semantic retrieval</span><span class="cov-mark"><span class="sq"></span>Goes live</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- advanced (demoted) -->
+        <details class="advanced">
+          <summary><span class="chev">▸</span>Advanced — graph serving options</summary>
+          <div class="adv-body">
+            Recommended defaults suit most workspaces. For fine control you can set who can reach the graph and how it answers — none of it blocks going live.
+            <div class="adv-steps">
+              <span class="adv-step">visibility</span><span class="adv-step">rate limit</span><span class="adv-step">retrieval model</span><span class="adv-step">answer citations</span><span class="adv-step">embedding refresh</span>
+            </div>
+          </div>
+        </details>
+
+        <!-- after publish: LIVE -->
+        <p class="sec-label">After it's on — the graph is live</p>
+        <div class="live-confirm">
+          <span class="live-dot-lg"></span>
+          <h2 class="live-title">Graph live</h2>
+          <span class="readiness-status readiness-status--ok" style="margin-left:4px;">MCP + query API live · Jun 27, 2:31 PM</span>
+        </div>
+        <p class="consume-label">How to consume it</p>
+        <div class="code-panel">
+          <span class="ln"><span class="c"># Connect an agent over MCP</span></span>
+          <span class="ln"><span class="k">mcp</span>   <span class="v">https://mcp.restormel.dev/acme-prod</span></span>
+          <span class="ln"> </span>
+          <span class="ln"><span class="c"># …or query the graph directly</span></span>
+          <span class="ln"><span class="k">POST</span>  <span class="v">https://api.restormel.dev/v1/graph/query</span></span>
+          <span class="ln"><span class="k">Authorization</span>: Bearer <span class="a">rk_live_••••a91f</span></span>
+          <span class="ln"> </span>
+          <span class="ln">{ <span class="k">"q"</span>: <span class="v">"what is existentialism?"</span>, <span class="k">"graph"</span>: <span class="v">"acme-prod"</span> }</span>
+        </div>
+
+        <p class="footer-link"><a href="#">Run history &amp; rollback →</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

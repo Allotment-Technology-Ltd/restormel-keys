@@ -3,12 +3,14 @@ id: REC-ADR-015
 title: "Model choice happens at ingest, never retroactively"
 class: decision
 owner: founder
-status: draft
+status: approved
 classification: internal
 control-tier: 1
 created: 2026-06-27
 last-reviewed: 2026-06-27
 review-interval: P12M
+approved-by: founder
+approved-on: 2026-06-27
 retention: permanent
 related: [REC-ADR-013, REC-ADR-014, REC-ADR-016, REC-ADR-017, REC-ADR-018, REC-ADR-019]
 ---
@@ -16,6 +18,8 @@ related: [REC-ADR-013, REC-ADR-014, REC-ADR-016, REC-ADR-017, REC-ADR-018, REC-A
 # ADR: Model choice happens at ingest, never retroactively
 
 ## Status
+
+**Approved as the product direction — founder steer, 2026-06-27:** the Claude Design onboarding handoff is the hard-won, iterative *direction of travel for the product — stick as close to it as possible*. This record’s decision stands as approved; the capture note below is retained for context, and faithful-realisation tensions (e.g. trust-meter/EBV honesty, M3/M4 backend) are tracked in the RES-113 review, not in this decision.
 
 **Draft — design intent captured from the onboarding handoff, pending product confirmation.**
 This ADR records a design decision lifted from the Restormel onboarding design capture; it does
@@ -82,15 +86,15 @@ Concretely:
 
 ## Source artefact
 
-- **Primary design:** `design_handoff_restormel_onboarding/designs/M1 Add Models.html` — the
+- **Primary design:** `docs/design/onboarding-handoff/designs/M1 Add Models.html` — the
   "Advanced: choose a model per stage" disclosure inside the ingest step, with state A (nothing
   added; two hard requirements, one key field, recommendation teaser) and state B (mixed providers,
   catalogue revealed, validation flagged as a non-blocking upgrade).
-- **Screenshot:** `design_handoff_restormel_onboarding/screenshots/03-m1-add-models.png`.
-- **Forward-looking production-keys framing:** `design_handoff_restormel_onboarding/designs/M3
+- **Screenshot:** `docs/design/onboarding-handoff/screenshots/03-m1-add-models.png`.
+- **Forward-looking production-keys framing:** `docs/design/onboarding-handoff/designs/M3
   Flow.html` (the "Keys" step — production keys framed as what the models run on, not a retro
   table).
-- **Build instruction it grounds:** `design_handoff_restormel_onboarding/07_PROMPTS.md`, Prompt 4
+- **Build instruction it grounds:** `docs/design/onboarding-handoff/07_PROMPTS.md`, Prompt 4
   ("models are chosen HERE, never retroactively").
 - **Reasoning docs:** `01_CONCEPT.md` §5.1 (lesson 1, "order config before the work it
   configures"), reinforced by §3 (Advanced persona, advanced disclosures open by default) and §5.2

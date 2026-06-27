@@ -3,12 +3,14 @@ id: REC-ADR-019
 title: "Plan A (guided journey) is the MVP; Plan B (Autopilot) is an out-of-scope north star"
 class: decision
 owner: founder
-status: draft
+status: approved
 classification: internal
 control-tier: 1
 created: 2026-06-27
 last-reviewed: 2026-06-27
 review-interval: P12M
+approved-by: founder
+approved-on: 2026-06-27
 retention: permanent
 related: [REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-ADR-018]
 ---
@@ -16,6 +18,8 @@ related: [REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-A
 # ADR: Plan A (guided journey) is the MVP; Plan B (Autopilot) is an out-of-scope north star
 
 ## Status
+
+**Approved as the product direction — founder steer, 2026-06-27:** the Claude Design onboarding handoff is the hard-won, iterative *direction of travel for the product — stick as close to it as possible*. This record’s decision stands as approved; the capture note below is retained for context, and faithful-realisation tensions (e.g. trust-meter/EBV honesty, M3/M4 backend) are tracked in the RES-113 review, not in this decision.
 
 **Draft** — design intent captured from the Restormel onboarding design handoff, pending product
 confirmation. This ADR records a design decision; it does not authorise the build. Tracked under
@@ -75,10 +79,10 @@ deliverable. **Do not implement Plan B in this build.**
 
 ## Source artefact
 
-- **Design:** `design_handoff_restormel_onboarding/designs/Plan B - Autopilot.html`
+- **Design:** `docs/design/onboarding-handoff/designs/Plan B - Autopilot.html`
   (the annotated Autopilot concept walkthrough and the A/B contrast table). Plan A is specified by
   the rest of the bundle — canonically `designs/Restormel Prototype.html`.
-- **Screenshot:** `design_handoff_restormel_onboarding/screenshots/15-plan-b-autopilot.png`.
+- **Screenshot:** `docs/design/onboarding-handoff/screenshots/15-plan-b-autopilot.png`.
 - **Docs:** `01_CONCEPT.md` §7 ("Plan A vs Plan B — do not build B yet") and `08_ARTEFACTS.md` §E
   ("The alternative bet — captured, not built"), plus the provenance map entry "Plan A is MVP;
   Autopilot is a north star → `Plan B - Autopilot.html` → `01_CONCEPT.md` §7".

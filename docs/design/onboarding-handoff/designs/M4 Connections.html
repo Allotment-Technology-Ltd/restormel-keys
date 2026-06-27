@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — M4 · Connections</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root { --teal-ink:#1c7c72; --hairline:#d8cfb0; }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; color: #4a4538; max-width: 72ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+  .arch { margin: 9px 0 0; font-family: var(--font-mono); font-size: 11px; color: #5a5446; line-height: 1.65; max-width: 72ch; }
+  .arch .t { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #221f18; }
+  .arch .aha { color: var(--teal-ink); }
+
+  .scr { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); overflow: hidden; }
+  .led-strip { display: flex; border-bottom: 2px solid var(--color-ink); background: var(--color-surface); }
+  .led-cell { flex: 1; padding: 9px 12px; border-right: 1.5px solid var(--hairline); display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .led-cell:last-child { border-right: none; }
+  .led-cell .d { width: 16px; height: 16px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-size: 9px; flex: 0 0 auto; }
+  .led-cell.done { color: var(--color-ink); } .led-cell.done .d { background: var(--signal-teal); }
+  .led-cell.now { color: var(--color-ink); background: color-mix(in oklab, var(--color-yellow) 22%, var(--color-surface)); } .led-cell.now .d { background: var(--color-yellow); }
+
+  .body { padding: 22px 26px 26px; }
+  .crumb { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-ink-faint); margin: 0 0 14px; }
+  .crumb a { color: var(--teal-ink); text-decoration: none; }
+  .crumb .sep { color: var(--color-ink-faint); } .crumb .here { color: var(--color-ink); }
+  .h-eyebrow { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 9px; }
+  .h-title { font-family: var(--font-display); font-weight: 900; font-size: 36px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 10px; }
+  .h-desc { font-family: var(--font-body); font-size: 14px; line-height: 1.55; color: var(--color-ink-muted); margin: 0 0 20px; max-width: 58ch; }
+  .h-desc b { color: var(--color-ink); font-weight: 600; }
+
+  .sec-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 2px solid var(--color-ink); padding-bottom: 8px; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; }
+  .sec-h .hint { font-weight: 400; font-size: 10px; color: var(--color-ink-faint); text-transform: none; letter-spacing: 0; }
+
+  /* type rows (empty-state entry) */
+  .types { display: flex; flex-direction: column; gap: 10px; }
+  .type-row { display: grid; grid-template-columns: 44px 1fr auto auto; gap: 14px; align-items: center; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 13px 16px; cursor: pointer; }
+  .type-row:hover { background: var(--color-yellow); }
+  .tbadge { width: 44px; height: 44px; border: 2px solid var(--color-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 900; font-size: 20px; background: var(--color-bg); }
+  .type-row:hover .tbadge { background: var(--color-surface); }
+  .tbadge svg { width: 23px; height: 23px; } .cbadge svg { width: 21px; height: 21px; }
+  .tg { font-family: var(--font-display); font-weight: 900; font-size: 21px; text-transform: uppercase; line-height: 1; }
+  .td { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-muted); margin-top: 4px; line-height: 1.4; }
+  .td .whatlink { color: var(--teal-ink); text-decoration: underline; font-weight: 700; }
+  .tk { font-family: var(--font-mono); font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1.5px solid var(--color-ink); padding: 3px 7px; background: var(--color-bg); white-space: nowrap; }
+  .type-row:hover .tk { background: var(--color-surface); }
+  .go { font-family: var(--font-mono); font-weight: 700; font-size: 17px; }
+
+  /* wizard */
+  .wiz { display: flex; align-items: stretch; border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); margin-bottom: 20px; }
+  .wstep { flex: 1; padding: 11px 14px; border-right: 2px solid var(--color-ink); font-family: var(--font-mono); display: flex; align-items: center; gap: 10px; background: var(--color-surface); }
+  .wstep:last-child { border-right: none; }
+  .wstep.done { background: color-mix(in oklab, var(--signal-teal) 14%, var(--color-surface)); }
+  .wstep.now { background: var(--color-yellow); }
+  .wstep .n { width: 21px; height: 21px; border: 2px solid var(--color-ink); display: grid; place-items: center; font-size: 10px; font-weight: 700; flex: 0 0 auto; background: var(--color-bg); }
+  .wstep.done .n { background: var(--signal-teal); } .wstep.now .n { background: var(--color-surface); }
+  .wstep .wl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.2; }
+  .wstep .wv { font-size: 9px; color: var(--color-ink-faint); font-weight: 400; margin-top: 2px; }
+  .wstep.now .wv, .wstep.done .wv { color: var(--color-ink-muted); }
+
+  .wlayout { display: grid; grid-template-columns: 1fr 264px; gap: 18px; }
+  .acc-stack { display: flex; flex-direction: column; gap: 12px; }
+  .acc { display: grid; grid-template-columns: auto 1fr; gap: 11px; border: 2px solid var(--color-ink); background: var(--color-bg); padding: 14px 15px; cursor: pointer; }
+  .acc.on { background: color-mix(in oklab, var(--signal-teal) 12%, var(--color-surface)); box-shadow: var(--shadow-sm); }
+  .acc .rd { width: 18px; height: 18px; border-radius: 999px; border: 2px solid var(--color-ink); margin-top: 2px; display: grid; place-items: center; flex: 0 0 auto; }
+  .acc.on .rd { background: var(--signal-teal); } .acc.on .rd::after { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--color-ink); }
+  .acc .at { font-family: var(--font-display); font-weight: 900; font-size: 19px; text-transform: uppercase; line-height: 1; }
+  .acc .ak { display: inline-block; margin-top: 6px; font-family: var(--font-mono); font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; border: 1.5px solid var(--color-ink); padding: 2px 6px; }
+  .acc.on .ak { background: var(--signal-teal); }
+  .acc .ad { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-muted); margin-top: 8px; line-height: 1.5; }
+
+  .note { display: flex; gap: 10px; border: 2px solid var(--color-ink); border-left: 8px solid var(--color-yellow); background: color-mix(in oklab, var(--color-yellow) 12%, var(--color-surface)); padding: 12px 14px; font-family: var(--font-mono); font-size: 11px; line-height: 1.55; margin-top: 14px; }
+  .note b { color: var(--color-ink); }
+
+  .preview { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 15px 16px; align-self: start; }
+  .preview .pt { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ink-faint); border-bottom: 2px solid var(--color-ink); padding-bottom: 8px; margin-bottom: 4px; }
+  .prow { display: flex; justify-content: space-between; gap: 10px; font-family: var(--font-mono); font-size: 11px; padding: 9px 0; border-bottom: 1.5px solid var(--hairline); }
+  .prow:last-child { border-bottom: none; }
+  .prow .pk { color: var(--color-ink-faint); text-transform: uppercase; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
+  .prow .pv { font-weight: 700; color: var(--color-ink); text-align: right; }
+  .prow.pending .pv { color: var(--color-ink-faint); font-weight: 400; font-style: italic; }
+
+  /* detail: code + caps (reused vocabulary) */
+  .ok-banner { display: flex; align-items: center; gap: 12px; border: 2px solid var(--color-ink); border-left: 8px solid var(--signal-teal); background: color-mix(in oklab, var(--signal-teal) 10%, var(--color-surface)); padding: 13px 16px; margin-bottom: 18px; }
+  .ok-banner .dot { width: 11px; height: 11px; border-radius: 999px; background: var(--signal-teal); border: 1.5px solid var(--color-ink); flex: 0 0 auto; box-shadow: 0 0 0 4px color-mix(in oklab, var(--signal-teal) 30%, transparent); }
+  .ok-banner .txt { font-family: var(--font-mono); font-size: 12px; line-height: 1.5; } .ok-banner .txt b { color: var(--color-ink); }
+  .ok-banner .acc-badge { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border: 2px solid var(--color-ink); background: var(--color-surface); padding: 6px 10px; white-space: nowrap; }
+  .ok-banner .acc-badge a { color: var(--teal-ink); text-decoration: underline; }
+  .panel { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 16px; margin-bottom: 18px; }
+  .ep-row { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+  .ep-row .lab { font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ink-faint); flex: 0 0 64px; }
+  .ep-row .url { flex: 1; border: 2px solid var(--color-ink); background: var(--color-bg); padding: 9px 11px; font-family: var(--font-mono); font-size: 11.5px; color: var(--color-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ep-row .copy { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: 2px 2px 0 var(--color-ink); font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 9px 12px; cursor: pointer; }
+  .code { background: var(--code-bg); border: 2px solid var(--color-ink); padding: 14px 15px; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.7; color: var(--code-fg); overflow-x: auto; }
+  .code .k { color: var(--code-keyword); } .code .s { color: var(--code-value); } .code .c { color: var(--code-comment); } .code .p { color: #b8b0a4; }
+  .cap-list { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); }
+  .cap { display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1.5px solid var(--hairline); }
+  .cap:last-child { border-bottom: none; }
+  .cap .ci { width: 22px; height: 22px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-size: 11px; background: var(--color-bg); }
+  .cap .cn { font-family: var(--font-display); font-weight: 900; font-size: 17px; text-transform: uppercase; line-height: 1.05; }
+  .cap .cd { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-muted); margin-top: 2px; }
+  .cap .mc { font-family: var(--font-mono); font-size: 9px; font-weight: 700; color: var(--color-ink-faint); border: 1.5px solid var(--hairline); padding: 3px 7px; white-space: nowrap; }
+  .cap.write .ci { background: var(--signal-teal); }
+  .cap.routes .ci { background: var(--color-yellow); }
+  .cap .rchips { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+  .cap .rchips span { font-family: var(--font-mono); font-size: 8.5px; font-weight: 700; text-transform: uppercase; border: 1.5px solid var(--color-ink); background: var(--color-bg); padding: 2px 6px; }
+
+  .mgmt { display: flex; align-items: center; gap: 10px; border-top: 2px solid var(--color-ink); padding-top: 16px; margin-top: 18px; flex-wrap: wrap; }
+  .mbtn { display: inline-flex; align-items: center; gap: 7px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: 2px 2px 0 var(--color-ink); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 10px 13px; cursor: pointer; text-decoration: none; color: var(--color-ink); }
+  .mbtn.danger { color: var(--brut-coral); }
+  .mgmt .home { margin-left: auto; color: var(--teal-ink); }
+
+  /* connections list (manager) */
+  .conn-list { display: flex; flex-direction: column; gap: 10px; }
+  .conn-row { display: grid; grid-template-columns: 40px 1fr auto auto auto; gap: 14px; align-items: center; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 12px 15px; }
+  .conn-row .cbadge { width: 40px; height: 40px; border: 2px solid var(--color-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 900; font-size: 17px; background: var(--color-bg); }
+  .conn-row .cmain .cn { font-family: var(--font-display); font-weight: 900; font-size: 18px; text-transform: uppercase; line-height: 1; }
+  .conn-row .cmain .ct { font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-faint); margin-left: 8px; }
+  .conn-row .cmeta { font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-faint); margin-top: 4px; } .conn-row .cmeta b { color: var(--color-ink); }
+  .acl { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border: 1.5px solid var(--color-ink); padding: 5px 8px; white-space: nowrap; }
+  .acl.ro { background: var(--color-bg); } .acl.rw { background: color-mix(in oklab, var(--signal-teal) 20%, var(--color-surface)); }
+  .clive { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--teal-ink); white-space: nowrap; }
+  .clive .ld { width: 8px; height: 8px; border-radius: 999px; background: var(--signal-teal); border: 1.5px solid var(--color-ink); }
+  .row-acts { display: flex; gap: 6px; }
+  .ibtn { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: 2px 2px 0 var(--color-ink); font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 7px 9px; cursor: pointer; color: var(--color-ink); }
+  .ibtn.danger { color: var(--brut-coral); }
+
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 2px solid var(--color-ink); padding-top: 16px; margin-top: 20px; }
+  .foot-note { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); max-width: 46ch; line-height: 1.45; } .foot-note b { color: var(--color-ink); }
+  .foot-actions { display: flex; gap: 10px; align-items: center; }
+  .btn-cont { display: inline-flex; align-items: center; gap: 9px; background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); font-family: var(--font-mono); font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 12px 20px; text-decoration: none; white-space: nowrap; cursor: pointer; }
+  .btn-back { display: inline-flex; align-items: center; gap: 7px; background: var(--color-surface); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 11px 15px; text-decoration: none; white-space: nowrap; cursor: pointer; }
+  .new-btn { display: inline-flex; align-items: center; gap: 7px; background: var(--color-yellow); border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 12px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- ════════════ FRAME 1 — FIRST CONNECTION (empty / type chooser) ════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:720px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M4 · first run</span><span class="name">Connect your app — one simple choice</span></div>
+    <p class="sub">The ruthlessly simple first path. No access toggles, no tabs, no config yet — just <b>“what are you building?”</b>. One tap starts a short wizard. The goal is a single aha: <b>my app can reach my graph</b>. Everything else (more connections, access, keys) comes after.</p>
+    <p class="arch"><span class="t">AHA-min:</span> <span class="aha">my app answers from my graph.</span> · <span class="t">Initial:</span> the widget — one snippet, zero decisions. · <span class="t">Advanced:</span> MCP / API / SDK / GraphQL, as many as they need.</p>
+  </div>
+  <div class="scr" data-screen-label="M4 — First connection (type chooser)">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell done"><span class="d">✓</span>M2</div>
+      <div class="led-cell done"><span class="d">✓</span>M3</div>
+      <div class="led-cell now"><span class="d">▸</span>M4 · Connect</div>
+    </div>
+    <div class="body">
+      <div class="crumb"><a href="#">← Graph home</a><span class="sep">/</span><span class="here">Connect your app</span></div>
+      <p class="h-eyebrow">M4 · ship it</p>
+      <h1 class="h-title">Connect your app</h1>
+      <p class="h-desc">Your graph is ready. Let your app, agent, or site <b>ask it questions</b> and answer from your own knowledge. Start with one — add as many as you need.</p>
+
+      <div class="sec-h">What are you building?</div>
+      <div class="types">
+        <div class="type-row">
+          <span class="tbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-10.6 6.8L4 19.5l1.3-4A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8.5 11.6h.01M12 11.6h.01M15.5 11.6h.01"/></svg></span>
+          <div><div class="tg">Chat widget</div><div class="td">A ready-made chat box for your site. Paste one snippet.</div></div>
+          <span class="tk">No code</span><span class="go">→</span>
+        </div>
+        <div class="type-row">
+          <span class="tbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v5M15 2.5v5"/><path d="M7 7.5h10v3a5 5 0 0 1-10 0v-3Z"/><path d="M12 15.5v6"/></svg></span>
+          <div><div class="tg">MCP server</div><div class="td">Plug into Claude, Cursor, or any AI agent. <span class="whatlink">What's MCP?</span></div></div>
+          <span class="tk">For agents</span><span class="go">→</span>
+        </div>
+        <div class="type-row">
+          <span class="tbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5h13M14 5.5l3 3-3 3"/><path d="M20 15.5H7M10 12.5l-3 3 3 3"/></svg></span>
+          <div><div class="tg">REST API</div><div class="td">Call your graph over HTTP from any app, any language.</div></div>
+          <span class="tk">Any app</span><span class="go">→</span>
+        </div>
+        <div class="type-row">
+          <span class="tbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 6 3 12l5.5 6M15.5 6 21 12l-5.5 6"/></svg></span>
+          <div><div class="tg">SDK</div><div class="td">Typed client libraries for JavaScript &amp; Python.</div></div>
+          <span class="tk">JS · Python</span><span class="go">→</span>
+        </div>
+        <div class="type-row">
+          <span class="tbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.3"/><circle cx="5" cy="18.5" r="2.3"/><circle cx="19" cy="18.5" r="2.3"/><path d="M10.6 6.9 6.4 16.4M13.4 6.9 17.6 16.4M7.3 18.5h9.4"/></svg></span>
+          <div><div class="tg">GraphQL</div><div class="td">Query nodes, links, and clusters directly.</div></div>
+          <span class="tk">Advanced</span><span class="go">→</span>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note">Not sure? <b>The chat widget</b> is the fastest way to see it work — no backend.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ FRAME 2 — CREATE WIZARD (gradual build-up) ════════════ -->
+<div class="frame" style="position:absolute; left:880px; top:80px; width:840px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">wizard</span><span class="name">Create connection — builds up one result, step by step</span></div>
+    <p class="sub">This is the merge of the old two screens. Type → access → name, <b>one decision at a time</b>, with a live preview that fills in as you go. Access only appears for types where it means something (not the widget). The note answers your multi-MCP point directly.</p>
+    <p class="arch"><span class="t">Ruthless simplicity:</span> <span class="aha">three short steps, skippable defaults, nothing asked twice.</span></p>
+  </div>
+  <div class="scr" data-screen-label="M4 — Create wizard">
+    <div class="body" style="padding-top:24px;">
+      <div class="crumb"><a href="#">← Connections</a><span class="sep">/</span><span class="here">New connection</span></div>
+      <h1 class="h-title" style="margin-bottom:18px;">New connection</h1>
+
+      <div class="wiz">
+        <div class="wstep done"><span class="n">✓</span><div><div class="wl">1 · Type</div><div class="wv">MCP server</div></div></div>
+        <div class="wstep now"><span class="n">2</span><div><div class="wl">2 · Access</div><div class="wv">choose now</div></div></div>
+        <div class="wstep"><span class="n">3</span><div><div class="wl">3 · Name &amp; create</div><div class="wv">last step</div></div></div>
+      </div>
+
+      <div class="wlayout">
+        <div>
+          <div class="sec-h">What can this connection do?</div>
+          <div class="acc-stack">
+            <div class="acc on">
+              <span class="rd"></span>
+              <div><div class="at">Looks up</div><span class="ak">Read-only</span><div class="ad">The agent asks questions and pulls back ideas. Nothing in the graph changes. The safe default.</div></div>
+            </div>
+            <div class="acc">
+              <span class="rd"></span>
+              <div><div class="at">Looks up &amp; contributes</div><span class="ak">Read + write</span><div class="ad">The agent can also add and edit ideas as it works — so the graph grows over time.</div></div>
+            </div>
+          </div>
+          <div class="note"><span>◆</span><span>Want <b>one that looks up</b> and <b>one that also contributes</b>? Make two — a read-only and a read+write MCP are just <b>separate connections</b>, each with its own key.</span></div>
+        </div>
+
+        <div class="preview">
+          <div class="pt">Your connection so far</div>
+          <div class="prow"><span class="pk">Type</span><span class="pv">MCP server</span></div>
+          <div class="prow"><span class="pk">Access</span><span class="pv">Read-only</span></div>
+          <div class="prow pending"><span class="pk">Name</span><span class="pv">next step</span></div>
+          <div class="prow pending"><span class="pk">Endpoint</span><span class="pv">on create</span></div>
+          <div class="prow pending"><span class="pk">Key</span><span class="pv">on create</span></div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <a class="btn-back" href="#">← Type</a>
+        <a class="btn-cont" href="#">Continue → Name</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ FRAME 3 — CONNECTION DETAIL (one connection) ════════════ -->
+<div class="frame" style="position:absolute; left:1800px; top:80px; width:820px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">detail</span><span class="name">One connection — created, usable, manageable</span></div>
+    <p class="sub">The result of the wizard, and the page you return to for <b>this</b> connection. Endpoint + copy-paste config, the human-named capabilities it grants, and a management bar: copy, rotate key, change access, delete. Self-contained — deleting this leaves your other connections alone.</p>
+    <p class="arch"><span class="t">Re-entry:</span> Connections → agent-readonly. <span class="t">Redoable:</span> rotate · change access · delete — scoped to this one connection.</p>
+  </div>
+  <div class="scr" data-screen-label="M4 — Connection detail">
+    <div class="body" style="padding-top:24px;">
+      <div class="crumb"><a href="#">← Connections</a><span class="sep">/</span><span class="here">agent-readonly</span></div>
+      <p class="h-eyebrow">MCP server · read-only</p>
+      <h1 class="h-title" style="margin-bottom:14px;">agent-readonly</h1>
+
+      <div class="ok-banner">
+        <span class="dot"></span>
+        <span class="txt"><b>Live.</b> Your agent can reach acme-graph — 1,204 ideas, answered with citations.</span>
+        <span class="acc-badge">Read-only · <a href="#">change</a></span>
+      </div>
+
+      <div class="panel">
+        <div class="ep-row">
+          <span class="lab">Endpoint</span>
+          <span class="url">https://mcp.restormel.ai/acme-graph/agent-readonly</span>
+          <button type="button" class="copy">Copy</button>
+        </div>
+        <div class="code"><span class="c">// add to your agent's MCP config</span><br />
+<span class="p">{</span> <span class="k">"mcpServers"</span><span class="p">: {</span><br />
+&nbsp;&nbsp;<span class="k">"acme-graph"</span><span class="p">: {</span> <span class="k">"url"</span><span class="p">:</span> <span class="s">"https://mcp.restormel.ai/acme-graph/agent-readonly"</span><span class="p">,</span><br />
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="k">"headers"</span><span class="p">: {</span> <span class="k">"Authorization"</span><span class="p">:</span> <span class="s">"Bearer rk_live_••••3f9a"</span> <span class="p">} } } }</span></div>
+      </div>
+
+      <div class="sec-h">What this connection can do <span class="hint">human name · what it does · tool name</span></div>
+      <div class="cap-list">
+        <div class="cap">
+          <span class="ci">?</span>
+          <div><div class="cn">Ask a question</div><div class="cd">Natural-language question in → grounded answer + citations out.</div></div>
+          <span class="mc">query_graph</span>
+        </div>
+        <div class="cap">
+          <span class="ci">⌕</span>
+          <div><div class="cn">Search ideas</div><div class="cd">Semantic search — returns the most relevant ideas &amp; passages.</div></div>
+          <span class="mc">retrieve_ideas</span>
+        </div>
+        <div class="cap routes">
+          <span class="ci">★</span>
+          <div><div class="cn">Your routes</div><div class="cd">Named shortcuts you built — one call runs the whole saved query.</div>
+            <div class="rchips"><span>Exec summary</span><span>Customer signal</span></div>
+          </div>
+          <span class="mc">list_routes</span>
+        </div>
+      </div>
+
+      <div class="mgmt">
+        <button type="button" class="mbtn">⟳ Rotate key</button>
+        <button type="button" class="mbtn">⇄ Change access</button>
+        <button type="button" class="mbtn danger">✕ Delete</button>
+        <a href="#" class="mbtn home">← Connections</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ FRAME 4 — CONNECTIONS MANAGER (many, mixed) ════════════ -->
+<div class="frame" style="position:absolute; left:2700px; top:80px; width:800px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">manager</span><span class="name">Connections — many types, many at once</span></div>
+    <p class="sub">The flexibility you asked for, made visible. A widget, two MCPs (<b>one read-only, one read+write</b>), and a REST key — all on the same graph, each created, configured, and deleted on its own. Mirrors the Routes list+create pattern, so it already feels familiar.</p>
+    <p class="arch"><span class="t">Re-entry:</span> Graph home → Connections. <span class="t">Flexible:</span> <span class="aha">add any number, of any type, in any order.</span></p>
+  </div>
+  <div class="scr" data-screen-label="M4 — Connections manager">
+    <div class="body" style="padding-top:24px;">
+      <div class="crumb"><a href="#">← Graph home</a><span class="sep">/</span><span class="here">Connections</span></div>
+      <h1 class="h-title">Connections</h1>
+      <p class="h-desc">Everything connected to <b>acme-graph</b>. Add any number, of any type.</p>
+
+      <div class="sec-h">4 active <button type="button" class="new-btn">+ New connection</button></div>
+      <div class="conn-list">
+        <div class="conn-row">
+          <span class="cbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-10.6 6.8L4 19.5l1.3-4A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8.5 11.6h.01M12 11.6h.01M15.5 11.6h.01"/></svg></span>
+          <div class="cmain"><div><span class="cn">support-site</span><span class="ct">Chat widget</span></div><div class="cmeta">embedded on help.acme.com · <b>2,140</b> chats / wk</div></div>
+          <span class="acl ro">Read-only</span>
+          <span class="clive"><span class="ld"></span>Live</span>
+          <div class="row-acts"><button type="button" class="ibtn">Config</button><button type="button" class="ibtn">Copy</button><button type="button" class="ibtn danger">✕</button></div>
+        </div>
+        <div class="conn-row">
+          <span class="cbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v5M15 2.5v5"/><path d="M7 7.5h10v3a5 5 0 0 1-10 0v-3Z"/><path d="M12 15.5v6"/></svg></span>
+          <div class="cmain"><div><span class="cn">agent-readonly</span><span class="ct">MCP server</span></div><div class="cmeta">looks up · used <b>4m</b> ago</div></div>
+          <span class="acl ro">Read-only</span>
+          <span class="clive"><span class="ld"></span>Live</span>
+          <div class="row-acts"><button type="button" class="ibtn">Config</button><button type="button" class="ibtn">Copy</button><button type="button" class="ibtn danger">✕</button></div>
+        </div>
+        <div class="conn-row">
+          <span class="cbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2.5v5M15 2.5v5"/><path d="M7 7.5h10v3a5 5 0 0 1-10 0v-3Z"/><path d="M12 15.5v6"/></svg></span>
+          <div class="cmain"><div><span class="cn">agent-writer</span><span class="ct">MCP server</span></div><div class="cmeta">looks up &amp; contributes · used <b>1h</b> ago</div></div>
+          <span class="acl rw">Read + write</span>
+          <span class="clive"><span class="ld"></span>Live</span>
+          <div class="row-acts"><button type="button" class="ibtn">Config</button><button type="button" class="ibtn">Copy</button><button type="button" class="ibtn danger">✕</button></div>
+        </div>
+        <div class="conn-row">
+          <span class="cbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5h13M14 5.5l3 3-3 3"/><path d="M20 15.5H7M10 12.5l-3 3 3 3"/></svg></span>
+          <div class="cmain"><div><span class="cn">backend</span><span class="ct">REST API</span></div><div class="cmeta">server-to-server · <b>880</b> calls / wk</div></div>
+          <span class="acl ro">Read-only</span>
+          <span class="clive"><span class="ld"></span>Live</span>
+          <div class="row-acts"><button type="button" class="ibtn">Config</button><button type="button" class="ibtn">Copy</button><button type="button" class="ibtn danger">✕</button></div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note">Each connection has its own key &amp; access. <b>Delete one</b> and the rest keep working.</span>
+        <div class="foot-actions">
+          <a class="btn-cont" href="#">+ New connection</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -3,12 +3,14 @@ id: REC-ADR-016
 title: "Honest, visible pipeline states (name the failing stage)"
 class: decision
 owner: founder
-status: draft
+status: approved
 classification: internal
 control-tier: 1
 created: 2026-06-27
 last-reviewed: 2026-06-27
 review-interval: P12M
+approved-by: founder
+approved-on: 2026-06-27
 retention: permanent
 related: [REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-017, REC-ADR-018, REC-ADR-019]
 ---
@@ -16,6 +18,8 @@ related: [REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-017, REC-ADR-018, REC-A
 # ADR: Honest, visible pipeline states (name the failing stage)
 
 ## Status
+
+**Approved as the product direction — founder steer, 2026-06-27:** the Claude Design onboarding handoff is the hard-won, iterative *direction of travel for the product — stick as close to it as possible*. This record’s decision stands as approved; the capture note below is retained for context, and faithful-realisation tensions (e.g. trust-meter/EBV honesty, M3/M4 backend) are tracked in the RES-113 review, not in this decision.
 
 **Draft — design intent captured from the onboarding handoff, pending product confirmation.**
 This record *captures* a design decision made during the Restormel onboarding design session; it
@@ -96,10 +100,10 @@ name that stage.
 
 ## Source artefact
 
-- **Primary mock:** `design_handoff_restormel_onboarding/designs/M1 Flow.html` — the M1 ingest flow,
+- **Primary mock:** `docs/design/onboarding-handoff/designs/M1 Flow.html` — the M1 ingest flow,
   specifically the step-3 **per-stage run console** (the live progress tracker with done/active/
   queued rows and per-stage + overall ETA) and its failure / rate-limit / bad-key edge treatments.
-- **Screenshot:** `design_handoff_restormel_onboarding/screenshots/02-m1-build-flow.png`.
+- **Screenshot:** `docs/design/onboarding-handoff/screenshots/02-m1-build-flow.png`.
 - **Concept doc:** `01_CONCEPT.md` §5 lesson 6 ("Be honest by default, especially under failure").
 - **Artefact guide:** `08_ARTEFACTS.md` §B (`M1 Flow.html` — "the honesty of the run console … is the
   whole point: no fake progress, name the stage that fails") and its provenance map line *"Honest run

@@ -124,7 +124,7 @@ records:
   - id: REC-ADR-013
     title: Onboarding as a learn-by-doing milestone ladder (M0–M4)
     class: decision
-    status: draft
+    status: approved
     classification: internal
     control-tier: 1
     owner: founder
@@ -136,7 +136,7 @@ records:
   - id: REC-ADR-014
     title: "Three-archetype depth model — one spine, opt-in depth"
     class: decision
-    status: draft
+    status: approved
     classification: internal
     control-tier: 1
     owner: founder
@@ -148,7 +148,7 @@ records:
   - id: REC-ADR-015
     title: "Model choice happens at ingest, never retroactively"
     class: decision
-    status: draft
+    status: approved
     classification: internal
     control-tier: 1
     owner: founder
@@ -160,7 +160,7 @@ records:
   - id: REC-ADR-016
     title: "Honest, visible pipeline states (name the failing stage)"
     class: decision
-    status: draft
+    status: approved
     classification: internal
     control-tier: 1
     owner: founder
@@ -172,7 +172,7 @@ records:
   - id: REC-ADR-017
     title: "Non-destructive, reversible store switch (M3)"
     class: decision
-    status: draft
+    status: approved
     classification: internal
     control-tier: 1
     owner: founder
@@ -184,7 +184,7 @@ records:
   - id: REC-ADR-018
     title: "Job-led Connect — one area, many connection shapes"
     class: decision
-    status: draft
+    status: approved
     classification: internal
     control-tier: 1
     owner: founder
@@ -196,7 +196,7 @@ records:
   - id: REC-ADR-019
     title: Plan A (guided journey) is the MVP; Plan B (Autopilot) is an out-of-scope north star
     class: decision
-    status: draft
+    status: approved
     classification: internal
     control-tier: 1
     owner: founder

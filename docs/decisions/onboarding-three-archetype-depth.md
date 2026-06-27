@@ -3,12 +3,14 @@ id: REC-ADR-014
 title: "Three-archetype depth model — one spine, opt-in depth"
 class: decision
 owner: founder
-status: draft
+status: approved
 classification: internal
 control-tier: 1
 created: 2026-06-27
 last-reviewed: 2026-06-27
 review-interval: P12M
+approved-by: founder
+approved-on: 2026-06-27
 retention: permanent
 related: [REC-ADR-013, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-ADR-018, REC-ADR-019]
 ---
@@ -16,6 +18,8 @@ related: [REC-ADR-013, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-ADR-018, REC-A
 # ADR: Three-archetype depth model — one spine, opt-in depth
 
 ## Status
+
+**Approved as the product direction — founder steer, 2026-06-27:** the Claude Design onboarding handoff is the hard-won, iterative *direction of travel for the product — stick as close to it as possible*. This record’s decision stands as approved; the capture note below is retained for context, and faithful-realisation tensions (e.g. trust-meter/EBV honesty, M3/M4 backend) are tracked in the RES-113 review, not in this decision.
 
 **Draft** — design intent captured from the Restormel onboarding design handoff, pending product confirmation. This ADR records a decision reached in the onboarding design session; it is not yet built and not yet approved. Captured against **RES-113** — https://huly.allotmentology.tech/workbench/allotment-pm/tracker/RES-113.
 
@@ -57,10 +61,10 @@ The recurring risk in onboarding is over-serving every user the full depth (whic
 
 ## Source artefact
 
-- **`design_handoff_restormel_onboarding/designs/Archetype Analysis.html`** — the canonical artefact for this decision: the three-archetype definitions, the "three users, one spine" principle, and the **personas × screens matrix** with the yellow minimum-to-aha spine column and M2/M3 marked as opt-in depth. Screenshot: `design_handoff_restormel_onboarding/screenshots/11-archetype-analysis.png`.
-- **`design_handoff_restormel_onboarding/01_CONCEPT.md` §3** ("The three personas") — the path definitions and the design implication that M2/M3 are opt-in depth, build the spine first.
-- **`design_handoff_restormel_onboarding/05_STATE.md` §2** (PATHS) — the `PATHS` map (`initial`/`learning`/`advanced`) that drives every "Next: …" CTA and the primary Home tile.
-- **`design_handoff_restormel_onboarding/08_ARTEFACTS.md` §C** — names `Archetype Analysis.html` as the artefact for the persona model and "the single most important structural rule: build the spine first, layer depth after."
+- **`docs/design/onboarding-handoff/designs/Archetype Analysis.html`** — the canonical artefact for this decision: the three-archetype definitions, the "three users, one spine" principle, and the **personas × screens matrix** with the yellow minimum-to-aha spine column and M2/M3 marked as opt-in depth. Screenshot: `docs/design/onboarding-handoff/screenshots/11-archetype-analysis.png`.
+- **`docs/design/onboarding-handoff/01_CONCEPT.md` §3** ("The three personas") — the path definitions and the design implication that M2/M3 are opt-in depth, build the spine first.
+- **`docs/design/onboarding-handoff/05_STATE.md` §2** (PATHS) — the `PATHS` map (`initial`/`learning`/`advanced`) that drives every "Next: …" CTA and the primary Home tile.
+- **`docs/design/onboarding-handoff/08_ARTEFACTS.md` §C** — names `Archetype Analysis.html` as the artefact for the persona model and "the single most important structural rule: build the spine first, layer depth after."
 
 ## Consequences
 

@@ -3,12 +3,14 @@ id: REC-ADR-018
 title: "Job-led Connect — one area, many connection shapes"
 class: decision
 owner: founder
-status: draft
+status: approved
 classification: internal
 control-tier: 1
 created: 2026-06-27
 last-reviewed: 2026-06-27
 review-interval: P12M
+approved-by: founder
+approved-on: 2026-06-27
 retention: permanent
 related: [REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-ADR-019]
 ---
@@ -17,9 +19,11 @@ related: [REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-017, REC-A
 
 ## Status
 
+**Approved as the product direction — founder steer, 2026-06-27:** the Claude Design onboarding handoff is the hard-won, iterative *direction of travel for the product — stick as close to it as possible*. This record’s decision stands as approved; the capture note below is retained for context, and faithful-realisation tensions (e.g. trust-meter/EBV honesty, M3/M4 backend) are tracked in the RES-113 review, not in this decision.
+
 **Draft — design intent captured from the onboarding handoff, pending product confirmation.**
 This ADR records a design decision surfaced during the Restormel onboarding design session and
-handed off in `design_handoff_restormel_onboarding/`. It captures intent; it does **not**
+handed off in `docs/design/onboarding-handoff/`. It captures intent; it does **not**
 authorise or specify a build. Tracked by **RES-113** —
 https://huly.allotmentology.tech/workbench/allotment-pm/tracker/RES-113.
 
@@ -88,14 +92,14 @@ Within that one area:
 
 ## Source artefact
 
-- `design_handoff_restormel_onboarding/designs/M4 Connect.html` — the first-connection 3-step
+- `docs/design/onboarding-handoff/designs/M4 Connect.html` — the first-connection 3-step
   wizard (Type → Access → Name), live preview panel, type icon cards, plain-language read vs
   read+write. Screenshot: `screenshots/07-m4-connect.png`.
-- `design_handoff_restormel_onboarding/designs/M4 Connections.html` — the connections manager: the
+- `docs/design/onboarding-handoff/designs/M4 Connections.html` — the connections manager: the
   list of many connections (type icon, access badge, endpoint, status), add / configure / delete
   (danger zone), and the connection detail view; canonical source for the icon set. Screenshot:
   `screenshots/08-m4-connections.png`.
-- `design_handoff_restormel_onboarding/designs/Connect Redesign.html` — the "before → after"
+- `docs/design/onboarding-handoff/designs/Connect Redesign.html` — the "before → after"
   redesign study: the consolidation of Prove / Agents / Gateway-keys into the single Connect area
   and the reframing of "publish routes" into letting the graph be asked. Screenshot:
   `screenshots/14-connect-redesign.png`.

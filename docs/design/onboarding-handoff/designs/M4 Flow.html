@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — M4 Flow (ship it)</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root {
+    --hairline:#d8cfb0; --teal-ink:#1c7c72; --amber-fg:#92400e; --bad:#b23b34;
+  }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; color: #4a4538; max-width: 70ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+  .arch { margin: 9px 0 0; font-family: var(--font-mono); font-size: 11px; color: #5a5446; line-height: 1.65; max-width: 70ch; }
+  .arch .t { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #221f18; }
+  .arch .aha { color: var(--teal-ink); }
+
+  .scr { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); overflow: hidden; }
+  .led-strip { display: flex; border-bottom: 2px solid var(--color-ink); background: var(--color-surface); }
+  .led-cell { flex: 1; padding: 9px 12px; border-right: 1.5px solid var(--hairline); display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .led-cell:last-child { border-right: none; }
+  .led-cell .d { width: 16px; height: 16px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-size: 9px; flex: 0 0 auto; }
+  .led-cell.done { color: var(--color-ink); } .led-cell.done .d { background: var(--signal-teal); }
+  .led-cell.now { color: var(--color-ink); background: color-mix(in oklab, var(--color-yellow) 22%, var(--color-surface)); } .led-cell.now .d { background: var(--color-yellow); }
+  .led-cell.live { color: var(--color-ink); background: color-mix(in oklab, var(--signal-teal) 20%, var(--color-surface)); } .led-cell.live .d { background: var(--signal-teal); }
+
+  .body { padding: 24px 26px 26px; }
+  .h-eyebrow { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 9px; }
+  .h-title { font-family: var(--font-display); font-weight: 900; font-size: 34px; line-height: 0.94; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 10px; }
+  .h-desc { font-family: var(--font-body); font-size: 14px; line-height: 1.55; color: var(--color-ink-muted); margin: 0 0 18px; max-width: 54ch; }
+  .h-desc b { color: var(--color-ink); font-weight: 600; }
+
+  .sec-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 2px solid var(--color-ink); padding-bottom: 8px; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; }
+
+  /* ── chat ── */
+  .chat { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 16px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+  .msg { display: flex; flex-direction: column; gap: 4px; max-width: 88%; }
+  .msg .who { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-ink-faint); }
+  .msg.u { align-self: flex-end; align-items: flex-end; }
+  .msg.a { align-self: flex-start; }
+  .bub { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; padding: 11px 14px; border: 2px solid var(--color-ink); }
+  .msg.u .bub { background: var(--color-ink); color: var(--color-bg); }
+  .msg.a .bub { background: var(--color-bg); color: var(--color-ink); }
+  .sup { display: inline-block; transform: translateY(-2px); font-size: 9px; font-weight: 700; line-height: 1; background: var(--signal-teal); color: var(--color-ink); border: 1.5px solid var(--color-ink); padding: 1.5px 4px; margin: 0 1px; }
+  .ground { display: flex; align-items: center; gap: 9px; border: 2px solid var(--color-ink); border-left: 8px solid var(--signal-teal); background: color-mix(in oklab, var(--signal-teal) 10%, var(--color-surface)); padding: 10px 13px; font-family: var(--font-mono); font-size: 11px; line-height: 1.45; }
+  .ground b { color: var(--teal-ink); }
+  .cites { display: flex; flex-direction: column; gap: 6px; }
+  .cite { display: flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-muted); }
+  .cite .n { width: 18px; height: 18px; flex: 0 0 auto; border: 1.5px solid var(--color-ink); background: var(--color-surface); display: grid; place-items: center; font-size: 9px; font-weight: 700; }
+  .cite b { color: var(--color-ink); font-weight: 700; }
+
+  /* ── proof tracker + per-answer verdict ── */
+  .proof { display: flex; align-items: center; gap: 12px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 10px 14px; margin-bottom: 16px; font-family: var(--font-mono); font-size: 11px; }
+  .ptrk { display: flex; gap: 6px; }
+  .pdot { width: 13px; height: 13px; border-radius: 999px; border: 2px solid var(--color-ink); background: var(--color-bg); }
+  .pdot.on { background: var(--signal-teal); }
+  .plbl b { color: var(--color-ink); }
+  .pflag { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 10px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--color-ink); text-decoration: none; border: 2px solid var(--color-ink); border-left: 6px solid var(--bad); background: color-mix(in oklab, var(--bad) 8%, var(--color-bg)); padding: 6px 10px; }
+  .vctl { display: flex; align-items: center; gap: 8px; margin-top: 7px; flex-wrap: wrap; }
+  .vbtn { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; border: 2px solid var(--color-ink); padding: 6px 10px; cursor: pointer; background: var(--color-bg); }
+  .vbtn.solid.on { background: var(--signal-teal); }
+  .vbtn.flag.on { background: var(--bad); color: var(--color-bg); }
+  .vmeta { font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-faint); }
+  .vmeta.flagged { color: var(--bad); font-weight: 700; }
+  .qchips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .qlbl { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-faint); }
+  .qchip { font-family: var(--font-mono); font-size: 11px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: 2px 2px 0 var(--color-ink); padding: 7px 11px; cursor: pointer; }
+  .btn-ghost { display: inline-flex; align-items: center; gap: 9px; background: var(--color-surface); color: var(--color-ink-faint); border: 2px dashed var(--color-ink); font-family: var(--font-mono); font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 12px 18px; text-decoration: none; white-space: nowrap; }
+
+  /* ── publish config ── */
+  .cfg { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 16px; display: flex; flex-direction: column; gap: 15px; margin-bottom: 16px; }
+  .fld { display: flex; flex-direction: column; gap: 6px; }
+  .fld > label { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .fld .in { display: flex; align-items: center; justify-content: space-between; border: 2px solid var(--color-ink); background: var(--color-bg); padding: 10px 12px; font-family: var(--font-mono); font-size: 12px; }
+  .fld .in .edit { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--color-ink-faint); }
+  .seg { display: flex; gap: 0; border: 2px solid var(--color-ink); }
+  .seg .opt { flex: 1; text-align: center; padding: 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; background: var(--color-bg); border-right: 2px solid var(--color-ink); cursor: pointer; }
+  .seg .opt:last-child { border-right: none; }
+  .seg .opt.on { background: var(--color-yellow); }
+  .seg .opt small { display: block; font-weight: 400; font-size: 8.5px; color: var(--color-ink-faint); margin-top: 3px; letter-spacing: 0; }
+  .seg .opt.on small { color: var(--color-ink); }
+  .expose { display: flex; flex-direction: column; gap: 0; border: 2px solid var(--color-ink); }
+  .ex-row { display: flex; align-items: center; gap: 11px; padding: 10px 13px; border-bottom: 1.5px solid var(--hairline); font-family: var(--font-mono); font-size: 11.5px; }
+  .ex-row:last-child { border-bottom: none; }
+  .ex-row .ck { width: 16px; height: 16px; flex: 0 0 auto; border: 1.5px solid var(--color-ink); background: var(--signal-teal); display: grid; place-items: center; font-size: 9px; font-weight: 700; }
+  .ex-row .lbl { font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+  .ex-row .meta { margin-left: auto; color: var(--color-ink-faint); font-size: 10px; }
+
+  /* ── live state ── */
+  .live-banner { display: flex; align-items: center; gap: 12px; border: 3px solid var(--color-ink); background: var(--color-ink); color: var(--color-bg); padding: 14px 16px; margin-bottom: 16px; }
+  .live-dot { width: 11px; height: 11px; border-radius: 999px; background: var(--signal-teal); box-shadow: 0 0 0 3px color-mix(in oklab, var(--signal-teal) 35%, transparent); flex: 0 0 auto; }
+  .live-banner .lt { font-family: var(--font-display); font-weight: 900; font-size: 20px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .live-banner .lm { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: color-mix(in oklab, var(--color-bg) 70%, transparent); text-transform: uppercase; letter-spacing: 0.05em; }
+  .ep { display: flex; align-items: center; gap: 10px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 11px 14px; margin-bottom: 14px; font-family: var(--font-mono); font-size: 12px; }
+  .ep .tag { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ink-faint); }
+  .ep .url { font-weight: 700; color: var(--color-ink); }
+  .ep .cp { margin-left: auto; font-size: 9px; font-weight: 700; text-transform: uppercase; border: 1.5px solid var(--color-ink); background: var(--color-bg); padding: 5px 9px; cursor: pointer; }
+  .code { border: 2px solid var(--color-ink); background: #0c0c0c; box-shadow: var(--shadow-sm); margin-bottom: 14px; }
+  .code .bar { display: flex; align-items: center; gap: 7px; padding: 8px 12px; border-bottom: 1.5px solid #2a2a2a; font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8a7a; }
+  .code .bar .dotz { width: 8px; height: 8px; border-radius: 999px; background: #3a3a3a; }
+  .code pre { margin: 0; padding: 14px 16px; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6; color: #e8e4d0; overflow-x: auto; }
+  .code .k { color: var(--color-yellow); } .code .s { color: #5fc9bd; } .code .p { color: #7a7a6a; } .code .c { color: #6a6a5a; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .tool { display: inline-flex; align-items: center; gap: 6px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: 2px 2px 0 var(--color-ink); font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 6px 10px; }
+  .tool .br { color: var(--teal-ink); }
+
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 2px solid var(--color-ink); padding-top: 16px; margin-top: 18px; }
+  .foot-note { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); max-width: 42ch; line-height: 1.45; }
+  .btn-cont { display: inline-flex; align-items: center; gap: 9px; background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 13px 22px; text-decoration: none; white-space: nowrap; }
+  .btn-sec2 { display: inline-flex; align-items: center; gap: 7px; background: var(--color-surface); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 12px 16px; text-decoration: none; cursor: pointer; }
+  .ledger-done { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--teal-ink); }
+  .ledger-done .sq { width: 9px; height: 9px; background: var(--signal-teal); border: 1.5px solid var(--color-ink); }
+</style>
+</head>
+<body>
+
+<!-- ════════════ M4 · STEP 1 — PROVE IT IN CHAT ════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:720px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M4 · step 1</span><span class="name">Prove it in chat — ask a few, flag straight to triage</span></div>
+    <p class="sub">One answer is an anecdote. Ask a few real questions and mark each <b>✓ Solid</b> or <b>⚑ Flag</b>; a flag drops that claim into the <b>same triage queue as M2 Review</b> — proving and fixing share one mechanism. The bar most teams trust: <b>3 solid answers, 0 open flags</b>.</p>
+    <p class="arch"><span class="t">AHA-min:</span> <span class="aha">3 grounded answers I'd stake the launch on.</span> · <span class="t">Initial / Learning:</span> tap the 3 suggested questions, watch them land. · <span class="t">Advanced:</span> probe edge cases; flag &amp; triage on the spot.</p>
+  </div>
+  <div class="scr" data-screen-label="M4 step 1 — Prove it in chat">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell done"><span class="d">✓</span>M2</div>
+      <div class="led-cell done"><span class="d">✓</span>M3</div>
+      <div class="led-cell now"><span class="d">▸</span>M4 · Prove</div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M4 · ship it</p>
+      <h1 class="h-title">Prove it in chat</h1>
+
+      <div class="proof">
+        <span class="ptrk"><span class="pdot on"></span><span class="pdot on"></span><span class="pdot"></span></span>
+        <span class="plbl"><b>2 of 3</b> solid answers</span>
+        <a class="pflag" href="#">⚑ 1 open → Triage</a>
+      </div>
+
+      <div class="chat">
+        <div class="msg u"><span class="who">You</span><div class="bub">Which bets depend on the new ranking model?</div></div>
+        <div class="msg a">
+          <span class="who">Restormel · your graph</span>
+          <div class="bub">Three: <b>Unified Ranking v2</b><span class="sup">1</span>, <b>Cold-start fallback</b><span class="sup">2</span>, <b>Merch re-rank</b><span class="sup">3</span>. Cold-start is weakest — validated only on last quarter's data<span class="sup">2</span>.</div>
+          <div class="vctl"><span class="vbtn solid on">✓ Solid</span><span class="vbtn flag">⚑ Flag</span><span class="vmeta">grounded · 3 cites · trust 96</span></div>
+        </div>
+        <div class="msg u"><span class="who">You</span><div class="bub">What's our p99 latency budget?</div></div>
+        <div class="msg a">
+          <span class="who">Restormel · your graph</span>
+          <div class="bub">200ms p99<span class="sup">1</span>.</div>
+          <div class="vctl"><span class="vbtn solid">✓ Solid</span><span class="vbtn flag on">⚑ Flagged</span><span class="vmeta flagged">source is a draft → sent to Review triage</span></div>
+        </div>
+      </div>
+
+      <div class="qchips">
+        <span class="qlbl">Try one more:</span>
+        <span class="qchip">What contradicts our roadmap?</span>
+        <span class="qchip">Which ideas are weakest?</span>
+        <span class="qchip">+ Ask your own</span>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note"><b>1 more solid</b> answer + clear <b>1 flag</b> to prove it. You can turn it on anyway.</span>
+        <a class="btn-ghost" href="#">Turn it on anyway →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ M4 · STEP 2 — TURN YOUR GRAPH ON ════════════ -->
+<div class="frame" style="position:absolute; left:840px; top:80px; width:740px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M4 · step 2</span><span class="name">Turn your graph on — publish as an MCP</span></div>
+    <p class="sub">Publishing exposes your graph as an <b>MCP endpoint</b>. Your app or agent connects to it like any other tool — <b>read-only by default</b>. One tap with sensible defaults; expand only if you need to.</p>
+    <p class="arch"><span class="t">AHA-min:</span> <span class="aha">a live endpoint your app can call.</span> · <span class="t">Initial / Learning:</span> one tap — read-only, your routes. · <span class="t">Advanced:</span> scopes, auth, rate limits, which routes &amp; models are exposed.</p>
+  </div>
+  <div class="scr" data-screen-label="M4 step 2 — Turn your graph on">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell done"><span class="d">✓</span>M2</div>
+      <div class="led-cell done"><span class="d">✓</span>M3</div>
+      <div class="led-cell now"><span class="d">▸</span>M4 · Publish</div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M4 · ship it</p>
+      <h1 class="h-title">Turn your graph on</h1>
+
+      <div class="cfg">
+        <div class="fld">
+          <label>Endpoint name</label>
+          <div class="in"><span>mcp.restormel.ai / <b>acme-ideas</b></span><span class="edit">Edit</span></div>
+        </div>
+        <div class="fld">
+          <label>Access</label>
+          <div class="seg">
+            <div class="opt on">Read-only<small>recommended</small></div>
+            <div class="opt">Read + write<small>agents can edit</small></div>
+          </div>
+        </div>
+        <div class="fld">
+          <label>Auth</label>
+          <div class="in"><span>API key · <b>rst_live_••••••••</b></span><span class="edit">Rotate</span></div>
+        </div>
+        <div class="fld">
+          <label>What this exposes</label>
+          <div class="expose">
+            <div class="ex-row"><span class="ck">✓</span><span class="lbl">Recommended routes</span><span class="meta">3 routes · query + retrieve</span></div>
+            <div class="ex-row"><span class="ck">✓</span><span class="lbl">Stage models</span><span class="meta">from M3 · serves answers</span></div>
+            <div class="ex-row"><span class="ck">✓</span><span class="lbl">Graph</span><span class="meta">1,204 ideas · trust ≥ 70</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note">Read-only · revocable any time · doesn't touch your stored graph.</span>
+        <a class="btn-cont" href="#">Turn graph on →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ M4 · STEP 3 — IT'S LIVE ════════════ -->
+<div class="frame" style="position:absolute; left:1620px; top:80px; width:780px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M4 · step 3</span><span class="name">It's live — your app, on your graph</span></div>
+    <p class="sub">The aha. Your graph is a live MCP endpoint. Drop the config into your client and your app answers from <b>your own ideas</b>. The ledger reads M0–M4 done.</p>
+    <p class="arch"><span class="t">Journey complete →</span> from here it's the <span class="aha">loop</span>: re-ingest new docs, refine routes, re-publish. Ownership, not a one-way finish line.</p>
+  </div>
+  <div class="scr" data-screen-label="M4 step 3 — It's live">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell done"><span class="d">✓</span>M2</div>
+      <div class="led-cell done"><span class="d">✓</span>M3</div>
+      <div class="led-cell live"><span class="d">●</span>M4 · Live</div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M4 · ship it</p>
+
+      <div class="live-banner">
+        <span class="live-dot"></span>
+        <span class="lt">Your graph is live</span>
+        <span class="lm">published 12s ago</span>
+      </div>
+
+      <div class="ep">
+        <span class="tag">Endpoint</span>
+        <span class="url">https://mcp.restormel.ai/acme-ideas</span>
+        <span class="cp">Copy</span>
+      </div>
+
+      <div class="code">
+        <div class="bar"><span class="dotz"></span>mcp config · paste into your client</div>
+        <pre><span class="p">{</span>
+  <span class="k">"mcpServers"</span><span class="p">: {</span>
+    <span class="k">"acme-ideas"</span><span class="p">: {</span>
+      <span class="k">"url"</span><span class="p">:</span> <span class="s">"https://mcp.restormel.ai/acme-ideas"</span><span class="p">,</span>
+      <span class="k">"headers"</span><span class="p">: {</span> <span class="k">"Authorization"</span><span class="p">:</span> <span class="s">"Bearer rst_live_••••"</span> <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre>
+      </div>
+
+      <div class="sec-h">Tools your app now has</div>
+      <div class="tools">
+        <span class="tool"><span class="br">▸</span>query_graph</span>
+        <span class="tool"><span class="br">▸</span>retrieve_ideas</span>
+        <span class="tool"><span class="br">▸</span>list_routes</span>
+        <span class="tool"><span class="br">▸</span>get_idea</span>
+      </div>
+
+      <div class="foot">
+        <span class="ledger-done"><span class="sq"></span>Journey M0–M4 complete · graph owned &amp; live</span>
+        <a class="btn-sec2" href="#">Open dashboard →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

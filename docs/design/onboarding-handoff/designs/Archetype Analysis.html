@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — Archetype Analysis</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root { --hairline:#d8cfb0; --teal-ink:#1c7c72; --bad:#b23b34; }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; color: #4a4538; max-width: 70ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+
+  .scr { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); overflow: hidden; }
+  .body { padding: 24px 26px 26px; }
+  .h-eyebrow { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 9px; }
+  .h-title { font-family: var(--font-display); font-weight: 900; font-size: 33px; line-height: 0.94; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 16px; }
+
+  /* archetype cards */
+  .arch-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .acard { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 14px 14px 15px; }
+  .acard .an { font-family: var(--font-display); font-weight: 900; font-size: 21px; text-transform: uppercase; line-height: 1; }
+  .acard .aq { font-family: var(--font-mono); font-size: 11px; font-style: italic; color: var(--color-ink-muted); margin: 7px 0 12px; line-height: 1.4; min-height: 30px; }
+  .acard .arow { font-family: var(--font-mono); font-size: 10px; line-height: 1.45; padding: 7px 0; border-top: 1.5px solid var(--hairline); }
+  .acard .arow .k { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-faint); display: block; margin-bottom: 2px; }
+  .acard .arow .v { color: var(--color-ink); }
+  .acard.adv { background: color-mix(in oklab, var(--signal-teal) 8%, var(--color-surface)); }
+
+  .principle { border: 2px solid var(--color-ink); border-left: 8px solid var(--color-yellow); background: var(--color-surface); box-shadow: var(--shadow-md); padding: 15px 17px; margin-bottom: 22px; }
+  .principle .pt { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--teal-ink); margin: 0 0 6px; }
+  .principle .pb { font-family: var(--font-body); font-size: 14px; line-height: 1.55; color: var(--color-ink); margin: 0; } .principle .pb b { font-weight: 700; }
+
+  .sec-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 2px solid var(--color-ink); padding-bottom: 8px; margin: 0 0 16px; }
+
+  /* spine diagram */
+  .spine { display: flex; align-items: stretch; gap: 0; margin-bottom: 8px; }
+  .snode { flex: 1; border: 2px solid var(--color-ink); padding: 12px 8px; text-align: center; }
+  .snode.req { background: var(--color-yellow); box-shadow: var(--shadow-sm); }
+  .snode.opt { background: var(--color-bg); border-style: dashed; }
+  .snode .sm { font-family: var(--font-display); font-weight: 900; font-size: 20px; line-height: 1; }
+  .snode .sw { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 4px; display: block; }
+  .snode.opt .sw { color: var(--color-ink-faint); }
+  .sarrow { display: flex; align-items: center; padding: 0 6px; color: var(--color-ink-faint); font-weight: 700; font-family: var(--font-mono); }
+  .spine-key { display: flex; gap: 20px; font-family: var(--font-mono); font-size: 10px; margin-top: 12px; }
+  .spine-key .sk { display: inline-flex; align-items: center; gap: 7px; } .spine-key .sw2 { width: 13px; height: 13px; border: 2px solid var(--color-ink); }
+  .spine-key .sw2.req { background: var(--color-yellow); } .spine-key .sw2.opt { background: var(--color-bg); border-style: dashed; }
+  .spine-key b { color: var(--color-ink); }
+
+  /* matrix */
+  .mtx-head, .mtx-row { display: grid; grid-template-columns: 156px 1.18fr 1fr 1.04fr 1.16fr; }
+  .mtx-head { background: var(--color-ink); color: var(--color-surface); font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .mtx-head > div { padding: 11px 13px; border-right: 1.5px solid #3a3530; }
+  .mtx-head > div:last-child { border-right: none; }
+  .mtx-head .mh-spine { background: var(--color-yellow); color: var(--color-ink); }
+  .mtx { border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); }
+  .mtx-row { border-bottom: 2px solid var(--color-ink); }
+  .mtx-row:last-child { border-bottom: none; }
+  .mtx-row > div { padding: 13px; border-right: 1.5px solid var(--hairline); font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; background: var(--color-surface); }
+  .mtx-row > div:last-child { border-right: none; }
+  .mtx-row .c-milestone { background: var(--color-bg-deep); }
+  .mtx-row .c-milestone .mname { font-family: var(--font-display); font-weight: 900; font-size: 17px; text-transform: uppercase; line-height: 1; }
+  .mtx-row .c-milestone .maha { font-size: 9.5px; color: var(--teal-ink); font-weight: 700; margin-top: 5px; line-height: 1.3; }
+  .mtx-row .c-milestone .mopt { display: inline-block; margin-top: 7px; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1.5px solid var(--color-ink); padding: 2px 6px; background: var(--color-bg); color: var(--color-ink-muted); }
+  .mtx-row .c-spine { background: color-mix(in oklab, var(--color-yellow) 16%, var(--color-surface)); font-weight: 700; color: var(--color-ink); }
+  .mtx-row .c-init b, .mtx-row .c-learn b, .mtx-row .c-adv b { color: var(--color-ink); }
+  .mtx-row .lead { display: block; font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-faint); margin-bottom: 3px; }
+  .mtx-row.optional .c-milestone { background: color-mix(in oklab, var(--color-bg-deep) 70%, #fff); }
+  .note { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); margin-top: 14px; line-height: 1.5; } .note b { color: var(--color-ink); }
+</style>
+</head>
+<body>
+
+<!-- ════════════ FRAME 1 — ARCHETYPES + PRINCIPLE + SPINE ════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:700px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">archetypes</span><span class="name">Three users, one spine</span></div>
+    <p class="sub">Not three journeys — <b>one journey at three depths</b>. Every milestone has a single minimum-to-aha action that is the default for everyone. Initial does only that; Learning adds a guided choice or two; Advanced expands the same step into full control. Depth is progressive disclosure, never a fork.</p>
+  </div>
+  <div class="scr" data-screen-label="Archetypes — definitions, principle, spine">
+    <div class="body">
+      <p class="h-eyebrow">who we are designing for</p>
+      <h1 class="h-title">The three archetypes</h1>
+
+      <div class="arch-cards">
+        <div class="acard">
+          <div class="an">Initial</div>
+          <div class="aq">“Just show me it works.”</div>
+          <div class="arow"><span class="k">Knows</span><span class="v">First contact — may not know what a knowledge graph is.</span></div>
+          <div class="arow"><span class="k">Success =</span><span class="v">Sees a grounded, cited answer — fast.</span></div>
+          <div class="arow"><span class="k">Config tolerance</span><span class="v">Zero. Defaults only.</span></div>
+        </div>
+        <div class="acard">
+          <div class="an">Learning</div>
+          <div class="aq">“Help me build mine, properly.”</div>
+          <div class="arow"><span class="k">Knows</span><span class="v">Ramping — building their first real graph from own docs.</span></div>
+          <div class="arow"><span class="k">Success =</span><span class="v">A graph they trust, and understand how it was made.</span></div>
+          <div class="arow"><span class="k">Config tolerance</span><span class="v">A few meaningful choices, with recommended defaults.</span></div>
+        </div>
+        <div class="acard adv">
+          <div class="an">Advanced</div>
+          <div class="aq">“Give me the levers.”</div>
+          <div class="arow"><span class="k">Knows</span><span class="v">Engineer / operator. Own infra, own models, agents.</span></div>
+          <div class="arow"><span class="k">Success =</span><span class="v">Full control — and it still ran on sane defaults.</span></div>
+          <div class="arow"><span class="k">Config tolerance</span><span class="v">High — wants levers, not hand-holding.</span></div>
+        </div>
+      </div>
+
+      <div class="principle">
+        <p class="pt">The principle · ruthless simplicity</p>
+        <p class="pb">The <b>mandatory spine is just three steps</b> — explore → ingest → connect. That is the shortest path to a live graph, and it is the default everyone is dropped onto. <b>Make-ready (M2) and own-stack (M3) are opt-in depth</b>: real value for Learning and Advanced, never required to reach an aha.</p>
+      </div>
+
+      <div class="sec-h">The spine vs the depth</div>
+      <div class="spine">
+        <div class="snode req"><span class="sm">M0</span><span class="sw">Explore</span></div>
+        <div class="sarrow">→</div>
+        <div class="snode req"><span class="sm">M1</span><span class="sw">Ingest</span></div>
+        <div class="sarrow">→</div>
+        <div class="snode opt"><span class="sm">M2</span><span class="sw">Make ready</span></div>
+        <div class="sarrow">→</div>
+        <div class="snode opt"><span class="sm">M3</span><span class="sw">Own stack</span></div>
+        <div class="sarrow">→</div>
+        <div class="snode req"><span class="sm">M4</span><span class="sw">Connect</span></div>
+      </div>
+      <div class="spine-key">
+        <span class="sk"><span class="sw2 req"></span><b>Mandatory spine</b> — every archetype</span>
+        <span class="sk"><span class="sw2 opt"></span><b>Opt-in depth</b> — Learning &amp; Advanced</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ FRAME 2 — THE MATRIX ════════════ -->
+<div class="frame" style="position:absolute; left:820px; top:80px; width:980px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">matrix</span><span class="name">Minimum-to-aha × who needs what</span></div>
+    <p class="sub">Per milestone: the <b>single smallest action that produces the aha</b> (the yellow column — the same default for everyone), then how each archetype meets that step. Read across a row to see how one screen serves all three at different depths.</p>
+  </div>
+  <div class="scr" data-screen-label="Archetype matrix M0–M4">
+    <div class="body">
+      <div class="mtx">
+        <div class="mtx-head">
+          <div>Milestone &amp; aha</div>
+          <div class="mh-spine">Minimum-to-aha · the spine</div>
+          <div>Initial</div>
+          <div>Learning</div>
+          <div>Advanced</div>
+        </div>
+
+        <div class="mtx-row">
+          <div class="c-milestone"><div class="mname">M0 Explore</div><div class="maha">“It answers — with citations.”</div></div>
+          <div class="c-spine">Ask the starter graph one question → grounded answer + a citation. Zero setup.</div>
+          <div class="c-init"><span class="lead">stops here</span>Delighted by the citation. “It shows its sources.”</div>
+          <div class="c-learn"><span class="lead">peeks deeper</span>Opens the graph view; clocks it's demo data — wants their own.</div>
+          <div class="c-adv"><span class="lead">probes</span>Inspects edges &amp; retrieval quality before trusting it.</div>
+        </div>
+
+        <div class="mtx-row">
+          <div class="c-milestone"><div class="mname">M1 Ingest</div><div class="maha">“Now it's MY knowledge.”</div></div>
+          <div class="c-spine">One source + one key → ingest → ask your own data. Recommended models, silent.</div>
+          <div class="c-init"><span class="lead">minimum</span>One folder. Watches progress. Never sees a model name.</div>
+          <div class="c-learn"><span class="lead">guided</span>2–3 sources; sees extract + embed coverage; accepts defaults.</div>
+          <div class="c-adv"><span class="lead">control</span>Many sources; opens <b>model-per-stage</b>; picks providers first.</div>
+        </div>
+
+        <div class="mtx-row optional">
+          <div class="c-milestone"><div class="mname">M2 Make ready</div><div class="maha">“Trust climbs.”</div><span class="mopt">Opt-in depth</span></div>
+          <div class="c-spine">Run validation → trust score + flag count → triage a few → score rises.</div>
+          <div class="c-init"><span class="lead">often skips</span>It already answers well enough — comes back only if burned.</div>
+          <div class="c-learn"><span class="lead">works it</span>Walks the 3 gates (sources / embed / validate); triages flags.</div>
+          <div class="c-adv"><span class="lead">tunes</span>Swaps validator; batch-triage; sets trust thresholds.</div>
+        </div>
+
+        <div class="mtx-row optional">
+          <div class="c-milestone"><div class="mname">M3 Own stack</div><div class="maha">“It's on MY infra.”</div><span class="mopt">Opt-in depth</span></div>
+          <div class="c-spine">Only for those who need ownership — the managed store is the product otherwise.</div>
+          <div class="c-init"><span class="lead">never enters</span>Managed store, invisibly. No concept of “stack.”</div>
+          <div class="c-learn"><span class="lead">maybe keys</span>May bind own provider keys; stays on the managed store.</div>
+          <div class="c-adv"><span class="lead">owns it</span>Own DB (safe check → data choice) + production keys.</div>
+        </div>
+
+        <div class="mtx-row">
+          <div class="c-milestone"><div class="mname">M4 Connect</div><div class="maha">“My app can use it.”</div></div>
+          <div class="c-spine">Pick chat widget → paste snippet → it answers on your site. No MCP knowledge needed.</div>
+          <div class="c-init"><span class="lead">widget</span>Chat widget, read-only. Done — it's live.</div>
+          <div class="c-learn"><span class="lead">widget / API</span>Widget or REST API; read-only; one connection.</div>
+          <div class="c-adv"><span class="lead">many</span>MCP ×N (read &amp; read+write), API, GraphQL; manages keys &amp; access.</div>
+        </div>
+      </div>
+
+      <p class="note"><b>Design consequence:</b> build the spine columns first and make them flawless — they carry every archetype's aha. Everything in the Learning / Advanced columns is progressive disclosure layered onto the <i>same</i> screen, gated behind an “Advanced” reveal or reachable later from Graph home. <b>No archetype ever sees a different journey.</b></p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

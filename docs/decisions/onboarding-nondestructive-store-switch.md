@@ -3,12 +3,14 @@ id: REC-ADR-017
 title: "Non-destructive, reversible store switch (M3)"
 class: decision
 owner: founder
-status: draft
+status: approved
 classification: internal
 control-tier: 1
 created: 2026-06-27
 last-reviewed: 2026-06-27
 review-interval: P12M
+approved-by: founder
+approved-on: 2026-06-27
 retention: permanent
 related: [REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-018, REC-ADR-019]
 ---
@@ -17,7 +19,9 @@ related: [REC-ADR-013, REC-ADR-014, REC-ADR-015, REC-ADR-016, REC-ADR-018, REC-A
 
 ## Status
 
-**Draft — design intent captured from the onboarding handoff, pending product confirmation.** This record *captures* a design decision made during the Restormel onboarding design session; it does not authorise or specify a build. It is one of seven ADRs (REC-ADR-013..REC-ADR-019) drawn from `design_handoff_restormel_onboarding/`. Tracked under **RES-113** — https://huly.allotmentology.tech/workbench/allotment-pm/tracker/RES-113. Supersede with a new ADR if product confirmation changes the decision; do not rewrite this one.
+**Approved as the product direction — founder steer, 2026-06-27:** the Claude Design onboarding handoff is the hard-won, iterative *direction of travel for the product — stick as close to it as possible*. This record’s decision stands as approved; the capture note below is retained for context, and faithful-realisation tensions (e.g. trust-meter/EBV honesty, M3/M4 backend) are tracked in the RES-113 review, not in this decision.
+
+**Draft — design intent captured from the onboarding handoff, pending product confirmation.** This record *captures* a design decision made during the Restormel onboarding design session; it does not authorise or specify a build. It is one of seven ADRs (REC-ADR-013..REC-ADR-019) drawn from `docs/design/onboarding-handoff/`. Tracked under **RES-113** — https://huly.allotmentology.tech/workbench/allotment-pm/tracker/RES-113. Supersede with a new ADR if product confirmation changes the decision; do not rewrite this one.
 
 ## Context
 
@@ -55,8 +59,8 @@ Concretely, the captured design holds three commitments:
 
 ## Source artefact
 
-- **Design mock:** `design_handoff_restormel_onboarding/designs/M3 Flow.html` — the 3-step own-your-store flow (Connect → Data → Keys), the read-only verify handshake (step 1a), and the non-destructive use/add/separate choice with the "nothing is deleted, switch back anytime" guarantee (step 1b).
-- **Screenshot:** `design_handoff_restormel_onboarding/screenshots/06-m3-flow.png`.
+- **Design mock:** `docs/design/onboarding-handoff/designs/M3 Flow.html` — the 3-step own-your-store flow (Connect → Data → Keys), the read-only verify handshake (step 1a), and the non-destructive use/add/separate choice with the "nothing is deleted, switch back anytime" guarantee (step 1b).
+- **Screenshot:** `docs/design/onboarding-handoff/screenshots/06-m3-flow.png`.
 - **Concept lesson:** `01_CONCEPT.md` §5 lesson 7 ("Safety framing for destructive-sounding actions").
 - **Artefact guide:** `08_ARTEFACTS.md` §B (`M3 Flow.html` entry) and the provenance map ("Non-destructive, reversible DB switch → `M3 Flow.html` → `01` §5.7").
 - **Build prompt (intent, not authorisation):** `07_PROMPTS.md` prompt 8 (settings/store: Connect → Verifying → Found → Keys, "the data choice is non-destructive and clearly reversible; advanced persona only").
