@@ -13,7 +13,14 @@ import { readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
-import { NAV_GROUPS, TESTING_NAV_ITEM, WORK_NAV_ITEMS } from "$lib/nav-config";
+import {
+  NAV_GROUPS,
+  TESTING_NAV_ITEM,
+  WORK_NAV_ITEMS,
+  resolveWorkNavForModuleFlags,
+  resolveNavGroupsForModuleFlags,
+} from "$lib/nav-config";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 import { NAV_COMMANDS } from "$lib/command-palette";
 
 const ROUTES_DIR = fileURLToPath(new URL("../routes/keys/dashboard", import.meta.url));
@@ -120,5 +127,84 @@ describe("R2 orphan crawl (route manifest)", () => {
     }
     // /prototype/brutalist-dashboard (outside the dashboard tree)
     expect(existsSync(join(ROUTES_DIR, "../../prototype"))).toBe(false);
+  });
+});
+
+/**
+ * RES-113 PR-G — the flag-gated IA re-spine, proven in BOTH states.
+ *
+ * Flag OFF: the live IA is the north-star one (asserted by the suite above, which
+ * uses the OFF constants). Flag ON: the journey verb spine must have no dead nav
+ * links — every Home·Build·Verify·Connect destination resolves to a real route
+ * (a rendered `+page.svelte` OR a `+page.server.ts` redirect alias), and the M0–M4
+ * milestone hubs the nav surfaces all exist at their canonical routes.
+ */
+describe("RES-113 journey IA route manifest (onboardingJourney ON)", () => {
+  const ON = { ...MVP_MODULE_DEFAULTS, onboardingJourney: true, connect: true };
+
+  /** A dashboard href is served if its route dir has a +page.svelte or +page.server.ts. */
+  function routeIsServed(href: string): boolean {
+    const rel = href.slice(DASHBOARD_BASE.length).replace(/^\//, "");
+    const segs = rel === "" ? [] : rel.split("/");
+    const dir = join(ROUTES_DIR, ...segs);
+    if (existsSync(join(dir, "+page.svelte")) || existsSync(join(dir, "+page.server.ts"))) {
+      return true;
+    }
+    // Walk the route dir and its ancestors for a catch-all ([...rest]) child that
+    // serves the path — e.g. /connect is served by connect/[...legacy]/+page.server.ts.
+    for (let i = segs.length; i >= 0; i--) {
+      const ancestor = join(ROUTES_DIR, ...segs.slice(0, i));
+      try {
+        const hasCatchAll = readdirSync(ancestor).some(
+          (e) =>
+            e.startsWith("[...") &&
+            statSync(join(ancestor, e)).isDirectory() &&
+            existsSync(join(ancestor, e, "+page.server.ts")),
+        );
+        if (hasCatchAll) return true;
+      } catch {
+        // ancestor dir may not exist — keep walking up
+      }
+    }
+    return false;
+  }
+
+  it("every journey primary-nav destination resolves to a real route (no dead links)", () => {
+    const journeyNav = resolveWorkNavForModuleFlags(ON);
+    expect(journeyNav.map((i) => i.label)).toEqual(["Home", "Build", "Verify", "Connect"]);
+    for (const item of journeyNav) {
+      expect(routeIsServed(item.href), `journey nav dead link: ${item.href}`).toBe(true);
+    }
+  });
+
+  it("every journey Settings-group destination resolves to a real route", () => {
+    const groups = resolveNavGroupsForModuleFlags(ON);
+    for (const group of groups) {
+      for (const item of group.items) {
+        expect(routeIsServed(item.href), `journey settings dead link: ${item.href}`).toBe(true);
+      }
+    }
+  });
+
+  it("the M0–M4 milestone hubs the journey nav surfaces exist at their canonical routes", () => {
+    // M0 Explore → /prove/proof; M1 Build → /sources/ingest; M2 Verify → /claims;
+    // M4 Connect → /agents/wiring (the catch-all aliases /connect onto this when ON).
+    const hubs = [
+      DASHBOARD_BASE + "/prove/proof",
+      DASHBOARD_BASE + "/sources/ingest",
+      DASHBOARD_BASE + "/claims",
+      DASHBOARD_BASE + "/agents/wiring",
+    ];
+    for (const hub of hubs) {
+      expect(routeIsServed(hub), `missing milestone hub route: ${hub}`).toBe(true);
+    }
+  });
+
+  it("the new verb-spine routes stay OUT of the flag-OFF live nav (flag-gated)", () => {
+    const offNav = resolveWorkNavForModuleFlags({ ...MVP_MODULE_DEFAULTS, onboardingJourney: false });
+    const offHrefs = offNav.map((i) => i.href);
+    expect(offHrefs).toEqual(WORK_NAV_ITEMS.map((i) => i.href));
+    expect(offHrefs).not.toContain(DASHBOARD_BASE + "/build");
+    expect(offHrefs).not.toContain(DASHBOARD_BASE + "/verify");
   });
 });

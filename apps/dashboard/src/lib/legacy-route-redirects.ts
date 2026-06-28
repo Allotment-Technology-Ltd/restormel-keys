@@ -13,6 +13,7 @@ import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import {
   AGENTS_HREF,
   ANSWER_CONSOLE_HREF,
+  BUILD_HREF,
   CLAIMS_HREF,
   CLAIMS_MEMORY_HREF,
   HOME_HREF,
@@ -21,6 +22,7 @@ import {
   PROVE_HREF,
   RUNS_HREF,
   SOURCES_HREF,
+  VERIFY_HREF,
 } from "$lib/nav-config";
 
 const BASE = DASHBOARD_BASE.endsWith("/") ? DASHBOARD_BASE.slice(0, -1) : DASHBOARD_BASE;
@@ -48,6 +50,16 @@ export function resolveLegacyDashboardRedirect(pathname: string, search = ""): s
   if (path === BASE) return withSearch(ANSWER_CONSOLE_HREF, search);
   if (path === BASE + "/activity") return withSearch(HOME_HREF, search);
   if (path === CONNECT) return withSearch(HOME_HREF, search);
+
+  // ── RES-113 journey IA section-aliases (REC-ADR-021; 02_IA_AND_NAV.md §3) ──
+  // `/build` and `/verify` are additive verb-spine routes surfaced only via the
+  // journey nav (onboardingJourney ON). As section-aliases they resolve to the
+  // milestone hub at its canonical route, which itself reskins under the flag:
+  //   Build (M1) → the ingest guided flow; Verify (M2) → the make-ready / stamping
+  //   desk. (Connect's `/connect` is flag-aware in the catch-all so the flag-OFF
+  //   `/connect → /home` behaviour is preserved byte-for-byte.)
+  if (path === BUILD_HREF) return withSearch(INGEST_FLOW_HREF, search);
+  if (path === VERIFY_HREF) return withSearch(CLAIMS_HREF, search);
 
   // ── Connect hub sections → top-level sections ─────────────────────────
   if (path === CONNECT + "/library") return withSearch(SOURCES_HREF, search);

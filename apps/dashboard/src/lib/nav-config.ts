@@ -50,6 +50,18 @@ export const TRACES_HREF = DASHBOARD_BASE + "/traces";
 export const ACCESS_HREF = DASHBOARD_BASE + "/access";
 export const ROUTES_HREF = DASHBOARD_BASE + "/routes";
 
+// ── RES-113 journey IA (REC-ADR-021 §1/§3/§5, docs/design/onboarding-handoff/02_IA_AND_NAV.md) ──
+// These surface the M0–M4 learn-by-doing spine and are returned by the `resolve*`
+// helpers below ONLY when the `onboardingJourney` module flag is ON. When the flag
+// is OFF, the resolvers delegate to the north-star helpers and the live IA is
+// byte-for-byte unchanged.
+export const BUILD_HREF = DASHBOARD_BASE + "/build";
+export const VERIFY_HREF = DASHBOARD_BASE + "/verify";
+/** Connect (M4) hub — the bare `/connect` path (flag-aware redirect → the M4 wiring surface). */
+export const CONNECT_HUB_HREF = DASHBOARD_BASE + "/connect";
+/** The M4 ConnectWizard/ConnectionsManager surface (where `/connect` lands under the journey IA). */
+export const AGENTS_WIRING_HREF = AGENTS_HREF + "/wiring";
+
 /**
  * Phase 3 Stage 1 — the verified-query Answer Console (the Prove "Proof" tab).
  * North Star = verified answers at query time, so this is the dashboard's default
@@ -292,4 +304,94 @@ export function filterNavGroupsForModuleFlags(groups: NavGroup[], flags: ModuleF
       };
     })
     .filter((g) => g.items.length > 0 || g.comingSoon);
+}
+
+// ── RES-113 journey IA — Home · Build · Verify · Connect (flag-gated) ─────────
+//
+// REC-ADR-021 §1/§3/§5 + docs/design/onboarding-handoff/02_IA_AND_NAV.md.
+// Surfaced ONLY when the `onboardingJourney` module flag is ON (default OFF). The
+// `resolve*` helpers below branch on that flag: OFF ⇒ they call the north-star
+// helpers verbatim (live IA byte-for-byte unchanged); ON ⇒ they return the verb
+// spine. This is the "one big flagged cut" — additive + reversible.
+
+/**
+ * Primary nav under the journey IA: the Build → Verify → Connect aha spine, hung
+ * off a persistent Home (the landing). Runs fold into Build, Prove becomes a Home
+ * action, Agents + gateway-keys fold into Connect (02_IA_AND_NAV.md §3).
+ */
+export const JOURNEY_NAV_ITEMS: NavItem[] = [
+  { href: HOME_HREF, label: "Home" },
+  { href: BUILD_HREF, label: "Build" },
+  { href: VERIFY_HREF, label: "Verify" },
+  { href: CONNECT_HUB_HREF, label: "Connect" },
+];
+
+/** Journey landing (login + dashboard root) = the persistent Home (REC-ADR-021 §3). */
+export const JOURNEY_WORKSPACE_HOME_HREF = HOME_HREF;
+
+/**
+ * Settings / Advanced — everything tucked away under the journey IA (02_IA_AND_NAV.md §3).
+ * Reuses the existing "foundation" group id (the config/advanced group) so the
+ * localStorage open-state keying and `NavGroupId` type are unchanged; only the
+ * label + items differ. The layout's `filterNavGroupsForDashboardUi` pass still
+ * applies on top, so monitor-gated surfaces (Audit log, Metrics) stay hidden when
+ * the monitor flag is off — no per-item flag logic needed here.
+ */
+export const JOURNEY_NAV_GROUPS: NavGroup[] = [
+  {
+    id: "foundation",
+    label: "Settings",
+    defaultOpen: false,
+    items: [
+      { href: DASHBOARD_BASE + "/integrations", label: "Providers" },
+      { href: DASHBOARD_BASE + "/projects", label: "Store" },
+      { href: ROUTES_HREF, label: "Routes" },
+      { href: DASHBOARD_BASE + "/logs", label: "Audit log" },
+      { href: DASHBOARD_BASE + "/analytics", label: "Metrics" },
+    ],
+  },
+];
+
+/**
+ * Primary work nav, flag-resolved. OFF ⇒ the north-star four (verbatim). ON ⇒ the
+ * journey verb spine; Build/Verify/Connect require the connect module (Home always
+ * shows), mirroring how the north-star nav gates its verified-corpus surfaces.
+ */
+export function resolveWorkNavForModuleFlags(flags: ModuleFlags): NavItem[] {
+  if (!flags.onboardingJourney) return filterWorkNavForModuleFlags(flags);
+  const connectSpine = new Set([BUILD_HREF, VERIFY_HREF, CONNECT_HUB_HREF]);
+  return JOURNEY_NAV_ITEMS.filter((item) => {
+    if (connectSpine.has(item.href)) return flags.connect;
+    return true;
+  });
+}
+
+/**
+ * Collapsible nav groups, flag-resolved. OFF ⇒ the north-star Operator/Foundation/
+ * Observe groups (verbatim). ON ⇒ the single tucked-away Settings group.
+ */
+export function resolveNavGroupsForModuleFlags(flags: ModuleFlags): NavGroup[] {
+  if (!flags.onboardingJourney) return filterNavGroupsForModuleFlags(NAV_GROUPS, flags);
+  // The journey Settings group is static; the layout's dashboard-ui/monitor filter
+  // pass handles per-surface visibility (e.g. Audit log / Metrics when monitor off).
+  return JOURNEY_NAV_GROUPS.map((g) => ({ ...g, items: [...g.items] }));
+}
+
+/**
+ * Testing hub nav entry, flag-resolved. The journey primary IA has no standalone
+ * Testing destination (it folds into Settings/advanced), so ON ⇒ hidden; OFF ⇒ the
+ * north-star behaviour (gated on the testing flag).
+ */
+export function resolveTestingNavForModuleFlags(flags: ModuleFlags): NavItem | null {
+  if (flags.onboardingJourney) return null;
+  return filterTestingNavForModuleFlags(flags);
+}
+
+/**
+ * Workspace landing href, flag-resolved. OFF ⇒ the verified Answer Console
+ * (north-star Phase 3 Stage 1). ON ⇒ the persistent journey Home (REC-ADR-021 §3).
+ * Callers that decide the landing redirect read `moduleFlags` and pass them here.
+ */
+export function resolveWorkspaceHomeHref(flags: ModuleFlags): string {
+  return flags.onboardingJourney ? JOURNEY_WORKSPACE_HOME_HREF : WORKSPACE_HOME_HREF;
 }
