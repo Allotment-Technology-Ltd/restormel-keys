@@ -1,0 +1,243 @@
+# =============================================================================
+# Integration Train (RES-114) — DEFAULT-OFF pre-merge batch-integration engine.
+# -----------------------------------------------------------------------------
+# Batches every OPEN, NON-DRAFT, `stage`-labelled PR (base = the trunk) onto a
+# disposable `integration` branch, builds the batch, and deploys it close-to-prod
+# to the restormel-integration env (https://integration.restormel.dev) BEFORE any
+# of those PRs merge. This lets a reviewer see the combined effect of the staged
+# PRs in a real, near-prod environment ahead of promotion.
+#
+# DEFAULT-OFF: the whole workflow is gated on vars.INTEGRATION_TRAIN_ENABLED == '1'
+# and additionally no-ops when secrets.FORGEJO_PM_TOKEN is absent (GitHub mirror /
+# forks). Until the founder arms it, every run is a clean no-op.
+#
+# OUTBOUND-ONLY (the REC-INC-006 invariant): this workflow only talks to the
+# Forgejo public API (list PRs, comment, label), clones + force-pushes the
+# disposable `integration` branch, and invokes the build workflow (which pushes an
+# image + a GitOps commit). It NEVER reaches the in-cluster control plane, the
+# GitOps reconciler, or any on-box deploy API — the deploy completes by the
+# in-cluster reconciler PULLING the bumped manifest from git.
+#
+# HARD INVARIANT — THE TRAIN NEVER AUTO-PROMOTES: it does not call the PR-merge
+# API, never writes to the default branch, and never enables any auto-promotion.
+# Promotion stays the manual PR → trunk → prod path, gated by the Security scan.
+#
+# "Octopus merge" is implemented as SEQUENTIAL pairwise `git merge --no-ff` in
+# ascending PR-number order: a literal git octopus merge aborts the ENTIRE batch on
+# any one conflict and cannot drop just the conflicting parent, so it cannot honour
+# the skip-on-conflict semantics. Sequential pairwise merges let one conflicting PR
+# be aborted + skipped (commented + `integration-conflict` label) while the rest
+# proceed. This is a deliberate deviation from the word "octopus".
+#
+# BUILD INVOCATION: this workflow invokes the integration build via workflow_call
+# into deploy-k3s.yml (reuse of the rootless-buildkit, outbound-only build engine).
+# Fallback if a Forgejo version does not support local reusable workflows: replace
+# the `build` job with an inline buildkit job that runs
+# `.forgejo/scripts/k3s-build-push-bump.sh integration` against the `integration`
+# ref — same outbound-only surface.
+# =============================================================================
+name: Integration Train
+
+on:
+  schedule:
+    - cron: '0 3 * * *'      # nightly 03:00 UTC
+  pull_request:
+    types: [labeled, unlabeled]
+  workflow_dispatch: {}
+
+# One train at a time; never cancel a run mid-merge (a half-pushed integration
+# branch is fine — the next run resets it — but cancelling mid-API-call is noisy).
+concurrency:
+  group: integration-train
+  cancel-in-progress: false
+
+env:
+  KEYS_REPO: Allotment-Technology-Ltd/restormel-keys
+  STAGE_LABEL: stage
+  CONFLICT_LABEL: integration-conflict
+  ENV_URL: https://integration.restormel.dev
+  API: https://git.allotmentology.tech/api/v1
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # train — assemble the batch onto the disposable `integration` branch.
+  # ---------------------------------------------------------------------------
+  train:
+    name: Batch stage-labelled PRs onto the integration branch
+    runs-on: ubuntu-latest
+    # DEFAULT-OFF + label-scoped: on a PR event only proceed when the `stage` label
+    # itself changed (any other label add/remove is irrelevant); schedule/dispatch
+    # always evaluate (subject to the var gate).
+    if: ${{ vars.INTEGRATION_TRAIN_ENABLED == '1' && (github.event_name != 'pull_request' || github.event.label.name == 'stage') }}
+    outputs:
+      has_batch: ${{ steps.assemble.outputs.has_batch }}
+      sha: ${{ steps.assemble.outputs.sha }}
+      batch: ${{ steps.assemble.outputs.batch }}
+    steps:
+      - name: Tooling (jq + git on the self-hosted runner)
+        shell: bash
+        run: |
+          set -uo pipefail
+          command -v jq  >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends jq  >/dev/null 2>&1 || true; }
+          command -v git >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends git >/dev/null 2>&1 || true; }
+
+      - name: Assemble batch (reset trunk → sequential merge → skip-on-conflict → force-push)
+        id: assemble
+        shell: bash
+        env:
+          PM_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
+        run: |
+          set -uo pipefail
+
+          # Mirror / fork safety: without the write token the train cannot clone,
+          # push the disposable branch, comment, or label → clean no-op.
+          if [[ -z "${PM_TOKEN:-}" ]]; then
+            echo "FORGEJO_PM_TOKEN absent — no-op (expected on the GitHub mirror / forks)."
+            printf 'has_batch=false\n' >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          ORG="${KEYS_REPO%%/*}"
+          AUTH=(-H "Authorization: token ${PM_TOKEN}")
+          JSON=(-H 'Content-Type: application/json')
+
+          # --- 1. clone restormel-keys (write token) -----------------------------
+          WORK="$(mktemp -d)"
+          git clone --quiet "https://x-access-token:${PM_TOKEN}@git.allotmentology.tech/${KEYS_REPO}.git" "${WORK}/keys"
+          cd "${WORK}/keys" || exit 1
+          git config user.name  forgejo-ci
+          git config user.email ci@allotmentology.tech
+
+          # --- 2. open, non-draft, stage-labelled PRs (base = trunk), ascending ---
+          prs_json="$(curl -fsS "${AUTH[@]}" "${API}/repos/${KEYS_REPO}/pulls?state=open&type=pulls&limit=100" || echo '[]')"
+          mapfile -t BATCH < <(printf '%s' "${prs_json}" | jq -r --arg L "${STAGE_LABEL}" '
+            [ .[]
+              | select(.draft == false)
+              | select((.base.ref // "") == "main")
+              | select([.labels[].name] | index($L))
+              | .number ]
+            | sort | .[]')
+          echo "stage batch (ascending): ${BATCH[*]:-<none>}"
+
+          # --- 3. reset the disposable branch to the current trunk ---------------
+          git fetch --quiet origin main
+          git checkout -B integration origin/main
+
+          # --- 4. SEQUENTIAL pairwise merge (NOT a literal octopus — see header) -
+          declare -a MERGED=() CONFLICTED=()
+          for n in "${BATCH[@]}"; do
+            if ! git fetch --quiet origin "pull/${n}/head:pr-${n}"; then
+              echo "  #${n}: could not fetch PR head — skipping"
+              continue
+            fi
+            if git merge --no-ff --no-edit -m "train: batch PR #${n}" "pr-${n}"; then
+              echo "  #${n}: merged clean"
+              MERGED+=("${n}")
+            else
+              echo "  #${n}: CONFLICT — aborting this merge, skipping, will comment + label"
+              git merge --abort || true
+              CONFLICTED+=("${n}")
+            fi
+          done
+
+          # --- 5. batch SHA = integration HEAD short-12 (matches the bump tag) ----
+          SHA="$(git rev-parse --short=12 HEAD)"
+
+          # --- 6. force-push ONLY the disposable `integration` branch -------------
+          #     The train writes to this throwaway branch alone; it does not touch
+          #     the default branch and never promotes.
+          git push --force origin integration
+          echo "integration branch updated → ${SHA}"
+
+          # --- 7. anything to build? (skip a bare-trunk rebuild) -----------------
+          base_sha="$(git rev-parse origin/main)"
+          head_sha="$(git rev-parse HEAD)"
+          if [[ "${#MERGED[@]}" -gt 0 && "${head_sha}" != "${base_sha}" ]]; then
+            has_batch=true
+          else
+            has_batch=false
+            echo "Batch equals the bare trunk (no stage PR merged cleanly) — skipping the build."
+          fi
+
+          # --- helpers -----------------------------------------------------------
+          CONFLICT_ID="$(curl -fsS "${AUTH[@]}" "${API}/orgs/${ORG}/labels?limit=200" \
+            | jq -r --arg N "${CONFLICT_LABEL}" '.[]? | select(.name==$N) | .id' | head -1)"
+          MARK="<!-- integration-train -->"
+
+          upsert_comment () { # $1 = PR number, $2 = body (marker prepended here)
+            local n="$1" body cid
+            body="${MARK}"$'\n'"$2"
+            cid="$(curl -fsS "${AUTH[@]}" "${API}/repos/${KEYS_REPO}/issues/${n}/comments?limit=100" \
+              | jq -r --arg M "${MARK}" '[.[]? | select(.body | contains($M))][0].id // empty')"
+            if [[ -n "${cid}" ]]; then
+              jq -nc --arg b "${body}" '{body:$b}' \
+                | curl -fsS "${AUTH[@]}" "${JSON[@]}" -X PATCH --data @- "${API}/repos/${KEYS_REPO}/issues/comments/${cid}" >/dev/null 2>&1 || true
+            else
+              jq -nc --arg b "${body}" '{body:$b}' \
+                | curl -fsS "${AUTH[@]}" "${JSON[@]}" -X POST  --data @- "${API}/repos/${KEYS_REPO}/issues/${n}/comments"     >/dev/null 2>&1 || true
+            fi
+          }
+          add_conflict_label () { # $1 = PR number
+            if [[ -z "${CONFLICT_ID}" ]]; then
+              echo "  (note: ${CONFLICT_LABEL} label missing — founder must create it before arming)"
+              return
+            fi
+            jq -nc --argjson id "${CONFLICT_ID}" '{labels:[$id]}' \
+              | curl -fsS "${AUTH[@]}" "${JSON[@]}" -X POST --data @- "${API}/repos/${KEYS_REPO}/issues/${1}/labels" >/dev/null 2>&1 || true
+          }
+          clear_conflict_label () { # $1 = PR number (idempotent; 404 swallowed)
+            [[ -z "${CONFLICT_ID}" ]] && return 0
+            curl -fsS "${AUTH[@]}" -X DELETE "${API}/repos/${KEYS_REPO}/issues/${1}/labels/${CONFLICT_ID}" >/dev/null 2>&1 || true
+          }
+
+          # CSV of the deployed (cleanly-merged) batch for the status comments.
+          clean_csv="$( (IFS=,; printf '%s' "${MERGED[*]:-}") )"
+          clean_pretty="#${clean_csv//,/, #}"
+          [[ -z "${clean_csv}" ]] && clean_pretty="(none)"
+
+          # Comment bodies are CONSTANT per run (they describe the batch, not the
+          # individual PR), so build them once with indented concatenation — a
+          # column-0 multi-line string would de-indent below this run-block scalar.
+          merged_body="**Integration Train** — this PR is in the current pre-merge batch."$'\n'
+          merged_body+="- Deployed batch: ${clean_pretty}"$'\n'
+          merged_body+="- Image: \`${SHA}\`"$'\n'
+          merged_body+="- Env: ${ENV_URL} (portal SSO)"$'\n\n'
+          merged_body+="This is a pre-merge preview only. The train never promotes to the trunk — promotion stays the manual PR → trunk → prod path."
+
+          conflict_body="**Integration Train** — :warning: this PR **conflicts** with the current batch and was skipped."$'\n'
+          conflict_body+="- It is NOT in image \`${SHA}\` (deployed batch: ${clean_pretty})."$'\n'
+          conflict_body+="- Rebase on the latest trunk (or coordinate with the other staged PRs); it re-joins the next batch automatically."$'\n\n'
+          conflict_body+="The other staged PRs deployed without it. The train never promotes to the trunk."
+
+          # --- 8. per-PR status comments + label management ----------------------
+          for n in "${MERGED[@]:-}"; do
+            [[ -z "${n}" ]] && continue
+            clear_conflict_label "${n}"           # cleanly merged ⇒ drop any stale skip label
+            upsert_comment "${n}" "${merged_body}"
+          done
+          for n in "${CONFLICTED[@]:-}"; do
+            [[ -z "${n}" ]] && continue
+            add_conflict_label "${n}"
+            upsert_comment "${n}" "${conflict_body}"
+          done
+
+          # --- outputs -----------------------------------------------------------
+          {
+            printf 'has_batch=%s\n' "${has_batch}"
+            printf 'sha=%s\n'       "${SHA}"
+            printf 'batch=%s\n'     "${clean_csv:-}"
+          } >> "${GITHUB_OUTPUT}"
+
+  # ---------------------------------------------------------------------------
+  # build — invoke the rootless, outbound-only integration build keyed to the
+  # `integration` branch HEAD. Skipped when the batch is the bare trunk.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build + deploy the batch (integration)
+    needs: train
+    if: ${{ needs.train.outputs.has_batch == 'true' }}
+    uses: ./.forgejo/workflows/deploy-k3s.yml
+    with:
+      ref: integration
+      dry_run: false
+    secrets: inherit

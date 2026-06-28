@@ -16,7 +16,7 @@
 # by Argo CD PULLING from git inside the cluster.
 #
 # Required env (set by the workflow):
-#   ENV_NAME           — "staging" | "prod"  (also accepted as $1)
+#   ENV_NAME           — "integration" | "prod"  (also accepted as $1)
 #   REG                — registry host (git.allotmentology.tech)
 #   IMAGE_REPO         — registry path/org ("allotment-technology-ltd")
 #   REG_USER REG_TOKEN — registry push creds. REG_TOKEN needs write:package
@@ -25,10 +25,10 @@
 #   GITOPS_REPO        — Allotment-Technology-Ltd/restormel-gitops
 set -euo pipefail
 
-ENV_NAME="${1:-${ENV_NAME:?ENV_NAME (staging|prod) required}}"
+ENV_NAME="${1:-${ENV_NAME:?ENV_NAME (integration|prod) required}}"
 case "${ENV_NAME}" in
-  staging|prod) ;;
-  *) echo "FATAL: ENV_NAME must be 'staging' or 'prod', got '${ENV_NAME}'"; exit 2 ;;
+  integration|prod) ;;
+  *) echo "FATAL: ENV_NAME must be 'integration' or 'prod', got '${ENV_NAME}'"; exit 2 ;;
 esac
 
 : "${REG:?REG required}"
@@ -81,11 +81,15 @@ case "${DRY_RUN:-}" in
 esac
 
 # --- 3. bump the deployed image tag in restormel-gitops (egress git push) -----
-# PROD is raw manifests (applications/restormel-app-prod/*-deployment.yaml,
-# image: <reg>/<path>/<name>:<tag>); STAGING is helm values (.image.tag). Argo:
-#   prod    → OPERATOR SYNCS BY HAND (design §8 hard rule; never main-auto-deploy)
-#   staging → auto-syncs  (NOTE: the values/restormel-*-staging.yaml files are
-#             currently absent → staging Argo app is broken; see the staging guard).
+# BOTH envs are RAW MANIFESTS now (applications/<app>/*-deployment.yaml,
+# image: <reg>/<path>/<name>:<tag>) — the dead helm-values staging path (which
+# targeted the never-created values/restormel-*-staging.yaml and was the root
+# cause of the broken staging Argo app) has been removed. Argo:
+#   prod        → AUTO-SYNCS restormel-app-prod  (REC-ADR-011, 2026-06-27)
+#   integration → AUTO-SYNCS restormel-integration (project restormel-nonprod).
+# The integration manifests are authored by RES-114 Phase 1 (separate workstream);
+# until they land, bump_manifest_image()'s FATAL-on-missing-file guard aborts the
+# bump so the env is never half-bumped.
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "${WORKDIR}" "${DKR_CFG}"' EXIT
 echo "--- clone restormel-gitops ---"
@@ -105,32 +109,17 @@ bump_manifest_image() {
   echo "bumped ${file} → ${component}:${SHA}"
 }
 
-# helm values .image.tag (staging/preview chart path)
-bump_values_tag() {
-  local file="$1"
-  if [[ ! -f "${file}" ]]; then
-    echo "FATAL: ${file} not found in restormel-gitops. The staging helm values files are" >&2
-    echo "       currently absent (the restormel-{dashboard,worker}-staging.yaml referenced by" >&2
-    echo "       the staging Argo apps do not exist) → staging is not a deployable target yet." >&2
-    echo "       Restore them before using the staging deploy path. Aborting." >&2
-    exit 3
-  fi
-  if command -v yq >/dev/null 2>&1; then
-    yq -i ".image.tag = \"${SHA}\"" "${file}"
-  else
-    perl -0pi -e "s/(^image:\\s*\\n(?:[^\\S\\n].*\\n)*?\\s*tag:\\s*)\\S+/\${1}${SHA}/m" "${file}"
-  fi
-  echo "bumped ${file} → image.tag=${SHA}"
-}
-
 case "${ENV_NAME}" in
   prod)
     bump_manifest_image "applications/restormel-app-prod/20-dashboard-deployment.yaml" dashboard
     bump_manifest_image "applications/restormel-app-prod/40-worker-deployment.yaml"    worker
     ;;
-  staging)
-    bump_values_tag "values/restormel-dashboard-staging.yaml"
-    bump_values_tag "values/restormel-worker-staging.yaml"
+  integration)
+    # Same raw-manifest image-line bump as prod, against the RES-114 integration env's
+    # deployments (authored by Phase 1). Reuses bump_manifest_image() so the identical
+    # FATAL-on-missing-file guard protects against a half-bump until those files exist.
+    bump_manifest_image "applications/restormel-integration/20-dashboard-deployment.yaml" dashboard
+    bump_manifest_image "applications/restormel-integration/40-worker-deployment.yaml"    worker
     ;;
 esac
 

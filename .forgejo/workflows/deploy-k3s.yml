@@ -59,15 +59,31 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment (staging | prod)"
+        description: "Target environment (integration | prod)"
         required: true
         default: "prod"
         type: choice
         options:
-          - staging
+          - integration
           - prod
       dry_run:
         description: "Build + push images only; skip the gitops tag bump (pipeline validation)"
+        required: false
+        default: false
+        type: boolean
+  # workflow_call — lets integration-train.yml invoke the INTEGRATION build keyed to
+  # the disposable `integration` branch HEAD (the batched, stage-labelled PRs). The
+  # presence of the `ref` input is how the integration job detects a train-invoked
+  # build (robust regardless of the caller's originating event). OUTBOUND-ONLY like
+  # every path in this workflow. The caller passes `secrets: inherit`.
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to build (the integration branch HEAD)."
+        required: true
+        type: string
+      dry_run:
+        description: "Build + push images only; skip the gitops bump (pipeline validation)."
         required: false
         default: false
         type: boolean
@@ -86,76 +102,78 @@ env:
 
 jobs:
   # ===========================================================================
-  # STAGING — build → push → bump staging values → Argo AUTO-SYNCS → PBI flip.
-  # NOTE: values/restormel-{dashboard,worker}-staging.yaml are currently ABSENT,
-  # so the staging Argo app is not deployable yet — the bump step fails loudly with
-  # guidance until those files are restored. (Prod is the live target today.)
+  # INTEGRATION — build → push → bump restormel-integration manifests → Argo
+  # AUTO-SYNCS (project restormel-nonprod). This is the RES-114 Integration Train's
+  # build engine: it builds the disposable `integration` branch HEAD (the batched,
+  # stage-labelled PRs), pushes the image to the Forgejo registry, and bumps the
+  # integration env's raw deployment manifests in restormel-gitops. OUTBOUND-ONLY
+  # (registry push + gitops git push only — the same REC-INC-006 invariant as prod;
+  # the deploy completes by the in-cluster GitOps reconciler PULLING from git).
+  #
+  # It runs NO PBI-lifecycle flip: integration NEVER closes a PBI and NEVER promotes —
+  # promotion stays the manual PR → trunk → prod path gated by the Security scan.
+  #
+  # DEFAULT-OFF: gated on the NEW vars.INTEGRATION_TRAIN_ENABLED. Absent ⇒ clean no-op.
+  # Triggered by integration-train.yml via workflow_call (inputs.ref = integration HEAD)
+  # or by a manual workflow_dispatch with environment=integration.
+  #
+  # BUILD SURFACE (RES-114 C3 decision — ROOTLESS, ISOLATED):
+  # This job builds the UNTRUSTED batch of un-merged PRs, so it must NOT run privileged
+  # co-resident with prod (privileged = root on the node = escape to prod workloads on
+  # the lean shared cluster). It runs ROOTLESS buildkit (moby/buildkit:*-rootless with
+  # seccomp/apparmor unconfined and the rootless no-process-sandbox flag — NO
+  # --privileged) on a dedicated runner label `integration-build` that the founder
+  # provisions on a build surface that is NOT schedulable onto prod nodes and is
+  # egress-denied to the secret store / prod DB. Until that runner + the var exist,
+  # the gated-off job is a clean no-op. (The prod job below keeps its own surface,
+  # untouched.)
   # ===========================================================================
-  deploy-staging:
-    name: Build, push, bump (staging)
-    runs-on: ubuntu-latest
+  deploy-integration:
+    name: Build, push, bump (integration) — Argo auto-syncs
+    runs-on: integration-build
     container:
-      image: moby/buildkit:v0.16.0
-      options: --privileged
-    if: ${{ vars.K3S_DEPLOY_ENABLED == '1' && github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging' }}
+      image: moby/buildkit:v0.16.0-rootless
+      options: --security-opt seccomp=unconfined --security-opt apparmor=unconfined
+    if: ${{ vars.INTEGRATION_TRAIN_ENABLED == '1' && (inputs.ref != '' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'integration')) }}
     steps:
       - name: Tooling (alpine buildkit image has no git/bash/jq/curl)
         shell: sh
         run: apk add --no-cache git bash jq curl
 
-      - name: Clone source at the dispatched ref
+      - name: Clone source at the integration ref
         shell: bash
         env:
           PM_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
+          INTEGRATION_REF: ${{ inputs.ref || github.ref_name }}
         run: |
           set -euo pipefail
           if [[ -z "${PM_TOKEN:-}" ]]; then
             echo "::warning::FORGEJO_PM_TOKEN absent — no-op (expected on the GitHub mirror / fork)."; exit 0
           fi
-          git clone --depth 1 --branch "${GITHUB_REF_NAME}" \
+          git clone --depth 1 --branch "${INTEGRATION_REF}" \
             "https://x-access-token:${PM_TOKEN}@git.allotmentology.tech/${KEYS_REPO}.git" src
 
-      - name: Build → push → bump staging image tag in restormel-gitops
+      - name: Build → push → bump integration image tag in restormel-gitops
         shell: bash
         env:
           REG_USER: ${{ secrets.FORGEJO_REGISTRY_USER }}
           REG_TOKEN: ${{ secrets.FORGEJO_REGISTRY_TOKEN }}
           GITOPS_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
-          ENV_NAME: staging
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          ENV_NAME: integration
+          DRY_RUN: ${{ inputs.dry_run }}
+          # Rootless buildkitd cannot create the nested process sandbox without
+          # privileges; disable just that (seccomp/apparmor are already unconfined on
+          # the container above). This keeps the build non-privileged.
+          BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
         run: |
           set -euo pipefail
           if [[ -z "${REG_TOKEN:-}" || -z "${GITOPS_TOKEN:-}" ]]; then
             echo "::warning::registry/gitops token absent — no-op (expected on the GitHub mirror / fork)."; exit 0
           fi
           cd src && bash .forgejo/scripts/k3s-build-push-bump.sh "${ENV_NAME}"
+          echo "::notice::Integration image bumped in restormel-gitops. The GitOps reconciler will auto-sync restormel-integration. Integration NEVER promotes to the trunk."
 
-      # Staging auto-syncs, so flip every PBI at status/ready-deploy → status/deployed.
-      # Outbound-only: talks to the PUBLIC Forgejo issues API only.
-      - name: Lifecycle — close PBIs that were awaiting this deploy
-        if: ${{ success() }}
-        shell: bash
-        env:
-          FORGEJO_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${FORGEJO_TOKEN:-}" ]]; then echo "FORGEJO_PM_TOKEN not set — skipping PM lifecycle."; exit 0; fi
-          ORG="Allotment-Technology-Ltd"; REPO="${ORG}/restormel-keys"
-          BASE="https://git.allotmentology.tech/api/v1"
-          auth=(-H "Authorization: token ${FORGEJO_TOKEN}")
-          labels="$(curl -fsS "${auth[@]}" "${BASE}/orgs/${ORG}/labels?limit=200")"
-          deployed_id="$(printf '%s' "${labels}" | jq -r '.[]|select(.name=="status/deployed")|.id')"
-          open_issues="$(curl -fsS "${auth[@]}" "${BASE}/repos/${REPO}/issues?state=open&type=issues&limit=100")"
-          nums="$(printf '%s' "${open_issues}" | jq -r '.[]|select(.labels|map(.name)|index("status/ready-deploy"))|.number')"
-          if [ -z "${nums}" ]; then echo "No PBIs at status/ready-deploy — nothing to close."; exit 0; fi
-          for n in ${nums}; do
-            curl -fsS "${auth[@]}" "${BASE}/repos/${REPO}/issues/${n}/labels" \
-              | jq -r '.[]|select(.name|startswith("status/"))|.id' \
-              | while read -r sid; do [ -n "${sid}" ] && curl -fsS "${auth[@]}" -X DELETE "${BASE}/repos/${REPO}/issues/${n}/labels/${sid}" >/dev/null 2>&1 || true; done
-            [ -n "${deployed_id}" ] && curl -fsS "${auth[@]}" -X POST "${BASE}/repos/${REPO}/issues/${n}/labels" -H 'Content-Type: application/json' -d "{\"labels\":[${deployed_id}]}" >/dev/null 2>&1 || true
-            curl -fsS "${auth[@]}" -X PATCH "${BASE}/repos/${REPO}/issues/${n}" -H 'Content-Type: application/json' -d '{"state":"closed"}' >/dev/null 2>&1 || true
-            echo "deployed + closed #${n}"
-          done
+      # NB: NO PBI-lifecycle flip here — integration never closes PBIs, never promotes.
 
       - name: Alert on deploy failure (Telegram / PostHog)
         if: ${{ failure() }}
@@ -164,15 +182,15 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
-          DEPLOY_PIPELINE: "deploy-k3s (staging)"
-          DEPLOY_ENV: staging
+          DEPLOY_PIPELINE: "deploy-k3s (integration)"
+          DEPLOY_ENV: integration
         run: |
           set -uo pipefail
           if [[ -f src/.forgejo/scripts/deploy-failure-alert.sh ]]; then
             bash src/.forgejo/scripts/deploy-failure-alert.sh
           elif [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
             curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-              -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=⚠️ deploy-k3s (staging) FAILED for ${GITHUB_REPOSITORY}@${GITHUB_REF_NAME}" >/dev/null || true
+              -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=⚠️ deploy-k3s (integration) FAILED for ${GITHUB_REPOSITORY}" >/dev/null || true
           fi
 
   # ===========================================================================
