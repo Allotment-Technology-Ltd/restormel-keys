@@ -80,6 +80,36 @@ describe("module-flags env override", () => {
     expect(flags.connectHostManagedGraphStore).toBe(true);
   });
 
+  // RES-113 (REC-ADR-021): the onboarding redesign ships behind this flag, default OFF,
+  // and the env override is a FULL enumeration — a flag absent from the override stays OFF.
+  it("keeps the onboarding journey flag OFF by default (env unset)", () => {
+    delete process.env.RESTORMEL_MODULE_FLAGS;
+    const flags = resolveModuleFlagsSync();
+    expect(flags.onboardingJourney).toBe(false);
+    expect(isModuleEnabled(flags, "onboardingJourney")).toBe(false);
+  });
+
+  it("keeps onboarding journey OFF when the override omits it (full-enumeration override)", () => {
+    process.env.RESTORMEL_MODULE_FLAGS = "connect";
+    const flags = resolveModuleFlagsSync();
+    expect(flags.fromEnvOverride).toBe(true);
+    expect(flags.onboardingJourney).toBe(false);
+  });
+
+  it("resolves the onboarding journey flag via the RESTORMEL_MODULE_FLAGS override", () => {
+    process.env.RESTORMEL_MODULE_FLAGS = "connect,onboarding_journey";
+    const flags = resolveModuleFlagsSync();
+    expect(flags.connect).toBe(true);
+    expect(flags.onboardingJourney).toBe(true);
+    expect(isModuleEnabled(flags, "onboardingJourney")).toBe(true);
+  });
+
+  it("accepts the kebab onboarding-journey override token", () => {
+    process.env.RESTORMEL_MODULE_FLAGS = "connect,onboarding-journey";
+    const flags = resolveModuleFlagsSync();
+    expect(flags.onboardingJourney).toBe(true);
+  });
+
   it("parses monitor override", () => {
     process.env.RESTORMEL_MODULE_FLAGS = "connect,monitor";
     const flags = resolveModuleFlagsSync();
@@ -104,6 +134,8 @@ describe("MVP_MODULE_DEFAULTS", () => {
     expect(MVP_MODULE_DEFAULTS.environments).toBe(false);
     // REC-ADR-008: still OFF in prod until founder sign-off after the G4 gate.
     expect(MVP_MODULE_DEFAULTS.connectHostManagedGraphStore).toBe(false);
+    // RES-113 / REC-ADR-021: onboarding redesign OFF until the one-cut flip.
+    expect(MVP_MODULE_DEFAULTS.onboardingJourney).toBe(false);
   });
 });
 
