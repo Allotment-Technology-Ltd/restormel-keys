@@ -10264,3 +10264,107 @@ export async function revokeAgentObservationPostgres(params: {
 
   return { ok: true };
 }
+
+// ─── M3 store-move decision audit (RES-113 PR-K, migration 074) ───────────────
+
+/**
+ * A persisted record of the M3 non-destructive store-move choice. Decisions only —
+ * never customer graph data. See connect-store-move-service for how it's built.
+ */
+export type ConnectStoreMoveDecisionRecord = {
+  id: string;
+  targetEngine: "postgres" | "surreal" | "neo4j";
+  probeNodeCount: number | null;
+  probeLastWriteAt: string | null;
+  targetWasEmpty: boolean;
+  chosenOption: "use_existing" | "add_alongside" | "keep_separate";
+  plan: unknown;
+  executionEnvPending: boolean;
+  createdAt: number;
+};
+
+/** True when a thrown DB error is the migration-074-not-applied signature. */
+function isStoreMoveTableMissing(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return (
+    /\b42P01\b/.test(msg) ||
+    /relation .*connect_store_move_decisions.* does not exist/i.test(msg)
+  );
+}
+
+/**
+ * Append a non-destructive store-move decision to the audit (migration 074). The
+ * table is flag-gated and NOT promoted to REQUIRED_MIGRATION, so when it has not
+ * yet been applied this returns null (the route then degrades gracefully instead
+ * of 500-ing — the 070/072 incident lesson). NEVER writes customer graph data.
+ */
+export async function recordConnectStoreMoveDecision(params: {
+  workspaceId: string;
+  targetEngine: "postgres" | "surreal" | "neo4j";
+  probeNodeCount: number | null;
+  probeLastWriteAt: string | null;
+  targetWasEmpty: boolean;
+  chosenOption: "use_existing" | "add_alongside" | "keep_separate";
+  plan: unknown;
+  executionEnvPending: boolean;
+}): Promise<{ id: string } | null> {
+  const sql = getSql();
+  const id = crypto.randomUUID();
+  try {
+    await sql`
+      INSERT INTO connect_store_move_decisions (
+        id, workspace_id, target_engine, probe_node_count, probe_last_write_at,
+        target_was_empty, chosen_option, plan, managed_copy_retained, reversible,
+        execution_env_pending, created_at
+      ) VALUES (
+        ${id}, ${params.workspaceId}, ${params.targetEngine}, ${params.probeNodeCount},
+        ${params.probeLastWriteAt}, ${params.targetWasEmpty}, ${params.chosenOption},
+        ${JSON.stringify(params.plan ?? {})}::jsonb, TRUE, TRUE,
+        ${params.executionEnvPending}, ${Date.now()}
+      )
+    `;
+    return { id };
+  } catch (e) {
+    if (isStoreMoveTableMissing(e)) return null; // migration 074 pending — degrade, don't crash.
+    throw e;
+  }
+}
+
+/** The workspace's most recent store-move decision (the current binding), or null. */
+export async function getLatestConnectStoreMoveDecision(
+  workspaceId: string,
+): Promise<ConnectStoreMoveDecisionRecord | null> {
+  const sql = getSql();
+  try {
+    const rows = await sql`
+      SELECT id, target_engine, probe_node_count, probe_last_write_at, target_was_empty,
+             chosen_option, plan, execution_env_pending, created_at
+      FROM connect_store_move_decisions
+      WHERE workspace_id = ${workspaceId}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    const r = (rows as Record<string, unknown>[])[0];
+    if (!r) return null;
+    const lastWrite = r.probe_last_write_at;
+    return {
+      id: String(r.id),
+      targetEngine: r.target_engine as ConnectStoreMoveDecisionRecord["targetEngine"],
+      probeNodeCount: r.probe_node_count === null ? null : Number(r.probe_node_count),
+      probeLastWriteAt:
+        lastWrite instanceof Date
+          ? lastWrite.toISOString()
+          : lastWrite
+            ? String(lastWrite)
+            : null,
+      targetWasEmpty: Boolean(r.target_was_empty),
+      chosenOption: r.chosen_option as ConnectStoreMoveDecisionRecord["chosenOption"],
+      plan: r.plan ?? {},
+      executionEnvPending: Boolean(r.execution_env_pending),
+      createdAt: Number(r.created_at),
+    };
+  } catch (e) {
+    if (isStoreMoveTableMissing(e)) return null;
+    throw e;
+  }
+}
