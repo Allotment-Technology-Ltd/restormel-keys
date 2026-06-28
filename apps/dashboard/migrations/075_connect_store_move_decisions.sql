@@ -1,4 +1,4 @@
--- Migration 074: connect_store_move_decisions (RES-113 PR-K — M3 non-destructive store move).
+-- Migration 075: connect_store_move_decisions (RES-113 PR-K — M3 non-destructive store move).
 --
 -- WHAT: an append-only audit of the M3 "own your store" non-destructive choice
 -- (REC-ADR-017 / REC-ADR-021 M3). Each row records, for a workspace, the read-only
