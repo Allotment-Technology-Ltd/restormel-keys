@@ -23,6 +23,13 @@ import {
   resolveMemoryWriteDeps,
   type MemoryWriteDeps,
 } from "$lib/server/connect/memory-write-service";
+import {
+  decideMemoryWriteScope,
+  writeScopeDenialMessage,
+  MEMORY_WRITE_REQUIRED_ACCESS,
+} from "$lib/server/connect/key-scope";
+import { isModuleEnabled, resolveModuleFlagsSync } from "$lib/server/module-flags";
+import type { ModuleFlags } from "$lib/module-flags-types";
 
 export type ConnectMemoryHandlerOutcome =
   | {
@@ -41,6 +48,8 @@ export async function handleConnectMemoryWrite(args: {
     auth: { userId: string; projectId: string; workspaceId: string; authType: string };
     requestId: string;
   }) => Promise<{ ok: true; deps: MemoryWriteDeps } | { ok: false; status: number; body: Record<string, unknown> }>;
+  /** Test seam: inject resolved module flags (defaults to the env/MVP sync resolver). */
+  resolveFlags?: () => ModuleFlags;
 }): Promise<ConnectMemoryHandlerOutcome> {
   const parsed = ConnectMemoryWriteRequestSchema.safeParse(args.body);
   if (!parsed.success) {
@@ -63,6 +72,31 @@ export async function handleConnectMemoryWrite(args: {
   });
   if ("error" in auth && "status" in auth) {
     return { ok: false, status: auth.status, body: { error: auth.error, message: auth.message } };
+  }
+
+  // RES-113 PR-L — enforced key-scope: a read-only connection key cannot write memory. This is an
+  // AUTHORISATION decision (runs right after auth, before rate-limiting / any store work). With the
+  // onboardingJourney flag OFF the decision short-circuits to ALLOW, so today's "every key may
+  // write" behaviour is unchanged; only when the flag is ON does a `read`-scoped Gateway key get a
+  // 403. Session/management auth is never narrowed (owners/admins keep write). See key-scope.ts.
+  const flags = (args.resolveFlags ?? resolveModuleFlagsSync)();
+  const scopeDecision = decideMemoryWriteScope({
+    authType: auth.authType,
+    access: args.locals.user?.keyAccess ?? null,
+    status: args.locals.user?.keyStatus ?? null,
+    flagEnabled: isModuleEnabled(flags, "onboardingJourney"),
+  });
+  if (!scopeDecision.allowed) {
+    return {
+      ok: false,
+      status: 403,
+      body: {
+        error: "insufficient_scope",
+        message: writeScopeDenialMessage(scopeDecision),
+        required_access: MEMORY_WRITE_REQUIRED_ACCESS,
+        reason: scopeDecision.reason,
+      },
+    };
   }
 
   const keyId = args.locals.user?.keyId?.trim() || null;

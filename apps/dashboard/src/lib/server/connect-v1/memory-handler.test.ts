@@ -25,6 +25,7 @@ import {
   resolveMemoryWriteDeps,
 } from "$lib/server/connect/memory-write-service";
 import { handleConnectMemoryWrite } from "./memory-handler.js";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 import {
   checkMemoryWriteRateLimit,
   memoryRateLimitIdentity,
@@ -196,6 +197,78 @@ describe("handleConnectMemoryWrite ordering", () => {
     });
     expect(out.ok).toBe(true);
     expect(vi.mocked(executeConnectMemoryWrite).mock.calls[0][0].keyId).toBe("key-5");
+  });
+});
+
+describe("handleConnectMemoryWrite — RES-113 PR-L enforced key-scope", () => {
+  // Flag ON (onboardingJourney) — scope is enforced. Flag OFF is covered implicitly by every
+  // other test in this file (they run with the MVP default flags = onboardingJourney OFF and a
+  // read/unscoped key still reaches deps/rate-limit, i.e. write is NOT denied).
+  const flagsOn = () =>
+    ({ ...MVP_MODULE_DEFAULTS, onboardingJourney: true }) as unknown as import(
+      "$lib/module-flags-types"
+    ).ModuleFlags;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetMemoryWriteRateLimit();
+    vi.mocked(authorizeKnowledgeWorkspaceRequest).mockResolvedValue(AUTH_OK);
+    vi.mocked(resolveMemoryWriteDeps).mockResolvedValue({
+      ok: false,
+      status: 503,
+      body: { error: "graph_target_not_configured", message: "no store" },
+    });
+  });
+
+  it("DENIES a read-scoped gateway key with 403 insufficient_scope (flag ON)", async () => {
+    const out = await handleConnectMemoryWrite({
+      locals: locals({ authType: "gateway_key", keyId: "k-read", keyAccess: "read" }),
+      body: VALID_BODY,
+      requestId: "r-read",
+      resolveFlags: flagsOn,
+    });
+    expect(out.ok).toBe(false);
+    expect(out.status).toBe(403);
+    if (out.ok) return;
+    expect(out.body.error).toBe("insufficient_scope");
+    expect(out.body.required_access).toBe("read_write");
+    // Denied BEFORE dependency resolution — no store/LLM work leaked for an unauthorised write.
+    expect(resolveMemoryWriteDeps).not.toHaveBeenCalled();
+  });
+
+  it("ALLOWS a read+write gateway key through to deps (flag ON)", async () => {
+    const out = await handleConnectMemoryWrite({
+      locals: locals({ authType: "gateway_key", keyId: "k-rw", keyAccess: "read_write" }),
+      body: VALID_BODY,
+      requestId: "r-rw",
+      resolveFlags: flagsOn,
+    });
+    expect(out.status).toBe(503); // reached deps resolution — scope allowed it
+    expect(resolveMemoryWriteDeps).toHaveBeenCalledTimes(1);
+  });
+
+  it("GRANDFATHERS a legacy unscoped gateway key (NULL access) as read+write (flag ON)", async () => {
+    const out = await handleConnectMemoryWrite({
+      locals: locals({ authType: "gateway_key", keyId: "k-legacy" }), // no keyAccess
+      body: VALID_BODY,
+      requestId: "r-legacy",
+      resolveFlags: flagsOn,
+    });
+    expect(out.status).toBe(503); // reached deps — legacy key not denied
+    expect(resolveMemoryWriteDeps).toHaveBeenCalledTimes(1);
+  });
+
+  it("ALLOWS a read key when the flag is OFF (today's behaviour preserved)", async () => {
+    const out = await handleConnectMemoryWrite({
+      locals: locals({ authType: "gateway_key", keyId: "k-read", keyAccess: "read" }),
+      body: VALID_BODY,
+      requestId: "r-read-off",
+      resolveFlags: () => ({ ...MVP_MODULE_DEFAULTS }) as unknown as import(
+        "$lib/module-flags-types"
+      ).ModuleFlags,
+    });
+    expect(out.status).toBe(503); // not denied — reached deps
+    expect(resolveMemoryWriteDeps).toHaveBeenCalledTimes(1);
   });
 });
 

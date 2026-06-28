@@ -5,6 +5,12 @@ import { getOrCreateDefaultWorkspace } from "$lib/server/db";
 import { dashboardProjectScopeForApi } from "$lib/server/dashboard-project-api-scope";
 import { ensureZuploConsumer } from "$lib/server/zuplo-consumer";
 import { labelContainsKeyMaterial } from "$lib/server/key-label-validation";
+import {
+  isValidAccess,
+  isValidConnectionType,
+  normalizeTarget,
+} from "$lib/server/connect/key-scope";
+import { isModuleEnabled, resolveModuleFlagsSync } from "$lib/server/module-flags";
 
 export const GET: RequestHandler = async ({ params, locals }) => {
   if (!locals.user) return json({ error: "unauthorized", message: "Authentication required" }, { status: 401 });
@@ -20,6 +26,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
       label: k.label,
       lastUsedAt: k.lastUsedAt,
       type: "gateway" as const,
+      // RES-113 PR-L — connection scope (null on legacy/flat keys). Surfaced so the M4 manager
+      // renders a stored key as a typed connection. key_hash is NEVER selected/returned.
+      keyType: k.keyType,
+      access: k.access,
+      target: k.target,
+      status: k.status,
     })),
   });
 };
@@ -37,7 +49,53 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     return json({ error: "invalid_label", message: "Label must not contain key material" }, { status: 400 });
   }
   const label = rawLabel || undefined;
-  const result = await createApiKey(scope.projectId, scope.userId, { label });
+
+  // RES-113 PR-L — purpose-bind the key as a connection (REC-ADR-018 addendum: "the key IS the
+  // connection"). The scope is persisted ONLY when the onboardingJourney flag is ON; flag OFF mints
+  // a flat label-only key exactly as before (scope params are ignored). Invalid enum values are a
+  // 400 (fail-closed) rather than silently dropping to an unscoped key, so a client asking for a
+  // read key never accidentally gets a read+write one.
+  const flags = locals.moduleFlags ?? resolveModuleFlagsSync();
+  const scopeEnabled = isModuleEnabled(flags, "onboardingJourney");
+  let keyType: "mcp" | "rest" | undefined;
+  let access: "read" | "read_write" | undefined;
+  let target: string | undefined;
+  if (scopeEnabled) {
+    if (body.keyType !== undefined && body.keyType !== null) {
+      if (!isValidConnectionType(body.keyType)) {
+        return json(
+          { error: "invalid_key_type", message: "keyType must be 'mcp' or 'rest'" },
+          { status: 400 },
+        );
+      }
+      keyType = body.keyType;
+    }
+    if (body.access !== undefined && body.access !== null) {
+      if (!isValidAccess(body.access)) {
+        return json(
+          { error: "invalid_access", message: "access must be 'read' or 'read_write'" },
+          { status: 400 },
+        );
+      }
+      access = body.access;
+    }
+    target = normalizeTarget(body.target) ?? undefined;
+    // SECURITY: target is free text persisted + surfaced in the manager; reject anything that looks
+    // like key material (same rule as labels) so a key value can never be smuggled into a stored field.
+    if (target && labelContainsKeyMaterial(target)) {
+      return json(
+        { error: "invalid_target", message: "Target must not contain key material" },
+        { status: 400 },
+      );
+    }
+  }
+
+  const result = await createApiKey(scope.projectId, scope.userId, {
+    label,
+    keyType,
+    access,
+    target,
+  });
   if (!result) return json({ error: "not_found", message: "Project not found" }, { status: 404 });
 
   // Best-effort: ensure a Zuplo consumer exists for this workspace so the developer portal can "Try it".
@@ -58,6 +116,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
         rawKey: result.rawKey,
         keyPrefix: result.keyPrefix,
         type: "gateway" as const,
+        // Echo the persisted connection scope (null when flag OFF or not requested) so the M4
+        // manager renders exactly what was minted, not a derived guess.
+        keyType: keyType ?? null,
+        access: access ?? null,
+        target: target ?? null,
       },
     },
     { status: 201 }

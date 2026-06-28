@@ -133,6 +133,36 @@ describe("connection-model — mock scope inference (NEVER a security decision)"
     });
     expect(view.name).toBe("agent read+write");
   });
+
+  it("connectionFromKey uses ENFORCED scope (isMockScope false) when the key carries key_type/access", () => {
+    // PR-L: a key minted with a real scope must render its REAL access, not a label guess — even
+    // when the label would derive otherwise (here label says 'write' but access is enforced read).
+    const view = connectionFromKey({
+      id: "key_2",
+      keyPrefix: "rk_live_cd",
+      label: "writer-bot",
+      projectId: "proj_1",
+      keyType: "rest",
+      access: "read",
+    });
+    expect(view).toMatchObject({
+      method: "rest",
+      access: "read",
+      isMockScope: false,
+    });
+  });
+
+  it("connectionFromKey enforces even when only one scope field is present", () => {
+    const view = connectionFromKey({
+      id: "key_3",
+      keyPrefix: "rk_live_ef",
+      label: null,
+      projectId: "proj_1",
+      access: "read_write",
+    });
+    expect(view.access).toBe("read_write");
+    expect(view.isMockScope).toBe(false);
+  });
 });
 
 describe("connection-model — wizard live preview", () => {

@@ -28,6 +28,9 @@ async function loadGatewayKeysForUser(userId: string, workspaceId: string): Prom
     projectId: key.projectId,
     projectName: key.projectName,
     label: key.label ?? null,
+    // RES-113 PR-L — enforced scope (null on legacy keys / flag OFF). key_hash is never carried.
+    keyType: key.keyType ?? null,
+    access: key.access ?? null,
   }));
   return { projects, gatewayKeys };
 }
