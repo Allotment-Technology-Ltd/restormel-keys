@@ -31,10 +31,19 @@
 #
 # BUILD INVOCATION: this workflow invokes the integration build via workflow_call
 # into deploy-k3s.yml (reuse of the rootless-buildkit, outbound-only build engine).
-# Fallback if a Forgejo version does not support local reusable workflows: replace
-# the `build` job with an inline buildkit job that runs
-# `.forgejo/scripts/k3s-build-push-bump.sh integration` against the `integration`
-# ref — same outbound-only surface.
+# deploy-k3s.yml is resolved from the DEFAULT branch (trunk) for the train's
+# schedule/dispatch events, so the build engine + bump script are TRUSTED.
+# Fallback if a Forgejo version does not support local reusable workflows: replace the
+# `build` job with an inline rootless buildkit job that REPRODUCES the trusted model —
+# clone trunk for the bump script, clone the `integration` ref as buildkit CONTEXT ONLY
+# (never executed), then `k3s-build-push-bump.sh build integration` (REG_TOKEN only) and
+# a SEPARATE `k3s-build-push-bump.sh bump integration` (GITOPS_TOKEN only). Never
+# `bash` the integration tree and never put both write tokens in one step.
+#
+# TRUST MODEL (PPE/TOCTOU hardening, PR #374): the untrusted batched `integration` tree
+# is used ONLY as the build context; all credential-handling code runs from trunk; the
+# registry-push and gitops-bump privileges are split; secrets are passed explicitly
+# (no blanket secret inheritance). See deploy-k3s.yml `deploy-integration` for the rationale.
 # =============================================================================
 name: Integration Train
 
@@ -236,8 +245,23 @@ jobs:
     name: Build + deploy the batch (integration)
     needs: train
     if: ${{ needs.train.outputs.has_batch == 'true' }}
+    # deploy-k3s.yml is resolved from the DEFAULT branch (trunk) for the train's
+    # schedule/dispatch events — so the build engine + bump script are trusted, never
+    # sourced from the untrusted integration tree.
     uses: ./.forgejo/workflows/deploy-k3s.yml
     with:
       ref: integration
       dry_run: false
-    secrets: inherit
+    # No blanket secret inheritance — pass ONLY the secrets the integration build needs,
+    # each least-privilege (see deploy-k3s.yml header for the required scopes):
+    #   FORGEJO_PM_TOKEN       — read source clone + restormel-gitops bump; scoped to the
+    #                            `integration` branch + comments/labels ONLY (no trunk write).
+    #   FORGEJO_REGISTRY_TOKEN — write:package ONLY (image push).
+    #   TELEGRAM_*/POSTHOG_*   — failure alert only (consumed solely by trusted trunk code).
+    secrets:
+      FORGEJO_PM_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
+      FORGEJO_REGISTRY_USER: ${{ secrets.FORGEJO_REGISTRY_USER }}
+      FORGEJO_REGISTRY_TOKEN: ${{ secrets.FORGEJO_REGISTRY_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}

@@ -42,10 +42,24 @@
 # ---------------------------------------------------------------------------------
 #   vars.K3S_DEPLOY_ENABLED        — "1" to arm this pipeline (cutover gate). Absent ⇒ no-op.
 #   secrets.FORGEJO_REGISTRY_USER  — registry push user (adam).
-#   secrets.FORGEJO_REGISTRY_TOKEN — registry push token (FORGEJO_REGISTRY, write:package).
-#   secrets.FORGEJO_PM_TOKEN       — clone source (read) + write restormel-gitops bump
-#                                    + issue-write on restormel-keys (staging PBI flip).
+#   secrets.FORGEJO_REGISTRY_TOKEN — registry push token (FORGEJO_REGISTRY, write:package ONLY).
+#   secrets.FORGEJO_PM_TOKEN       — clone source (read) + write restormel-gitops bump.
 # Any required secret absent ⇒ the job no-ops cleanly (GitHub mirror / forks / first setup).
+#
+# ---------------------------------------------------------------------------------
+# LEAST-PRIVILEGE TOKEN SCOPES (founder-gated provisioning; the design REQUIRES nothing more)
+# ---------------------------------------------------------------------------------
+#   FORGEJO_REGISTRY_TOKEN — write:package ONLY. Used solely to PUSH the built image.
+#                            Never reaches the gitops bump step; never mounted into the
+#                            build (no --build-arg / --secret), so an untrusted Dockerfile
+#                            RUN cannot read it.
+#   FORGEJO_PM_TOKEN       — for the INTEGRATION path this token MUST be scoped to the
+#                            `integration` branch + PR comments/labels ONLY (NO trunk/main
+#                            write, NO package write). It is used for: (a) read-only source
+#                            clone, and (b) the gitops bump (restormel-gitops write). It is
+#                            NEVER in scope of any step that executes untrusted-branch code.
+# No blanket secret inheritance anywhere — every reusable-workflow secret is passed
+# explicitly + minimally by the caller (see integration-train.yml).
 
 name: Deploy K3s (GitOps)
 
@@ -75,7 +89,13 @@ on:
   # the disposable `integration` branch HEAD (the batched, stage-labelled PRs). The
   # presence of the `ref` input is how the integration job detects a train-invoked
   # build (robust regardless of the caller's originating event). OUTBOUND-ONLY like
-  # every path in this workflow. The caller passes `secrets: inherit`.
+  # every path in this workflow.
+  #
+  # This reusable workflow DEFINITION runs from the DEFAULT branch (trunk) for the
+  # train's schedule/dispatch events — so the orchestration YAML and the bump script it
+  # invokes are trusted, never sourced from the untrusted integration tree.
+  #
+  # secrets are passed EXPLICITLY + MINIMALLY by the caller (no blanket inheritance).
   workflow_call:
     inputs:
       ref:
@@ -87,6 +107,21 @@ on:
         required: false
         default: false
         type: boolean
+    secrets:
+      FORGEJO_PM_TOKEN:
+        description: "Read source clone + restormel-gitops bump. Scope: integration branch + comments/labels ONLY."
+        required: false
+      FORGEJO_REGISTRY_USER:
+        required: false
+      FORGEJO_REGISTRY_TOKEN:
+        description: "write:package ONLY. Used only to push the built image."
+        required: false
+      TELEGRAM_BOT_TOKEN:
+        required: false
+      TELEGRAM_CHAT_ID:
+        required: false
+      POSTHOG_API_KEY:
+        required: false
 
 # One build/bump at a time per repo: two parallel full-workspace builds strain the
 # node, and concurrent gitops pushes race on `git push origin main`.
@@ -127,9 +162,26 @@ jobs:
   # egress-denied to the secret store / prod DB. Until that runner + the var exist,
   # the gated-off job is a clean no-op. (The prod job below keeps its own surface,
   # untouched.)
+  #
+  # TRUSTED ORCHESTRATION FROM TRUNK (RES-114 hardening, PR #374 — eliminates the PPE/TOCTOU
+  # HIGH finding): the untrusted `integration` tree is consumed ONLY as the buildkit BUILD
+  # CONTEXT (cloned into `buildctx/`, never sourced, never bash-executed). All code that
+  # touches a write token — the bump script — is run from the DEFAULT-BRANCH (trunk)
+  # checkout (`trunk/`), NEVER from `buildctx/`. The two write privileges are SPLIT across
+  # two steps so neither holds a write token AND executes against the untrusted context:
+  #   * Build step  → REG_TOKEN ONLY (write:package). Builds buildctx, pushes BY DIGEST,
+  #                   emits the immutable sha256 digests. No gitops token; no secret mounted
+  #                   into the build (no --build-arg/--secret/RUN env).
+  #   * Bump step   → GITOPS_TOKEN ONLY. Runs the TRUNK script; pins the gitops manifest BY
+  #                   DIGEST. No registry token; never touches buildctx; never runs untrusted
+  #                   code.
+  # DEFENSE-IN-DEPTH: the founder-provisioned `integration-build` runner MUST be
+  # egress-restricted to the registry + source/gitops clone host + DNS only (NOT 0.0.0.0/0)
+  # so even an untrusted Dockerfile RUN cannot exfiltrate to an arbitrary host (C3 build
+  # surface live op). No step echoes a secret; pinning by digest gives build provenance.
   # ===========================================================================
   deploy-integration:
-    name: Build, push, bump (integration) — Argo auto-syncs
+    name: Build, push, bump (integration) — trusted orchestration, Argo auto-syncs
     runs-on: integration-build
     container:
       image: moby/buildkit:v0.16.0-rootless
@@ -140,7 +192,21 @@ jobs:
         shell: sh
         run: apk add --no-cache git bash jq curl
 
-      - name: Clone source at the integration ref
+      - name: Checkout TRUSTED orchestration from trunk (default branch) — NOT the integration tree
+        shell: bash
+        env:
+          PM_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${PM_TOKEN:-}" ]]; then
+            echo "::warning::FORGEJO_PM_TOKEN absent — no-op (expected on the GitHub mirror / fork)."; exit 0
+          fi
+          # The bump script + every credential-handling line is taken from the DEFAULT
+          # branch, never from the untrusted integration ref.
+          git clone --depth 1 --branch main \
+            "https://x-access-token:${PM_TOKEN}@git.allotmentology.tech/${KEYS_REPO}.git" trunk
+
+      - name: Fetch UNTRUSTED build context at the integration ref (buildkit context ONLY — never executed)
         shell: bash
         env:
           PM_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
@@ -150,28 +216,52 @@ jobs:
           if [[ -z "${PM_TOKEN:-}" ]]; then
             echo "::warning::FORGEJO_PM_TOKEN absent — no-op (expected on the GitHub mirror / fork)."; exit 0
           fi
+          # `buildctx/` is ONLY a buildkit --local context (Dockerfile + app source). It is
+          # never sourced and never bash-executed; no orchestration is read from it.
           git clone --depth 1 --branch "${INTEGRATION_REF}" \
-            "https://x-access-token:${PM_TOKEN}@git.allotmentology.tech/${KEYS_REPO}.git" src
+            "https://x-access-token:${PM_TOKEN}@git.allotmentology.tech/${KEYS_REPO}.git" buildctx
 
-      - name: Build → push → bump integration image tag in restormel-gitops
+      - name: Build + push integration image BY DIGEST (registry token ONLY; no gitops token; untrusted context not executed)
+        id: build
         shell: bash
         env:
           REG_USER: ${{ secrets.FORGEJO_REGISTRY_USER }}
           REG_TOKEN: ${{ secrets.FORGEJO_REGISTRY_TOKEN }}
-          GITOPS_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
           ENV_NAME: integration
-          DRY_RUN: ${{ inputs.dry_run }}
+          BUILD_CONTEXT: buildctx
           # Rootless buildkitd cannot create the nested process sandbox without
           # privileges; disable just that (seccomp/apparmor are already unconfined on
           # the container above). This keeps the build non-privileged.
           BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
         run: |
           set -euo pipefail
-          if [[ -z "${REG_TOKEN:-}" || -z "${GITOPS_TOKEN:-}" ]]; then
-            echo "::warning::registry/gitops token absent — no-op (expected on the GitHub mirror / fork)."; exit 0
+          if [[ -z "${REG_TOKEN:-}" ]]; then
+            echo "::warning::registry token absent — no-op (expected on the GitHub mirror / fork)."; exit 0
           fi
-          cd src && bash .forgejo/scripts/k3s-build-push-bump.sh "${ENV_NAME}"
-          echo "::notice::Integration image bumped in restormel-gitops. The GitOps reconciler will auto-sync restormel-integration. Integration NEVER promotes to the trunk."
+          # TRUSTED script from trunk; the untrusted tree is ONLY the buildkit --local context.
+          bash trunk/.forgejo/scripts/k3s-build-push-bump.sh build integration
+
+      - name: Bump integration manifests in restormel-gitops BY DIGEST (gitops token ONLY; trusted trunk code; no untrusted execution; no registry token)
+        shell: bash
+        env:
+          GITOPS_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
+          ENV_NAME: integration
+          DASH_DIGEST: ${{ steps.build.outputs.DASH_DIGEST }}
+          WORKER_DIGEST: ${{ steps.build.outputs.WORKER_DIGEST }}
+          IMAGE_SHA: ${{ steps.build.outputs.IMAGE_SHA }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GITOPS_TOKEN:-}" ]]; then
+            echo "::warning::gitops token absent — no-op (expected on the GitHub mirror / fork)."; exit 0
+          fi
+          if [[ -z "${DASH_DIGEST:-}" || -z "${WORKER_DIGEST:-}" ]]; then
+            echo "::warning::no build digests (build step no-opped) — skipping bump."; exit 0
+          fi
+          # TRUSTED script from trunk; pins the gitops manifest by the immutable digest the
+          # build step produced. This step never reads buildctx and has no registry token.
+          bash trunk/.forgejo/scripts/k3s-build-push-bump.sh bump integration
+          echo "::notice::Integration image (pinned by digest) bumped in restormel-gitops. The GitOps reconciler will auto-sync restormel-integration. Integration NEVER promotes to the trunk."
 
       # NB: NO PBI-lifecycle flip here — integration never closes PBIs, never promotes.
 
@@ -186,8 +276,10 @@ jobs:
           DEPLOY_ENV: integration
         run: |
           set -uo pipefail
-          if [[ -f src/.forgejo/scripts/deploy-failure-alert.sh ]]; then
-            bash src/.forgejo/scripts/deploy-failure-alert.sh
+          # Run the TRUSTED (trunk) alert script — NEVER the untrusted buildctx copy — so the
+          # alert secrets are never exposed to integration-branch code.
+          if [[ -f trunk/.forgejo/scripts/deploy-failure-alert.sh ]]; then
+            bash trunk/.forgejo/scripts/deploy-failure-alert.sh
           elif [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
             curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=⚠️ deploy-k3s (integration) FAILED for ${GITHUB_REPOSITORY}" >/dev/null || true
