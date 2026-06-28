@@ -24,6 +24,7 @@
     projectId: string | null;
     keyPrefixHint: string | null;
     connectApiBase: string;
+    onboardingJourney: boolean;
   };
 
   const panelImport = () => import("$lib/components/connect/graph-comparison/GraphComparisonPanel.svelte");
@@ -73,6 +74,7 @@
       projectId={data.projectId}
       keyPrefixHint={data.keyPrefixHint}
       connectApiBase={data.connectApiBase}
+      onboarding={data.onboardingJourney}
     />
   {:catch}
     <BrutalErrorBanner

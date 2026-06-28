@@ -15,6 +15,7 @@
   import QualityDeltaPanel from "./QualityDelta.svelte";
   import ExportTraceLink from "./ExportTraceLink.svelte";
   import FirstRunStrip from "./FirstRunStrip.svelte";
+  import M0ExploreHero from "./M0ExploreHero.svelte";
   import GetCodePanel from "./GetCodePanel.svelte";
   import RoutingStrip from "./RoutingStrip.svelte";
   import CrossModelDisclosure from "./CrossModelDisclosure.svelte";
@@ -37,6 +38,12 @@
   export let keyPrefixHint: string | null = null;
   /** Public Connect API origin for the "Get Code" snippet. */
   export let connectApiBase = "https://restormel.dev";
+  /**
+   * RES-113 PR-B — onboardingJourney flag. When true the console wears the M0
+   * "Explore" hero reskin (handoff copy + StateChip cues) and collapses to "ask YOUR
+   * graph" after ingest. Default false ⇒ the shipped Answer Console is unchanged.
+   */
+  export let onboarding = false;
 
   /** First-run strip is shown until dismissed; only meaningful over the demo graph. */
   let firstRunDismissed = false;
@@ -324,14 +331,23 @@
 </script>
 
 <section class="proof">
+  {#if onboarding && hasGraph}
+    <!-- RES-113 PR-B: the M0 "Explore" hero leads the console when the flag is on. It
+         carries the handoff framing + the "where am I / what next" cue, so the generic
+         proof heading + demo banner below are suppressed to avoid a double headline. -->
+    <M0ExploreHero {isDemo} hasAnswer={hasAnswer} ingestHref={INGEST_FLOW_HREF} />
+  {/if}
+
   <header class="proof-head">
-    <div class="proof-headings">
-      <span class="proof-tag">ASK YOUR SOURCES · GET AN ANSWER YOU CAN TRUST</span>
-      <p class="proof-lede">
-        Ask your sources a question. The answer comes back bound to verified claims — click any
-        one to the exact quote it came from. Happy with it? Ship the same query into your app.
-      </p>
-    </div>
+    {#if !(onboarding && hasGraph)}
+      <div class="proof-headings">
+        <span class="proof-tag">ASK YOUR SOURCES · GET AN ANSWER YOU CAN TRUST</span>
+        <p class="proof-lede">
+          Ask your sources a question. The answer comes back bound to verified claims — click any
+          one to the exact quote it came from. Happy with it? Ship the same query into your app.
+        </p>
+      </div>
+    {/if}
     {#if !noRoutes}
       <label class="route-picker">
         <span class="route-label">MODEL</span>
@@ -346,7 +362,7 @@
     {/if}
   </header>
 
-  {#if isDemo && hasGraph}
+  {#if isDemo && hasGraph && !onboarding}
     <p class="demo-banner">
       <strong>This is a demo graph to play with.</strong> Ask it anything below and watch a verified,
       cited answer come back right away — no setup. When you're ready, connect your own sources and
@@ -381,6 +397,7 @@
         disabled={running}
         onRun={runFirstRunQuestion}
         onDismiss={() => (firstRunDismissed = true)}
+        {onboarding}
       />
     {/if}
 
@@ -393,6 +410,7 @@
       {suggestionsFailed}
       onCompare={(q) => ask(q)}
       onSelectSuggestion={handleSelectSuggestion}
+      {onboarding}
     />
 
     <!-- Stage 4: the routing strip sits in service of the query — the models behind
