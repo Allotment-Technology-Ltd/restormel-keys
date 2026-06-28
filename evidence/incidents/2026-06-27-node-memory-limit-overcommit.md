@@ -3,14 +3,16 @@ id: REC-INC-022
 title: "Alert — NodeMemoryLimitOvercommit (K3s memory limits >100% of node RAM)"
 class: evidence
 owner: founder
-status: open
+status: closed
 classification: internal
 control-tier: 3
 created: 2026-06-27
-last-reviewed: 2026-06-27
+last-reviewed: 2026-06-28
 review-interval: P12M
 retention: P6Y
-related: [REC-TPL-004]
+approved-by: founder
+approved-on: 2026-06-28
+related: [REC-TPL-004, REC-INC-024]
 ---
 
 # Alert — NodeMemoryLimitOvercommit (K3s)
@@ -46,4 +48,35 @@ related: [REC-TPL-004]
 - **Follow-ups:** merge #64 → verify `kubectl top` → collect ~24h usage → right-size limits
   via PR → add HPA → evaluate VPA recommender. Founder decision held: rescheduling/right-
   sizing `surreal-0` off master1 (downtime risk). Tracked: backlog task #28.
-- **Closed:** open — pending founder apply of the staged remediation.
+
+## Resolution (2026-06-28) — root cause revised: the rule counted DEAD limits
+
+While verifying the sibling requests-overcommit fix ([[REC-INC-024]]), `NodeMemoryLimitOvercommit`
+was found still firing at **131.2%**. With metrics-server now live (#64 merged), the real driver
+turned out **not** to be under-sized live limits but the rule itself: `sum(kube_pod_container_resource_limits)`
+counted **Completed/Succeeded pods**, which reserve nothing and cannot burst. **~3.5 GiB of phantom
+dead limit** was inflating the sum:
+
+- `supabase/*-migration` ×2 = **2.0 GiB** — orphan one-time Jobs (PlotBudget cutover, complete 5 d ago,
+  unmanaged by Argo/Helm, no `ttlSecondsAfterFinished`).
+- `registry-mirror/*` ×3 = **1.5 GiB** — normal retained CronJob history; backups/heartbeat ≈0.
+
+Real **running-pod** limit-overcommit is **122.0%** — comfortably inside the founder-approved 130%
+envelope. The big stateful limits are *not* the problem: 24 h-peak actuals (now measurable) sit well
+under their ceilings (`surreal-0` 1.8/4 Gi, `forgejo-0` 0.56/2.5 Gi, `argocd` 0.87/2 Gi) and their
+burst headroom is deliberate (REC-INC-022 original triage; argocd raised post-OOM 2026-06-24; surreal
+504-sensitive). So the prior "right-size the big limits" plan is **not required** to clear this alert.
+
+- **Remediation:** `restormel-gitops#76` — `NodeMemoryLimitOvercommit` now counts **RUNNING pods only**
+  (`* on(namespace,pod) group_left() (kube_pod_status_phase{phase="Running"} == 1)`), threshold
+  unchanged at 130%. Honest measure of the real correlated-burst blast radius; auto-excludes all
+  finished-pod residue forever (no CronJob whack-a-mole). Verified live: raw 131.2% → running-only
+  122.0% → does not fire. **Open for founder merge** (auto-syncs to the shared cluster).
+- **Hygiene (optional, founder):** delete the 2 orphan `supabase` migration Jobs (unmanaged, complete) —
+  now cosmetic since the rule excludes them; recommend setting `ttlSecondsAfterFinished` on future
+  one-time Jobs.
+- **Superseded plan items:** HPA-for-stateless and the `surreal-0`-off-master reschedule (backlog #28)
+  remain as separate *capacity/hygiene* items, not blockers for this alert. The real capacity lever
+  (node3 8→16 GiB) is held under [[REC-INC-024]]. metrics-server (#64) is live and retained.
+- **Closed:** 2026-06-28 — resolved by `restormel-gitops#76` (running-only rule), verified live;
+  founder-approved. Pending only the founder merge of #76 to deploy.
