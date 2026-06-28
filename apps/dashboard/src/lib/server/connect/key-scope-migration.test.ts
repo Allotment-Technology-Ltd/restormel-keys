@@ -1,5 +1,5 @@
 /**
- * RES-113 PR-L — migration 074 correctness + reversibility (static SQL assertions).
+ * RES-113 PR-L — migration 076 correctness + reversibility (static SQL assertions).
  *
  * No live DB: these tests read the migration .sql and verify (a) the forward DDL adds exactly the
  * connection-scope columns + NULL-permissive CHECK constraints, and (b) the documented Rollback
@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATION_PATH = join(
   __dirname,
-  "../../../../migrations/074_api_keys_connection_scope.sql",
+  "../../../../migrations/076_api_keys_connection_scope.sql",
 );
 const sql = readFileSync(MIGRATION_PATH, "utf-8");
 
@@ -25,7 +25,7 @@ function rollbackSection(): string {
   return sql.slice(idx);
 }
 
-describe("migration 074 — forward DDL (additive, NULL-permissive)", () => {
+describe("migration 076 — forward DDL (additive, NULL-permissive)", () => {
   it("adds the three scope columns idempotently (ADD COLUMN IF NOT EXISTS)", () => {
     for (const col of ["key_type", "access", "target"]) {
       expect(sql).toMatch(new RegExp(`ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS ${col} TEXT`));
@@ -60,7 +60,7 @@ describe("migration 074 — forward DDL (additive, NULL-permissive)", () => {
   });
 });
 
-describe("migration 074 — reversibility (documented Rollback inverts every change)", () => {
+describe("migration 076 — reversibility (documented Rollback inverts every change)", () => {
   const rollback = rollbackSection();
 
   it("drops every column the forward DDL added", () => {
