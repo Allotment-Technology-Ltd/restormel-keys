@@ -1203,3 +1203,34 @@
     transition: none;
   }
 }
+/* ── RES-113 PR-C · M1 "Build" friendly reskin (flag-gated; additive) ──────────
+   Every rule below applies only to the friendly markup rendered behind the
+   `onboardingJourney` module flag. With the flag OFF none of these classes are
+   emitted, so the live wizard is visually unchanged. Brutalist tokens only. */
+.connect-pipeline .wizard-kicker--m1 {
+  color: var(--rm-text);
+}
+.connect-pipeline .wizard-stepper--friendly {
+  /* Friendly ladder reuses .wizard-step* — no structural override needed. */
+}
+.connect-pipeline .wizard-advanced-models {
+  margin-top: var(--space-4);
+  border: var(--border-thin);
+  background: var(--color-surface);
+  padding: var(--space-2) var(--space-3);
+}
+.connect-pipeline .wizard-advanced-models > summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-sm);
+  font-weight: 700;
+  letter-spacing: var(--text-mono-tracking);
+  text-transform: uppercase;
+  color: var(--rm-text);
+}
+.connect-pipeline .wizard-advanced-models-lead {
+  margin: var(--space-2) 0 var(--space-3);
+  color: var(--rm-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}

@@ -9,10 +9,14 @@
     DEMOTED_PIPELINE_WIZARD_STEP,
     nextPipelineWizardStep,
     pipelineWizardHref,
+    m1RungForWizardStep,
+    m1BuildRung,
     type PipelineRunDefaults,
     type PipelineWizardProgress,
     type PipelineWizardStepId,
   } from "$lib/connect/pipeline-config";
+  import { MILESTONE_LABEL } from "$lib/connect/connect-journey";
+  import { INGEST_ROUTES_HREF } from "$lib/nav-config";
   import PipelineWizardStepper from "$lib/components/connect/pipeline/PipelineWizardStepper.svelte";
   import type { ConnectTrustScorecard } from "@restormel/contracts";
   import type { ConnectRunPreflightResult } from "$lib/connect/run-preflight";
@@ -63,6 +67,17 @@
   $: isStoreAside = step === "store";
   // R4-S2(c): the auto-provision promise only holds when the host-managed Postgres store is ON.
   $: hostManagedGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectHostManagedGraphStore;
+  // RES-113 PR-C: the M1 "Build" friendly reskin. DEFAULT-OFF — with the flag off
+  // this whole component renders byte-for-byte unchanged (every `onboarding*`
+  // branch below is additive and gated). Presentational reskin only.
+  $: onboardingJourney = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).onboardingJourney;
+  // The friendly rung the current step belongs to (provider/domain/store/launch
+  // all fold into "Configure"; sources is its own rung). Drives the reskinned
+  // header eyebrow + title without touching routing.
+  $: friendlyRung = m1BuildRung(m1RungForWizardStep(step));
+  // Configure is where model choice lives — surface the "models chosen at ingest"
+  // (REC-ADR-015) Advanced disclosure here, on the provider/domain panels.
+  $: onConfigureRung = onboardingJourney && (step === "provider" || step === "domain");
   // Flag-gated store lead: append the "provisioned automatically" claim ONLY when
   // the module is ON. With it OFF (MVP default) the base BYO-honest lead stands.
   $: storeLead = hostManagedGraphStoreOn
@@ -232,6 +247,7 @@
       onNavigate={goToStep}
       completedIds={completedStepIds}
       navigable={laterStepsReachable}
+      friendly={onboardingJourney}
     />
   {/if}
 
@@ -248,7 +264,14 @@
   </nav>
 
   <header class="wizard-header">
-    {#if isStoreAside}
+    {#if onboardingJourney && !isStoreAside}
+      <!-- RES-113 PR-C: friendly M1 framing. Mono eyebrow "M1 · BUILD" + the
+           rung name; the real step title stays as the working sub-line so the
+           user still knows exactly which panel they're on. -->
+      <p class="wizard-kicker wizard-kicker--m1">
+        M1 · {MILESTONE_LABEL.m1} · {friendlyRung.label}
+      </p>
+    {:else if isStoreAside}
       <p class="wizard-kicker">Optional · graph store override</p>
     {:else}
       <p class="wizard-kicker">
@@ -347,6 +370,22 @@
           <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
         </div>
       {/await}
+    {/if}
+
+    {#if onConfigureRung}
+      <!-- RES-113 PR-C · REC-ADR-015: model choice happens HERE, at ingest, never
+           retroactively. Recommended models are the default; choosing a model per
+           stage is an Advanced disclosure, collapsed by default. Presentational —
+           the real per-stage routing lives on the Ingest routes builder. -->
+      <details class="wizard-advanced-models">
+        <summary>Advanced · choose a model per stage</summary>
+        <p class="wizard-advanced-models-lead">
+          Recommended models are already chosen for each pipeline stage. Models are picked
+          <strong>now, at ingest</strong> — not changed retroactively on an existing graph. Open the
+          ingest routes to assign a specific model per stage.
+        </p>
+        <a class="btn btn-outline btn-sm" href={INGEST_ROUTES_HREF}>Edit ingest routes →</a>
+      </details>
     {/if}
   </div>
 

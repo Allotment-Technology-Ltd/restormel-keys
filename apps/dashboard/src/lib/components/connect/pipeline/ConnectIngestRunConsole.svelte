@@ -16,8 +16,17 @@
     ingestStatusLabel,
   } from "$lib/connect/ingest-quality-display";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { AGENTS_HREF, CLAIMS_HREF, HOME_HREF, RUNS_HREF } from "$lib/nav-config";
-  import { pipelineWizardHref } from "$lib/connect/pipeline-config";
+  import { AGENTS_HREF, ANSWER_CONSOLE_HREF, CLAIMS_HREF, HOME_HREF, RUNS_HREF } from "$lib/nav-config";
+  import {
+    pipelineWizardHref,
+    m1RunConsoleRungs,
+    m1RungVisualState,
+    isM1RateLimitedStatus,
+    M1_BUILD_RUNGS,
+    M1_RATE_LIMIT_BANNER,
+  } from "$lib/connect/pipeline-config";
+  import { MILESTONE_LABEL } from "$lib/connect/connect-journey";
+  import StateChip, { type StateChipState } from "$lib/components/brutalist/StateChip.svelte";
   import { STALL_NOTICE_MS } from "$lib/connect/run-stall";
   import { LiveRunEventClient } from "$lib/connect/live-run-event-client";
   import type { LiveRunStreamEvent } from "$lib/connect/live-run-events";
@@ -130,6 +139,15 @@
   /** Distinguishes graph repair jobs started from the explorer Tools panel. */
   export let graphTask: "link-sources" | "revalidate" | "auto-remediate" | "embed-backfill" | null =
     null;
+  /**
+   * RES-113 PR-C: render the friendly M1 "Build" run-console reskin (StateChip
+   * progress ladder, plain-language framing, the amber rate-limit banner, and the
+   * "ask your own data" Done card). DEFAULT false — with the `onboardingJourney`
+   * flag OFF every friendly branch is skipped and this console renders byte-for-
+   * byte unchanged, including all .live / .machine-room / .completion-ledger test
+   * hooks. Presentational only; no execution behaviour changes.
+   */
+  export let onboardingJourney = false;
 
 
   let job: Job | null = null;
@@ -210,6 +228,26 @@
   $: isCompleted = job?.status === "completed";
   $: isInProgress = job?.status === "pending" || job?.status === "running";
   $: startingRun = isInProgress && loading && logLines.length === 0;
+
+  // ── RES-113 PR-C · friendly M1 "Build" reskin (gated; presentational) ─────────
+  // The friendly four-rung ladder shown only with the flag ON. Active/complete are
+  // derived from the REAL run state (REC-ADR-016) — Running until the job completes,
+  // then Done. Renders alongside, never replacing, the honest stage timeline/ledger.
+  $: m1Rungs = m1RunConsoleRungs({ isCompleted });
+  // Amber rate-limit state: presentational, but only lit when a stage actually
+  // reports a transient backoff status. The real backoff signal is wired in PR-I;
+  // until then this is structurally ready and stays dark (never a fabricated state).
+  $: m1RateLimited =
+    onboardingJourney &&
+    isInProgress &&
+    (job?.stages ?? []).some((s) => isM1RateLimitedStatus((s as { status?: string }).status));
+  // Map an M1 rung's visual state → the StateChip honest-state vocabulary.
+  function m1ChipState(rung: (typeof M1_BUILD_RUNGS)[number]["id"]): StateChipState {
+    const v = m1RungVisualState(rung, m1Rungs);
+    if (v === "completed") return "done";
+    if (v === "active") return "running";
+    return "idle";
+  }
   $: graphRepair = job?.progress?.graph_repair ?? null;
   $: stagesComplete = job?.progress?.processed ?? 0;
   $: stagesTotal = job?.progress?.total ?? CONNECT_INGEST_PIPELINE_STAGES.length;
@@ -677,6 +715,41 @@
       {/if}
     </header>
 
+    {#if onboardingJourney && !graphTask}
+      <!-- RES-113 PR-C: friendly M1 ladder — a "where am I in Build" cue over the
+           honest stage timeline below. StateChips carry the real run state
+           (REC-ADR-016). Additive: the technical progress, machine room, and
+           completion ledger all still render underneath, unchanged. -->
+      <section class="m1-build-frame" aria-label="Build progress">
+        <p class="m1-build-eyebrow">M1 · {MILESTONE_LABEL.m1}</p>
+        <p class="m1-build-title">
+          {isCompleted ? "Your graph is ready" : "Building your graph"}
+        </p>
+        <ol class="m1-build-ladder">
+          {#each M1_BUILD_RUNGS as rung (rung.id)}
+            <li class="m1-build-rung">
+              <StateChip state={m1ChipState(rung.id)} label={rung.label} />
+            </li>
+          {/each}
+        </ol>
+        {#if m1RateLimited}
+          <!-- Amber, no-action-needed: the run keeps itself moving (03_SCREENS §M1). -->
+          <div class="m1-rate-limit" role="status">
+            <StateChip state="running" label="Rate-limited" dot={false} />
+            <p class="m1-rate-limit-body">
+              <strong>{M1_RATE_LIMIT_BANNER.title}.</strong>
+              {M1_RATE_LIMIT_BANNER.body}
+            </p>
+          </div>
+        {/if}
+        {#if !isCompleted}
+          <p class="m1-build-note">
+            We name each stage honestly as it runs — open the pipeline details below to watch every step.
+          </p>
+        {/if}
+      </section>
+    {/if}
+
     {#if isEmbedBackfill && !isCompleted}
       <div class="run-context-banner" role="note">
         <strong>Re-embed — graph maintenance, not a new ingest.</strong>
@@ -850,6 +923,24 @@
           <a class="run-cross-link" href={RUNS_HREF}>All ingest runs →</a>
         </p>
         </div>
+      </section>
+    {/if}
+
+    {#if onboardingJourney && isCompleted && !graphTask && !isStubPreview}
+      <!-- RES-113 PR-C · M1 Done — "ask your own data" (03_SCREENS §M1 step 4).
+           The same ask grammar as the M0 Explore hero, now pointed at the user's
+           OWN graph. Presentational handoff to the live Answer Console (the real
+           ask surface) — no inline query execution here (that is PR-I). -->
+      <section class="m1-done-ask" aria-labelledby="m1-done-heading">
+        <p class="m1-done-eyebrow">M1 · {MILESTONE_LABEL.m1} · Done</p>
+        <h2 id="m1-done-heading" class="m1-done-title">Ask your own data</h2>
+        <p class="m1-done-lead">
+          That's <em>your</em> knowledge now. Ask a question and get a grounded answer with
+          citations — drawn from the documents you just ingested.
+        </p>
+        <a class="btn btn-primary btn-lg m1-done-cta" href={ANSWER_CONSOLE_HREF}>
+          Ask your graph →
+        </a>
       </section>
     {/if}
 
@@ -2166,5 +2257,104 @@
     .heartbeat-bar {
       transition: none !important;
     }
+  }
+
+  /* ── RES-113 PR-C · M1 "Build" friendly reskin (flag-gated; additive) ────────
+     Emitted only behind the `onboardingJourney` flag. Brutalist tokens only;
+     sits above the unchanged honest stage timeline / ledger. */
+  .m1-build-frame {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-4);
+    border: var(--border-thin);
+    background: var(--color-surface);
+  }
+  .m1-build-eyebrow {
+    margin: 0 0 var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+  .m1-build-title {
+    margin: 0 0 var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    color: var(--color-ink);
+  }
+  .m1-build-ladder {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+  .m1-build-rung {
+    display: inline-flex;
+  }
+  .m1-build-note {
+    margin: var(--space-3) 0 0;
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+  .m1-rate-limit {
+    margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: var(--border-thin) var(--brut-amber);
+    border-left-width: 6px;
+    background: color-mix(in oklab, var(--brut-amber) 12%, var(--brut-white));
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+  }
+  .m1-rate-limit-body {
+    margin: 0;
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .m1-done-ask {
+    margin: var(--space-4) 0;
+    padding: var(--space-5);
+    border: var(--border);
+    border-left-width: 6px;
+    box-shadow: var(--shadow-md);
+    background: var(--color-surface);
+  }
+  .m1-done-eyebrow {
+    margin: 0 0 var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+  .m1-done-title {
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg, var(--text-mono-md));
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    color: var(--color-ink);
+  }
+  .m1-done-lead {
+    margin: 0 0 var(--space-4);
+    max-width: 42rem;
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+  .m1-done-cta {
+    text-decoration: none;
   }
 </style>

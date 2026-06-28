@@ -11,12 +11,21 @@
    * It is non-blocking by design: a dismissible strip above the input, never a modal
    * tour. Dismiss it, or just ask your own question — the input stays fully usable.
    */
+  import StateChip from "$lib/components/brutalist/StateChip.svelte";
+
   type FirstRunQuestion = { type: "answerable" | "abstention"; question: string };
 
   export let questions: FirstRunQuestion[] = [];
   export let disabled = false;
   export let onRun: (question: string) => void;
   export let onDismiss: () => void;
+  /**
+   * RES-113 PR-B (flag-gated: onboardingJourney). When true, the strip wears the M0
+   * "Explore" reskin — honest StateChip cues on each chip (Done = answers, Unsupported
+   * = abstains) and M0 copy. Default false keeps the shipped first-run strip
+   * byte-for-byte unchanged.
+   */
+  export let onboarding = false;
 
   // Lead with one answerable + one abstention so both behaviours are one tap away.
   $: answerable = questions.filter((q) => q.type === "answerable");
@@ -26,7 +35,9 @@
 
 <aside class="firstrun" aria-label="Try a question on the demo graph">
   <div class="firstrun-head">
-    <span class="firstrun-tag">START HERE — TRY A QUESTION</span>
+    <span class="firstrun-tag">
+      {onboarding ? "TRY A QUESTION — CITATIONS ARE THE POINT" : "START HERE — TRY A QUESTION"}
+    </span>
     <button
       type="button"
       class="firstrun-dismiss brut-focus"
@@ -36,11 +47,20 @@
       DISMISS ✕
     </button>
   </div>
-  <p class="firstrun-lede">
-    Tap any question to get a verified, cited answer right now — no setup needed. The last one
-    is something the sources <strong>don't</strong> cover, so you'll see Restormel
-    <strong>abstain</strong> rather than make something up. That refusal is the point.
-  </p>
+  {#if onboarding}
+    <p class="firstrun-lede">
+      Tap any of these to land a verified, cited answer on the demo graph in one click. The dashed
+      one sits deliberately <strong>outside</strong> what the sources cover — so you'll watch
+      Restormel <strong>abstain</strong> instead of guessing. Seeing it say "I can't support that"
+      is the point.
+    </p>
+  {:else}
+    <p class="firstrun-lede">
+      Tap any question to get a verified, cited answer right now — no setup needed. The last one
+      is something the sources <strong>don't</strong> cover, so you'll see Restormel
+      <strong>abstain</strong> rather than make something up. That refusal is the point.
+    </p>
+  {/if}
   <div class="firstrun-chips">
     {#each ordered as q (q.question)}
       <button
@@ -50,7 +70,13 @@
         {disabled}
         on:click={() => onRun(q.question)}
       >
-        {#if q.type === "abstention"}
+        {#if onboarding}
+          <StateChip
+            state={q.type === "abstention" ? "unsupported" : "done"}
+            label={q.type === "abstention" ? "ABSTAINS" : "ANSWERS"}
+            dot={false}
+          />
+        {:else if q.type === "abstention"}
           <span class="chip-flag" aria-hidden="true">ABSTAINS</span>
         {:else}
           <span class="chip-flag chip-flag-answer" aria-hidden="true">ANSWERS</span>
