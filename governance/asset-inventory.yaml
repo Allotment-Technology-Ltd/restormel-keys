@@ -122,6 +122,14 @@
 #   (surreal-backup, app-postgres-backup) disabled. snapshot 401960703 kept as recovery insurance. suppliers.yaml
 #   Hetzner entry annotated (Storage Box backups → Object Storage only). last-reviewed UNCHANGED
 #   (founder re-approval on merge); the asset history above is append-only (no prior line deleted).
+# 2026-06-28 (docs/res114-phase4-records — RES-114 Integration Train Phase 4): added AST-031 — the
+#   restormel-integration pre-merge env (integration.restormel.dev; logical restormel_integration DB
+#   on the existing pg-restormel CNPG AST-023 via a scoped PG_INTEGRATION_APP_* role; Infisical
+#   /integration store+identity; oauth2-proxy SSO; rootless-buildkit outbound-only build). NON-PROD,
+#   AUTHORED + HELD (founder-gated provisioning pending). NO new sub-processor (same Hetzner / CNPG /
+#   Forgejo) → suppliers.yaml UNCHANGED; only empty/synthetic data ever → ropa.yaml/data-inventory.yaml
+#   UNCHANGED. Plan of record REC-PLAN-022. last-reviewed UNCHANGED (founder re-approval on merge);
+#   the asset history above is append-only.
   - id: AST-001
     asset: "restormel-keys repo"
     type: code/records
@@ -797,3 +805,49 @@
       Tracker projects map to the in-scope products via REC-GOV-008
       (governance/pm-project-product-map.yaml): Restormel[RES]→restormel, Allotmentology[ALOT]→
       allotmentology.tech, PlotBudget[PLOT]→plotbudget, Sophia[SOPH]→sophia.
+
+  - id: AST-031
+    asset: "restormel-integration — pre-merge 'Integration Train' environment (logical DB on shared CNPG)"
+    type: environment
+    owner: founder
+    product: restormel
+    location: >
+      In-cluster on AST-022 (ns restormel-integration), Helsinki FI (EU) —
+      host integration.restormel.dev (Argo project restormel-nonprod). Data plane = a LOGICAL
+      restormel_integration database on the EXISTING pg-restormel CNPG cluster (AST-023) — no new
+      PVC, stays under the 16-volume node cap.
+    notes: >
+      ADDED 2026-06-28 (RES-114 Integration Train, Phase 4 — restormel-keys docs/records PR;
+      plan of record REC-PLAN-022). NON-PROD criticality: a single long-lived PRE-MERGE
+      integration env that batches open, non-draft `stage`-labelled PRs and proves them
+      close-to-prod BEFORE any merge to main. Raw-manifest near-clone of
+      applications/restormel-app-prod/ (ns/host/replica-floor edits only); the train NEVER
+      auto-promotes to main (promotion stays manual PR→main→prod gated by the Security scan).
+      STATE: AUTHORED + HELD — manifests/CI/records exist on branches/PRs but the env is NOT yet
+      provisioned/live; standing it up needs founder-gated Wave-2 ops (logical DB +
+      PG_INTEGRATION_APP_* role on pg-restormel; Infisical /integration store + identity; the
+      INTEGRATION_TRAIN_ENABLED Actions var; the Argo Application apply; oauth2-proxy + DNS).
+      ISOLATION FROM PROD (the load-bearing controls):
+        - DATA: logical restormel_integration DB reached via a dedicated, scoped
+          PG_INTEGRATION_APP_* role — NEVER prod's restormel_ops, NEVER the PG_RESTORMEL_APP_*
+          role. EMPTY seed, migrations from scratch each cycle; NEVER prod/personal data (only
+          empty/synthetic data ever lives here → no ROPA/data-inventory change).
+        - SECRETS: a separate Infisical /integration scope with its OWN machine identity (sandbox
+          Paddle, separate auth/encryption keys + DATABASE_URL) — NEVER /dashboard/* / prod
+          secrets. The connectHostManagedGraphStore flag (REC-ADR-008, PR #288) is ON here and
+          OFF in prod.
+        - ACCESS: Traefik forward-auth via oauth2-proxy to the portal SSO (same fail-closed model
+          as grafana./argo.) — pre-merge code is never public.
+        - BUILD: a dedicated rootless-BuildKit isolated build surface (not the prod privileged
+          runner), OUTBOUND-ONLY — push to the Forgejo registry (git.allotmentology.tech, the sole
+          non-prod registry) + push the gitops bump; never the kube-API / a box private IP
+          (REC-INC-006 invariant).
+      GUARDS (gitops Phase-4): a ResourceQuota + LimitRange cap the blast radius on the lean 3-node
+      estate (node3 8 GiB; see kube-overcommit-alerts-lean-cluster) and a namespace-scoped
+      idle scale-to-zero CronJob (no ClusterRole) sleeps dashboard+worker when no batch is live.
+      SUB-PROCESSOR: NO new sub-processor — same Hetzner (AST-022/AST-023), pg-restormel CNPG, and
+      Forgejo as the existing estate, so governance/suppliers.yaml is UNCHANGED (finding recorded
+      explicitly). Shares the restormel-internal private network (AST-011). Operator runbook: the
+      restormel-integration-train skill. [PLACEHOLDER — founder: confirm provisioning once the
+      Wave-2 live ops above are applied (DB/role, /integration store, var, Argo apply, oauth2-proxy
+      + DNS) and the first train run is green.]

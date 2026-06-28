@@ -1,18 +1,27 @@
 ---
+id: REC-PLAN-022
 title: "Pre-merge integration env — the 'Integration Train' plan (replace preview+staging with ONE)"
-class: technical
+class: planning
 owner: founder
-status: draft
+status: approved
 classification: internal
-control-tier: 1
-created: 2026-06-27
-last-reviewed: 2026-06-27
-review-interval: P6M
+control-tier: 2
+created: 2026-06-28
+last-reviewed: 2026-06-28
+review-interval: P12M
+approved-by: founder
+approved-on: 2026-06-28
+retention: review-only
+related: [REC-ADR-008, REC-ADR-011, REC-INC-006]
 ---
 
-> **Status: PLAN — awaiting founder decisions (§Open decisions).** Produced by a multi-agent
-> planning swarm (5 readers → 4 candidate designs → synthesis), 2026-06-27. Promote to a tier-2
-> `REC-PLAN-*` once the decisions below are locked.
+> **Status: APPROVED PLAN-OF-RECORD (REC-PLAN-022).** Originally produced by a multi-agent
+> planning swarm (5 readers → 4 candidate designs → synthesis), 2026-06-27; promoted to a
+> governed Tier-2 planning record on 2026-06-28 once the founder locked the §Open-decisions
+> (now §Locked decisions). This is the plan of record for the RES-114 "Integration Train".
+> **Tier-2 classification + the `review-only` retention are the founder's to confirm** (the
+> records convention normally files planning docs at Tier-1; Tier-2 here is a deliberate
+> founder instruction — see the RES-114 Phase-4 PR body, blueprint open question M11).
 
 ## The ask
 
@@ -115,17 +124,56 @@ annotation; edit `appprojects.yaml` to a single `restormel-integration` destinat
 Coolify `preview-deploy.yml` + `deploy-dashboard.yml`. **Net:** two redundant, permanently-broken,
 post-merge-only apps → ONE pre-merge env on the **same** mechanism/registry/namespace model as prod.
 
-## Open decisions (need founder call before Phase 1)
+## Locked decisions (founder, 2026-06-28)
 
-1. **Train trigger:** schedule + `stage`-label opt-in *(recommended — cost guard)* vs default-on for all mergeable PRs?
-2. **Opt-in label name + who applies it** (suggest `stage`, author-applied)?
-3. **Integration data plane:** a *logical* `restormel_integration` DB on the existing `pg-restormel` CNPG *(recommended — no new PVC)* vs a dedicated small CNPG cluster?
-4. **Seed the integration DB** from empty (migrations from scratch — cleanest) vs a redacted prod clone?
-5. **Access control** on `integration.restormel.dev`: portal SSO forward-auth *(recommended)* vs basicAuth vs IP allowlist?
-6. **Defer per-PR ephemeral envs (Phase 5)?** *(recommended: defer)*
-7. **Confirm the Forgejo registry as the single non-prod registry** and kill every `registry.allotmentology.tech` reference?
-8. **Keep raw manifests for both prod + integration** *(recommended — one mechanism)* vs a later Helm-chart convergence?
-9. **Confirm the train never auto-promotes to main** — promotion stays manual PR→main→prod gated by the required Security scan?
+These supersede the prior "Open decisions" block. They are the decisions baked into the RES-114
+build (#288 land + Phases 0–4).
+
+1. **First train cargo — #288 merges DEFAULT-OFF.** PR #288 (host-managed Postgres graph-store
+   spine, flag `connectHostManagedGraphStore`, REC-ADR-008/Stage-1) lands to main with the flag
+   **off in prod**; the flag is turned **ON only in the integration env config** (Infisical
+   `/integration`), never in the cloned prod manifest. The first end-to-end train exercise is
+   "RES-113 onboarding + #288 together".
+2. **Host + access control — `integration.restormel.dev`, behind oauth2-proxy.** The env is served
+   on the `restormel.dev` domain at `integration.restormel.dev` and gated by **oauth2-proxy SSO**
+   (Traefik forward-auth to the portal identity) — pre-merge code is **never public**. (Settles the
+   former Q5: portal-SSO forward-auth, implemented as oauth2-proxy.)
+3. **PBI-lifecycle PostSync hook — activated + relocated.** The prod-only
+   `pbi-lifecycle-postsync.yaml` hook moves out of the unbuildable `charts/restormel-dashboard/`
+   into `applications/restormel-app-prod/` (raw-manifest home); the chart is then deleted in both
+   repos. The hook stays **prod-only** (it flips `status/ready-deploy`→`status/deployed`) and the
+   integration env does **not** run it.
+4. **Build surface — rootless buildkit, isolated.** The integration batch image is built on a
+   **dedicated rootless buildkit isolated build surface** (not the shared/privileged prod runner),
+   **outbound-only** (registry + gitops push only; never the kube-API or any box private IP —
+   REC-INC-006 invariant). Forgejo (`git.allotmentology.tech`) is the **sole** non-prod registry;
+   zero `registry.allotmentology.tech` references anywhere (that host was never created).
+5. **Data plane — logical `restormel_integration` DB on the existing CNPG, scoped role.** A LOGICAL
+   `restormel_integration` database on the existing `pg-restormel` CNPG cluster (no new PVC → stays
+   under the 16-volume node cap), reached through a **dedicated, scoped `PG_INTEGRATION_APP_*`
+   role** — **never** prod's `restormel_ops`, never the `PG_RESTORMEL_APP_*` role. **Empty seed,
+   migrations from scratch** each cycle; never prod data.
+6. **Secrets — separate Infisical `/integration` store + identity.** A separate Infisical
+   `/integration` secret scope with its **own machine identity**, sandbox Paddle, and **separate
+   auth/encryption keys + DATABASE_URL** — never `/dashboard/*` / prod secrets.
+7. **Trigger + merge strategy — opt-in `stage` label, sequential pairwise merge, never
+   auto-promotes.** The train runs on a schedule **and** on the opt-in, author-applied `stage`
+   label (cost guard), gated by the `INTEGRATION_TRAIN_ENABLED` Actions var. Each run does
+   `git reset --hard origin/main` then **merges each open, non-draft, `stage`-labelled PR one at a
+   time (sequential pairwise merge)** — on conflict it aborts that one merge, **skips** the PR,
+   comments, adds the `integration-conflict` label, and continues (pairwise lets a conflict be
+   attributed to the exact PR, unlike an all-or-nothing octopus merge). The train **NEVER
+   auto-promotes to main** — promotion stays manual PR→main→prod gated by the required Security
+   scan. Per-PR ephemeral ApplicationSet envs remain **deferred (Phase 5)**; raw manifests are kept
+   for **both** prod and integration (one mechanism, no Helm convergence).
+
+### Founder-gated provisioning still required (Wave-2 live ops — not done by this plan)
+
+The records/docs/manifests are authored and **held**; standing the env up needs these
+founder-gated live ops: create the logical `restormel_integration` DB + `PG_INTEGRATION_APP_*`
+role on `pg-restormel`; create the Infisical `/integration` store + identity (with the flag ON);
+set `INTEGRATION_TRAIN_ENABLED`; apply the `restormel-integration` Argo Application + namespace
+guards; wire the oauth2-proxy forward-auth + DNS for `integration.restormel.dev`.
 
 ## Affected repos/files (summary)
 
@@ -133,4 +181,10 @@ post-merge-only apps → ONE pre-merge env on the **same** mechanism/registry/na
 - **restormel-keys** — DELETE: `.forgejo/workflows/{preview-deploy,deploy-dashboard}.yml`, `deploy/k3s/gitops/charts/restormel-dashboard/`; NEW/REVIVE: `.forgejo/workflows/deploy-k3s.yml` (from `fix/deploy-k3s-incluster-build`) + `.forgejo/workflows/integration-train.yml`; FIX: `.forgejo/scripts/k3s-build-push-bump.sh`; NEW: `docs/DEPLOY-PIPELINE.md`.
 - **Cluster/external** (no repo file): Infisical `/integration` folder; `restormel_integration` logical DB on `pg-restormel`; Forgejo Actions var `INTEGRATION_TRAIN_ENABLED`; `FORGEJO_REGISTRY` push token.
 
-_Tracked in Huly (RES). Build follows after the §Open-decisions are locked + a high-risk-security review (touches secrets, ingress, DB, server routes)._
+_Tracked in Huly (RES-114). The §Locked-decisions are settled (founder, 2026-06-28) and the
+high-risk-security review has run (touches secrets, ingress, DB, server routes); the RES-114
+build (#288 land + Phases 0–4) authors the manifests/CI/records and **holds** them for the
+founder-gated Wave-2 live ops listed above. Phase-0 note: the dated stopgap below predates
+gitops #73 — the two broken workload apps and the Coolify `preview-deploy.yml`/`deploy-dashboard.yml`
+workflows are **already deleted from main**; the remaining Phase-0 item is the `charts/restormel-dashboard/`
+relocate-then-delete in both repos._
