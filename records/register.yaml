@@ -568,7 +568,7 @@ records:
   - id: REC-INC-024
     title: Alert — KubeMemoryOvercommit (K3s memory requests can't tolerate one-node loss)
     class: evidence
-    status: open
+    status: closed
     classification: internal
     control-tier: 3
     owner: founder

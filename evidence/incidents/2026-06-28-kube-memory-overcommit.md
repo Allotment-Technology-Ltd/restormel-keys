@@ -3,13 +3,15 @@ id: REC-INC-024
 title: "Alert — KubeMemoryOvercommit (K3s memory requests can't tolerate one-node loss)"
 class: evidence
 owner: founder
-status: open
+status: closed
 classification: internal
 control-tier: 3
 created: 2026-06-28
 last-reviewed: 2026-06-28
 review-interval: P12M
 retention: P6Y
+approved-by: founder
+approved-on: 2026-06-28
 related: [REC-TPL-004, REC-INC-022]
 ---
 
@@ -61,11 +63,18 @@ related: [REC-TPL-004, REC-INC-022]
     live with `promtool query instant` against Prometheus: new rule requests 26.35 GiB vs
     threshold 30.49 GiB → **not firing, 4.1 GiB headroom**; stock ratio 0.692 confirmed > 0.667.
     Validated by ruby YAML parse + `kubectl apply --dry-run=server` (PrometheusRule schema).
-- **Follow-ups:** merge `restormel-gitops#75` → Argo whole-estate auto-sync re-renders default
-  rules without `KubeMemoryOvercommit` and applies the replacement → confirm the Telegram alert
-  clears and `ClusterMemoryHeadroomLow` is present + green. **Capacity option held for founder**
-  (not actioned): resize `node3` 8 → 16 GiB for genuine one-node memory headroom + a homogeneous
-  cluster (Hetzner cost delta to be quantified; £57/mo cap is the constraint). metrics-server is
-  now live (REC-INC-022 enabler `restormel-gitops#64` merged), which made today's request-vs-actual
-  triage possible.
-- **Closed:** open — pending merge of `restormel-gitops#75` (remediation goes live on Argo sync).
+- **Resolution verified (2026-06-28):** `restormel-gitops#75` merged (rev `670e8e9`); Argo `monitoring`
+  app hard-refreshed past its git-cache lag and synced. Confirmed live in Prometheus: stock
+  `KubeMemoryOvercommit` rule **absent**; `ClusterMemoryHeadroomLow` **loaded, state inactive** (not
+  firing); genuine signals `PodsPendingUnschedulable` + `NodeMemoryPressure` present + inactive. No
+  `KubeMemoryOvercommit` instance in `ALERTS`. The Telegram alert is cleared.
+- **Follow-ups:**
+  1. **Capacity option held for founder** (not actioned): resize `node3` 8 → 16 GiB for genuine
+     one-node memory headroom + a homogeneous cluster (Hetzner cost delta to be quantified; £57/mo cap
+     is the constraint). metrics-server is now live (REC-INC-022 enabler `restormel-gitops#64` merged).
+  2. **Sibling alert still firing — separate, tracked.** The *limits* overcommit `NodeMemoryLimitOvercommit`
+     (custom rule, `monitoring/rules/scale-trigger-rules.yaml`, group `scale.overcommit`) is **firing**
+     (since ~02:00Z 2026-06-28, severity warn) — sum-of-limits still >100% of node RAM. This is the
+     still-open **[[REC-INC-022]]**, untouched by this change; its deferred remediation is right-sizing
+     limits with real usage data, OR applying the same lean-posture tune. Founder decision, not actioned here.
+- **Closed:** 2026-06-28 — remediation live + verified.
