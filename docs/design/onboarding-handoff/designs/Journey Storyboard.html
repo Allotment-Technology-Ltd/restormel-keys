@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — Journey Storyboard (what the user sees)</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root {
+    --brut-ink:#0c0c0c; --brut-white:#fffef0; --brut-canvas:#f3ead0; --brut-neon:#ffd600;
+    --brut-blue:#1a3f8a; --brut-coral:#d94e47; --brut-font:"Space Mono",ui-monospace,Menlo,monospace;
+    --hairline:#d8cfb0; --teal-ink:#1c7c72;
+  }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; font-weight: 400; letter-spacing: 0.02em; color: #4a4538; max-width: 86ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+
+  .board { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); padding: 30px 32px 34px; }
+  .board-hd { border-bottom: 2px solid var(--color-ink); padding-bottom: 18px; margin-bottom: 22px; }
+  .kicker { display: inline-block; font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-ink); border: 1.5px solid var(--color-ink); padding: 3px 9px; margin-bottom: 12px; }
+  .board-h1 { font-family: var(--font-display); font-weight: 900; font-size: 46px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.01em; margin: 0; }
+  .board-p { font-family: var(--font-body); font-size: 14.5px; line-height: 1.55; color: var(--color-ink-muted); margin: 12px 0 0; max-width: 76ch; }
+  .board-p b { color: var(--color-ink); font-weight: 600; }
+
+  /* ── milestone rows ── */
+  .story { display: flex; flex-direction: column; gap: 20px; }
+  .srow { display: grid; grid-template-columns: 212px 1fr; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-md); }
+  .srow-rail { padding: 16px 16px; border-right: 2px solid var(--color-ink); background: var(--color-bg-deep); display: flex; flex-direction: column; gap: 8px; }
+  .srow.now .srow-rail { background: color-mix(in oklab, var(--signal-teal) 14%, var(--color-surface)); }
+  .srail-top { display: flex; align-items: center; gap: 10px; }
+  .srail-num { width: 48px; height: 30px; flex: 0 0 auto; border: 2px solid var(--color-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 900; font-size: 17px; background: var(--color-surface); }
+  .srow.now .srail-num { background: var(--signal-teal); }
+  .srail-name { font-family: var(--font-display); font-weight: 900; font-size: 18px; line-height: 0.98; text-transform: uppercase; }
+  .srail-aha { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--teal-ink); line-height: 1.4; }
+  .srail-need { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--color-ink-faint); line-height: 1.4; margin-top: auto; }
+  .srow-steps { padding: 16px; display: flex; align-items: stretch; gap: 0; }
+  .sstep { display: flex; align-items: center; }
+  .scard { width: 232px; align-self: stretch; border: 2px solid var(--color-ink); background: var(--color-bg); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+  .scard-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 9px; border-bottom: 2px solid var(--color-ink); background: var(--color-surface); }
+  .mini-led { display: flex; gap: 3px; }
+  .mini-led i { width: 11px; height: 8px; border: 1.5px solid var(--color-ink); background: var(--color-surface); }
+  .mini-led i.done { background: var(--signal-teal); }
+  .mini-led i.now { background: var(--color-yellow); }
+  .mini-led i.lock { background: var(--color-bg-deep); border-style: dashed; }
+  .scard-m { font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.06em; color: var(--color-ink-muted); }
+  .scard-body { padding: 11px 12px 12px; flex: 1; display: flex; flex-direction: column; gap: 9px; }
+  .scard-step { font-family: var(--font-mono); font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .scard-h { font-family: var(--font-display); font-weight: 900; font-size: 17px; line-height: 0.98; text-transform: uppercase; margin: 0; }
+  .scard-note { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.02em; color: var(--color-ink-faint); margin-top: auto; line-height: 1.4; }
+  .sarrow { font-family: var(--font-mono); font-size: 16px; font-weight: 700; color: var(--color-ink-faint); padding: 0 7px; }
+
+  /* mini elements inside cards */
+  .mini-btn { background: var(--color-yellow); border: 1.5px solid var(--color-ink); box-shadow: 2px 2px 0 var(--color-ink); font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 6px 8px; text-align: center; }
+  .mini-btn.sec { background: var(--color-surface); }
+  .mini-chat { background: var(--code-bg); color: var(--code-fg); font-family: var(--font-mono); font-size: 8.5px; line-height: 1.5; padding: 8px 9px; display: flex; flex-direction: column; gap: 5px; }
+  .mini-chat .v { color: var(--code-value); }
+  .mini-chat .t { color: var(--signal-teal); font-weight: 700; }
+  .mini-chat .c { color: var(--code-comment); }
+  .mini-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .mini-chip { display: inline-flex; align-items: center; gap: 4px; border: 1.5px solid var(--color-ink); font-family: var(--font-mono); font-size: 8.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; padding: 3px 6px; background: var(--color-surface); }
+  .mini-chip.ok { background: color-mix(in oklab, var(--signal-teal) 20%, var(--color-surface)); color: var(--teal-ink); }
+  .mini-chip.todo { color: var(--color-ink-faint); border-style: dashed; }
+  .mini-row { border: 1.5px solid var(--color-ink); background: var(--color-surface); padding: 5px 8px; font-family: var(--font-mono); font-size: 9px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .mini-sel { border: 1.5px solid var(--color-ink); background: var(--color-surface); box-shadow: 2px 2px 0 var(--color-ink); padding: 6px 8px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; }
+  .mini-odo { display: flex; gap: 2px; }
+  .mini-odo i { flex: 1; height: 12px; border: 1.5px solid var(--color-ink); background: var(--color-surface); }
+  .mini-odo i.done { background: var(--signal-teal); }
+  .mini-odo i.now { background: var(--color-yellow); }
+  .mini-verdicts { display: flex; gap: 4px; }
+  .mini-v { flex: 1; border: 1.5px solid var(--color-ink); background: var(--color-surface); text-align: center; font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 4px 0; }
+  .mini-check { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9px; }
+  .mini-check .bx { width: 14px; height: 14px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-weight: 900; }
+  .mini-check .bx.done { background: var(--signal-teal); }
+
+  /* ── variants frame ── */
+  .vboard-h1 { font-family: var(--font-display); font-weight: 900; font-size: 38px; line-height: 0.95; text-transform: uppercase; letter-spacing: -0.01em; margin: 0; }
+  .variants { display: flex; gap: 18px; }
+  .variant { width: 372px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-md); display: flex; flex-direction: column; }
+  .variant-hd { padding: 13px 16px; border-bottom: 2px solid var(--color-ink); background: var(--color-bg-deep); }
+  .variant-tag { font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-ink-faint); margin: 0 0 5px; }
+  .variant-name { font-family: var(--font-display); font-weight: 900; font-size: 21px; line-height: 1; text-transform: uppercase; margin: 0; }
+  .variant-body { padding: 16px; display: flex; flex-direction: column; gap: 13px; flex: 1; }
+  .vlede { font-family: var(--font-body); font-size: 12.5px; line-height: 1.5; color: var(--color-ink-muted); margin: 0; }
+  .req { border: 2px solid var(--color-ink); background: var(--color-bg); padding: 11px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .req-main { min-width: 0; }
+  .req-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .req-sub { font-family: var(--font-mono); font-size: 9.5px; color: var(--color-ink-faint); margin-top: 2px; }
+  .req-status { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-faint); border: 1.5px solid var(--color-ink-faint); padding: 2px 6px; white-space: nowrap; }
+  .vbtn { background: var(--color-yellow); border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 10px 14px; text-align: center; text-decoration: none; color: var(--color-ink); }
+  .vbtn.sm { padding: 7px 11px; font-size: 9.5px; box-shadow: 2px 2px 0 var(--color-ink); }
+  .vbtn.sec { background: var(--color-surface); }
+  .vfield { border: 2px solid var(--color-ink); background: var(--color-bg); padding: 11px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); }
+  .vlabel { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ink); }
+  .vnote { font-family: var(--font-mono); font-size: 10px; line-height: 1.5; color: var(--color-ink-muted); margin: 0; }
+  .vnote b { color: var(--color-ink); }
+  .vproviders { display: flex; flex-wrap: wrap; gap: 6px; }
+  .vprov { border: 1.5px solid var(--color-ink); background: var(--color-surface); font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 3px 7px; }
+  .vradio { display: flex; align-items: flex-start; gap: 9px; border: 2px solid var(--color-ink); padding: 11px 12px; background: var(--color-bg); }
+  .vradio.on { background: color-mix(in oklab, var(--signal-teal) 12%, var(--color-surface)); }
+  .vr-dot { width: 16px; height: 16px; border-radius: 999px; border: 2px solid var(--color-ink); flex: 0 0 auto; margin-top: 1px; display: grid; place-items: center; }
+  .vradio.on .vr-dot { background: var(--signal-teal); }
+  .vradio.on .vr-dot::after { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--color-ink); }
+  .vr-main { min-width: 0; }
+  .vr-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .vr-sub { font-family: var(--font-mono); font-size: 9.5px; color: var(--color-ink-faint); margin-top: 2px; line-height: 1.4; }
+  .vwhy { border-top: 1.5px solid var(--hairline); padding-top: 11px; font-family: var(--font-mono); font-size: 9.5px; line-height: 1.5; color: var(--color-ink-faint); margin-top: auto; }
+  .vwhy b { color: var(--teal-ink); }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ STORYBOARD ════════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:1400px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Storyboard</span>
+      <span class="name">What the user sees — every step, every rung</span>
+    </div>
+    <p class="sub">One row per milestone, left-to-right through the screens a user actually touches. The <b>journey ledger rides on every screen</b> (mini-strip, top of each card), every step has <b>one hero action</b>, and the Connect/Route work is folded in — simplified so it reads as one product, not separate tools.</p>
+  </div>
+
+  <div class="board" data-screen-label="Journey storyboard">
+    <header class="board-hd">
+      <span class="kicker">Journey · screen flow</span>
+      <h1 class="board-h1">What the user sees</h1>
+      <p class="board-p">Each rung is a short, ordered run of screens with a payoff at the end. Nothing reveals before its gate; the ledger keeps "where am I / what's next" answered the whole way.</p>
+    </header>
+
+    <div class="story">
+
+      <!-- M0 -->
+      <div class="srow now">
+        <div class="srow-rail">
+          <div class="srail-top"><span class="srail-num">M0</span><span class="srail-name">Verify a claim</span></div>
+          <p class="srail-aha">Aha — “it answers with receipts”</p>
+          <p class="srail-need">Needs: nothing · starter graph</p>
+        </div>
+        <div class="srow-steps">
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="now"></i><i class="lock"></i><i class="lock"></i><i class="lock"></i><i class="lock"></i></span><span class="scard-m">M0</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 1</span>
+                <h4 class="scard-h">First-run home</h4>
+                <div class="mini-btn">▶ Verify a claim</div>
+                <p class="scard-note">Lands here · 0 setup · starter graph loaded</p>
+              </div>
+            </div>
+            <span class="sarrow">→</span>
+          </div>
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="now"></i><i class="lock"></i><i class="lock"></i><i class="lock"></i><i class="lock"></i></span><span class="scard-m">M0</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 2</span>
+                <h4 class="scard-h">Cited answer</h4>
+                <div class="mini-chat"><span>Q — existence precedes essence?</span><span class="v">A — Yes. Verified.</span><span class="t">● trust 92 · 3 sources</span></div>
+                <p class="scard-note">The hook is set in ~2 min</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- M1 -->
+      <div class="srow">
+        <div class="srow-rail">
+          <div class="srail-top"><span class="srail-num">M1</span><span class="srail-name">Answer your doc</span></div>
+          <p class="srail-aha">Aha — “my content, cited”</p>
+          <p class="srail-need">Needs: a model · a source</p>
+        </div>
+        <div class="srow-steps">
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="done"></i><i class="now"></i><i class="lock"></i><i class="lock"></i><i class="lock"></i></span><span class="scard-m">M1</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 1</span>
+                <h4 class="scard-h">Add a model</h4>
+                <div class="mini-chips"><span class="mini-chip todo">extract ○</span><span class="mini-chip todo">embed ○</span></div>
+                <div class="mini-btn sec">+ Add a key</div>
+                <p class="scard-note">We say what; you bring anything →</p>
+              </div>
+            </div>
+            <span class="sarrow">→</span>
+          </div>
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="done"></i><i class="now"></i><i class="lock"></i><i class="lock"></i><i class="lock"></i></span><span class="scard-m">M1</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 2</span>
+                <h4 class="scard-h">Add source</h4>
+                <div class="mini-row"><span>your-doc.pdf</span><span>120 ch</span></div>
+                <div class="mini-btn">Ingest →</div>
+                <p class="scard-note">Managed store · no DB setup yet</p>
+              </div>
+            </div>
+            <span class="sarrow">→</span>
+          </div>
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="done"></i><i class="now"></i><i class="lock"></i><i class="lock"></i><i class="lock"></i></span><span class="scard-m">M1</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 3</span>
+                <h4 class="scard-h">Watch run</h4>
+                <div class="mini-odo"><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i><i></i></div>
+                <p class="scard-note">7-stage run · ~10 min</p>
+              </div>
+            </div>
+            <span class="sarrow">→</span>
+          </div>
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="done"></i><i class="now"></i><i class="lock"></i><i class="lock"></i><i class="lock"></i></span><span class="scard-m">M1</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 4</span>
+                <h4 class="scard-h">Verify your doc</h4>
+                <div class="mini-chat"><span>Q — about your-doc.pdf</span><span class="v">A — answer + cite</span><span class="t">● from your content</span></div>
+                <p class="scard-note">Same aha — now on their data</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- M2 -->
+      <div class="srow">
+        <div class="srow-rail">
+          <div class="srail-top"><span class="srail-num">M2</span><span class="srail-name">Make it trusted</span></div>
+          <p class="srail-aha">Aha — “trust score climbs”</p>
+          <p class="srail-need">Needs: a validation model</p>
+        </div>
+        <div class="srow-steps">
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="done"></i><i class="done"></i><i class="now"></i><i class="lock"></i><i class="lock"></i></span><span class="scard-m">M2</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 1</span>
+                <h4 class="scard-h">Make ready</h4>
+                <div class="mini-check"><span class="bx done">✓</span> link · embed</div>
+                <div class="mini-row"><span>validate 842</span><span>▸</span></div>
+                <p class="scard-note">One active step · honest buttons</p>
+              </div>
+            </div>
+            <span class="sarrow">→</span>
+          </div>
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="done"></i><i class="done"></i><i class="now"></i><i class="lock"></i><i class="lock"></i></span><span class="scard-m">M2</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 2</span>
+                <h4 class="scard-h">Review claims</h4>
+                <div class="mini-row"><span>“claim c_1043…”</span></div>
+                <div class="mini-verdicts"><span class="mini-v">A</span><span class="mini-v">W</span><span class="mini-v">U</span></div>
+                <p class="scard-note">Triage to 0 left → unlocks M3</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- M3 -->
+      <div class="srow">
+        <div class="srow-rail">
+          <div class="srail-top"><span class="srail-num">M3</span><span class="srail-name">Own your stack</span></div>
+          <p class="srail-aha">Aha — “production, my infra”</p>
+          <p class="srail-need">Needs: your DB · keys</p>
+        </div>
+        <div class="srow-steps">
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i><i class="lock"></i></span><span class="scard-m">M3</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 1</span>
+                <h4 class="scard-h">Connect graph DB</h4>
+                <div class="mini-sel"><span>Surreal / Neo / …</span><span>▾</span></div>
+                <div class="mini-btn">Connect store</div>
+                <p class="scard-note">Move off the managed default</p>
+              </div>
+            </div>
+            <span class="sarrow">→</span>
+          </div>
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i><i class="lock"></i></span><span class="scard-m">M3</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 2</span>
+                <h4 class="scard-h">Per-stage models</h4>
+                <div class="mini-row"><span>extract</span><span>rec ●</span></div>
+                <div class="mini-row"><span>validate</span><span>rec ●</span></div>
+                <p class="scard-note">Stage board · canvas-free table</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- M4 -->
+      <div class="srow">
+        <div class="srow-rail">
+          <div class="srail-top"><span class="srail-num">M4</span><span class="srail-name">Ship it</span></div>
+          <p class="srail-aha">Aha — “my app is live”</p>
+          <p class="srail-need">Needs: prove-chat ✓</p>
+        </div>
+        <div class="srow-steps">
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i></span><span class="scard-m">M4</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 1</span>
+                <h4 class="scard-h">Prove it in-app</h4>
+                <div class="mini-chat"><span>Q — production query</span><span class="v">A — answer + cite</span><span class="t">● works · ready to ship</span></div>
+                <p class="scard-note">Internal proof before any external config</p>
+              </div>
+            </div>
+            <span class="sarrow">→</span>
+          </div>
+          <div class="sstep">
+            <div class="scard">
+              <div class="scard-bar"><span class="mini-led"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i></span><span class="scard-m">M4</span></div>
+              <div class="scard-body">
+                <span class="scard-step">Step 2</span>
+                <h4 class="scard-h">Turn graph on</h4>
+                <div class="mini-btn">▶ Turn graph on</div>
+                <p class="scard-note">Publishes MCP + query API · routes already live</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ M1 · ADD A MODEL — VARIANTS ════════════════ -->
+<div class="frame" style="position:absolute; left:1560px; top:80px; width:1240px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">M1 · variants</span>
+      <span class="name">"Add a model" — the new step, 3 non-opinionated takes</span>
+    </div>
+    <p class="sub">The one screen that didn't exist yet. The job: tell the user <b>what they need</b> (a model to extract, a model to embed) and make registering a key easy — <b>without pushing a provider</b>. Bring Together, Portkey, OpenAI, several keys — their call. Three treatments to compare.</p>
+  </div>
+
+  <div class="board" data-screen-label="M1 add-a-model variants">
+    <header class="board-hd">
+      <span class="kicker">M1 · add a model</span>
+      <h1 class="vboard-h1">Bring your models</h1>
+      <p class="board-p">Same requirement underneath — <b>extract + embed</b> — surfaced three ways. We tell you <b>what</b>; you choose <b>how</b>.</p>
+    </header>
+
+    <div class="variants">
+
+      <!-- V1 capability checklist -->
+      <div class="variant">
+        <div class="variant-hd"><p class="variant-tag">Variant A</p><h3 class="variant-name">Capability checklist</h3></div>
+        <div class="variant-body">
+          <p class="vlede">Lists the capabilities you need. Each is satisfied by any key you bring — one key may cover both.</p>
+          <div class="req">
+            <div class="req-main"><div class="req-h">A model to extract</div><div class="req-sub">reads docs → ideas, relations</div></div>
+            <a class="vbtn sm" href="#">Add key</a>
+          </div>
+          <div class="req">
+            <div class="req-main"><div class="req-h">A model to embed</div><div class="req-sub">for semantic retrieval</div></div>
+            <a class="vbtn sm" href="#">Add key</a>
+          </div>
+          <p class="vnote">Validation can reuse your extract model, or add a different one later (M2).</p>
+          <p class="vwhy"><b>Why this</b> — clearest about the requirement; provider-agnostic by construction.</p>
+        </div>
+      </div>
+
+      <!-- V2 one field, any gateway -->
+      <div class="variant">
+        <div class="variant-hd"><p class="variant-tag">Variant B</p><h3 class="variant-name">One key, any source</h3></div>
+        <div class="variant-body">
+          <p class="vlede">Just paste a key. We detect what it unlocks and tick the capabilities it covers.</p>
+          <span class="vlabel">Provider API key</span>
+          <div class="vfield">sk-•••• / paste any provider key</div>
+          <a class="vbtn" href="#">Verify on save →</a>
+          <div class="vproviders"><span class="vprov">Together</span><span class="vprov">Portkey</span><span class="vprov">OpenAI</span><span class="vprov">Anthropic</span><span class="vprov">+ any</span></div>
+          <p class="vnote"><b>Covers:</b> extract ✓ · embed ✓ — or add another key for either.</p>
+          <p class="vwhy"><b>Why this</b> — lowest friction; a single multi-model key (e.g. a gateway) gets you all the way.</p>
+        </div>
+      </div>
+
+      <!-- V3 guided picker -->
+      <div class="variant">
+        <div class="variant-hd"><p class="variant-tag">Variant C</p><h3 class="variant-name">Guided picker</h3></div>
+        <div class="variant-body">
+          <p class="vlede">Asks how you want to bring models, then shows only the fields that fit.</p>
+          <div class="vradio on">
+            <span class="vr-dot"></span>
+            <div class="vr-main"><div class="vr-h">One multi-model key</div><div class="vr-sub">a gateway like Together / Portkey covers everything</div></div>
+          </div>
+          <div class="vradio">
+            <span class="vr-dot"></span>
+            <div class="vr-main"><div class="vr-h">Separate keys per provider</div><div class="vr-sub">e.g. OpenAI embed + Anthropic extract</div></div>
+          </div>
+          <a class="vbtn" href="#">Continue →</a>
+          <p class="vwhy"><b>Why this</b> — meets smart users where they are without assuming the answer.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

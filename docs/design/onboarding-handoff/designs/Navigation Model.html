@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — Navigation Model</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root { --hairline:#d8cfb0; --teal-ink:#1c7c72; --bad:#b23b34; }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; color: #4a4538; max-width: 68ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+
+  .scr { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); overflow: hidden; }
+  .body { padding: 24px 26px 26px; }
+  .h-eyebrow { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 9px; }
+  .h-title { font-family: var(--font-display); font-weight: 900; font-size: 34px; line-height: 0.94; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 16px; }
+
+  /* bands */
+  .band { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 17px 18px; }
+  .band-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; margin: 0 0 3px; display: flex; align-items: center; gap: 9px; }
+  .band-h .pill { font-size: 8.5px; padding: 3px 7px; border: 1.5px solid var(--color-ink); letter-spacing: 0.04em; }
+  .band-h .pill.op { background: var(--color-ink); color: var(--color-bg); }
+  .band-h .pill.fx { background: var(--color-yellow); }
+  .band-sub { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); margin: 0 0 14px; line-height: 1.5; }
+
+  /* the rail */
+  .rail { display: flex; align-items: stretch; gap: 0; }
+  .rchip { flex: 1; border: 2px solid var(--color-ink); background: var(--color-bg); padding: 11px 10px; box-shadow: 2px 2px 0 var(--color-ink); }
+  .rchip .m { font-family: var(--font-display); font-weight: 900; font-size: 19px; line-height: 1; }
+  .rchip .w { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-ink-faint); margin-top: 4px; display: block; }
+  .rarrow { display: flex; align-items: center; padding: 0 7px; color: var(--color-ink-faint); font-weight: 700; font-family: var(--font-mono); }
+
+  .flow { text-align: center; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-muted); margin: 14px 0; }
+  .flow .big { display: block; font-size: 16px; color: var(--color-ink-faint); line-height: 1; margin-top: 2px; }
+
+  /* hub + areas */
+  .areas { display: flex; flex-wrap: wrap; gap: 9px; }
+  .achip { border: 2px solid var(--color-ink); background: var(--color-bg); padding: 9px 12px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; box-shadow: 2px 2px 0 var(--color-ink); display: inline-flex; align-items: center; gap: 8px; }
+  .achip .seen { font-size: 8px; font-weight: 700; color: var(--color-ink-faint); letter-spacing: 0.03em; border-left: 1.5px solid var(--hairline); padding-left: 8px; }
+
+  /* re-entry rules */
+  .rules { display: flex; flex-direction: column; gap: 11px; }
+  .rule { display: grid; grid-template-columns: 24px 1fr; gap: 12px; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; align-items: start; }
+  .rule .k { width: 24px; height: 24px; border: 2px solid var(--color-ink); background: var(--color-yellow); display: grid; place-items: center; font-weight: 700; font-size: 11px; }
+  .rule b { color: var(--color-ink); }
+
+  /* redoable list */
+  .redo { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 18px; }
+  .ritem { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; font-family: var(--font-mono); font-size: 11px; padding: 8px 0; border-bottom: 1.5px solid var(--hairline); }
+  .ritem .to { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--teal-ink); white-space: nowrap; }
+  .ritem b { color: var(--color-ink); }
+
+  .gap { height: 16px; }
+
+  /* ───── FRAME 2 — GRAPH HOME ───── */
+  .ledger { display: flex; border-bottom: 2px solid var(--color-ink); background: var(--color-surface); }
+  .lc { flex: 1; padding: 8px 11px; border-right: 1.5px solid var(--hairline); display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .lc:last-child { border-right: none; }
+  .lc .d { width: 14px; height: 14px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-size: 8px; flex: 0 0 auto; }
+  .lc.done { color: var(--color-ink); } .lc.done .d { background: var(--signal-teal); }
+  .lc.now { color: var(--color-ink); background: color-mix(in oklab, var(--color-yellow) 22%, var(--color-surface)); } .lc.now .d { background: var(--color-yellow); }
+  .lc.lock .d { border-style: dashed; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--color-ink); background: var(--color-bg-deep); padding: 9px 16px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .topbar .you { color: var(--color-ink-faint); }
+
+  .home-hero { display: flex; align-items: baseline; gap: 14px; margin-bottom: 4px; flex-wrap: wrap; }
+  .home-hero .gname { font-family: var(--font-display); font-weight: 900; font-size: 36px; text-transform: uppercase; line-height: 0.9; }
+  .home-hero .gmeta { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); }
+  .home-hero .gmeta b { color: var(--color-ink); }
+  .home-hero .live { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1.5px solid var(--color-ink); padding: 4px 8px; background: var(--color-bg); color: var(--color-ink-faint); }
+
+  .nudge { display: flex; align-items: center; gap: 14px; border: 2px solid var(--color-ink); border-left: 8px solid var(--color-yellow); background: var(--color-surface); box-shadow: var(--shadow-md); padding: 13px 16px; margin: 16px 0 20px; }
+  .nudge .nt { font-family: var(--font-mono); font-size: 12px; line-height: 1.5; } .nudge .nt b { color: var(--color-ink); }
+  .nudge .nb { margin-left: auto; flex: 0 0 auto; background: var(--color-yellow); border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 11px 16px; cursor: pointer; }
+
+  .sec-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 2px solid var(--color-ink); padding-bottom: 8px; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; }
+  .sec-h .leg { font-weight: 700; font-size: 9.5px; color: var(--color-ink-faint); }
+
+  .home-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .tile { position: relative; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 14px 15px 15px; display: flex; flex-direction: column; gap: 7px; min-height: 116px; cursor: pointer; }
+  .tile .tname { font-family: var(--font-display); font-weight: 900; font-size: 19px; text-transform: uppercase; line-height: 1; }
+  .tile .tstat { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-faint); line-height: 1.4; } .tile .tstat b { color: var(--color-ink); }
+  .tile .tact { margin-top: auto; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 6px; border: 2px solid var(--color-ink); background: var(--color-bg); padding: 7px 11px; align-self: flex-start; box-shadow: 2px 2px 0 var(--color-ink); }
+  .tile .tact.y { background: var(--color-yellow); }
+  .tile .dot { position: absolute; top: 13px; right: 13px; width: 10px; height: 10px; border: 1.5px solid var(--color-ink); }
+  .tile .dot.ok { background: var(--signal-teal); } .tile .dot.warn { background: var(--color-yellow); } .tile .dot.todo { background: var(--bad); }
+
+  .home-foot { display: flex; align-items: center; gap: 16px; border-top: 2px solid var(--color-ink); padding-top: 14px; margin-top: 18px; font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-faint); }
+  .home-foot .fl { display: inline-flex; align-items: center; gap: 6px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; color: var(--color-ink); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+</style>
+</head>
+<body>
+
+<!-- ════════════ FRAME 1 — THE MODEL ════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:760px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">nav model</span><span class="name">Opinionated rails → persistent home</span></div>
+    <p class="sub">The balance you asked for. The <b>first pass is a guided rail</b> — M0→M4, gated, one decision at a time, so a new user reaches a live graph without choices they can't yet make. Once finished, <b>every milestone becomes a place you return to</b> from a persistent Graph home — revisit anything, in any order. The journey doesn't restart; redoable actions are always one hop away.</p>
+  </div>
+  <div class="scr" data-screen-label="Nav model — the model">
+    <div class="body">
+      <p class="h-eyebrow">how the journey and the home coexist</p>
+      <h1 class="h-title">One product, two modes</h1>
+
+      <div class="band">
+        <div class="band-h">The first pass <span class="pill op">Opinionated</span></div>
+        <p class="band-sub">Linear &amp; gated. Gets you from zero to a graph you trust — no premature decisions.</p>
+        <div class="rail">
+          <div class="rchip"><span class="m">M0</span><span class="w">Explore</span></div>
+          <div class="rarrow">→</div>
+          <div class="rchip"><span class="m">M1</span><span class="w">Ingest</span></div>
+          <div class="rarrow">→</div>
+          <div class="rchip"><span class="m">M2</span><span class="w">Make ready</span></div>
+          <div class="rarrow">→</div>
+          <div class="rchip"><span class="m">M3</span><span class="w">Own stack</span></div>
+          <div class="rarrow">→</div>
+          <div class="rchip"><span class="m">M4</span><span class="w">Connect</span></div>
+        </div>
+      </div>
+
+      <div class="flow">each finished milestone becomes a place you can return to<span class="big">↓</span></div>
+
+      <div class="band">
+        <div class="band-h">The graph home <span class="pill fx">Flexible</span></div>
+        <p class="band-sub">Persistent. Every area is revisitable, in any order — this is where you live after the first pass.</p>
+        <div class="areas">
+          <span class="achip">Sources &amp; ingest <span class="seen">M1</span></span>
+          <span class="achip">Make ready <span class="seen">M2</span></span>
+          <span class="achip">Models <span class="seen">M1 · M3</span></span>
+          <span class="achip">Stack <span class="seen">M3</span></span>
+          <span class="achip">Connection <span class="seen">M4</span></span>
+          <span class="achip">Routes <span class="seen">post-launch</span></span>
+          <span class="achip">Usage &amp; logs <span class="seen">post-launch</span></span>
+        </div>
+      </div>
+
+      <div class="gap"></div>
+
+      <div class="band">
+        <div class="band-h">Re-entry rules</div>
+        <div class="rules" style="margin-top:13px;">
+          <div class="rule"><span class="k">1</span><span><b>Rails first, home after.</b> Until M4 ships, the home nudges you to the next rung; you can still jump sideways any time.</span></div>
+          <div class="rule"><span class="k">2</span><span><b>Done ≠ locked.</b> A finished milestone turns into an editable area — its state persists and is always visible.</span></div>
+          <div class="rule"><span class="k">3</span><span><b>Redoable actions never restart the journey.</b> They open the relevant area, do the thing, and drop you back home.</span></div>
+        </div>
+      </div>
+
+      <div class="gap"></div>
+
+      <div class="band">
+        <div class="band-h">The redoable actions <span style="font-weight:700;font-size:9px;color:var(--color-ink-faint);letter-spacing:0.03em;">— always reachable from home</span></div>
+        <div class="redo" style="margin-top:13px;">
+          <div class="ritem"><span><b>Add more sources</b> / re-ingest</span><span class="to">→ Sources</span></div>
+          <div class="ritem"><span><b>Create / change a route</b></span><span class="to">→ Routes</span></div>
+          <div class="ritem"><span><b>Move managed → self-hosted</b></span><span class="to">→ Stack</span></div>
+          <div class="ritem"><span><b>Adjust a stage model</b></span><span class="to">→ Models</span></div>
+          <div class="ritem"><span><b>Rotate keys / change access</b></span><span class="to">→ Connection</span></div>
+          <div class="ritem"><span><b>Re-validate / triage flags</b></span><span class="to">→ Make ready</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ FRAME 2 — GRAPH HOME (the screen) ════════════ -->
+<div class="frame" style="position:absolute; left:920px; top:80px; width:780px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">the screen</span><span class="name">Graph home — where every path begins &amp; returns</span></div>
+    <p class="sub">The concrete answer to “how do I get back to any screen a second time?”. A persistent dashboard for <b>acme-graph</b>: a thin journey strip up top (you're at M2), one nudge toward the next rung, and a tile per area with live status + its primary redoable action. Mid-journey now — but this same screen is the permanent home afterward.</p>
+  </div>
+  <div class="scr" data-screen-label="Graph home">
+    <div class="ledger">
+      <div class="lc done"><span class="d">✓</span>M0</div>
+      <div class="lc done"><span class="d">✓</span>M1</div>
+      <div class="lc now"><span class="d">▸</span>M2</div>
+      <div class="lc lock"><span class="d">○</span>M3</div>
+      <div class="lc lock"><span class="d">○</span>M4</div>
+    </div>
+    <div class="topbar"><span>Graph home</span><span class="you">acme · prod workspace</span></div>
+    <div class="body">
+      <div class="home-hero">
+        <span class="gname">acme-graph</span>
+        <span class="gmeta"><b>1,204</b> ideas · trust <b>88</b> · <b>3</b> sources</span>
+        <span class="live">Not connected yet</span>
+      </div>
+
+      <div class="nudge">
+        <div class="nt"><b>You're at M2 · Make ready.</b> 164 unsourced + 47 flagged stand between you and a graph you can ship.</div>
+        <button type="button" class="nb">Resume →</button>
+      </div>
+
+      <div class="sec-h">Areas <span class="leg">jump in &amp; out any time</span></div>
+      <div class="home-tiles">
+        <div class="tile">
+          <span class="dot ok"></span>
+          <div class="tname">Sources</div>
+          <div class="tstat"><b>1,204</b> ideas from 3 sources<br>last ingest 2d ago</div>
+          <span class="tact">+ Add docs</span>
+        </div>
+        <div class="tile">
+          <span class="dot todo"></span>
+          <div class="tname">Make ready</div>
+          <div class="tstat">trust <b>88</b> · <b>47</b> flagged<br>2 of 3 gates need you</div>
+          <span class="tact y">Review →</span>
+        </div>
+        <div class="tile">
+          <span class="dot ok"></span>
+          <div class="tname">Models</div>
+          <div class="tstat"><b>6</b> stages assigned<br>Together · Voyage · Anthropic</div>
+          <span class="tact">Adjust</span>
+        </div>
+        <div class="tile">
+          <span class="dot warn"></span>
+          <div class="tname">Stack</div>
+          <div class="tstat">Restormel <b>managed</b> store<br>not self-hosted</div>
+          <span class="tact">Self-host →</span>
+        </div>
+        <div class="tile">
+          <span class="dot todo"></span>
+          <div class="tname">Connection</div>
+          <div class="tstat">no app connected<br>widget · MCP · API · GraphQL</div>
+          <span class="tact">Connect app →</span>
+        </div>
+        <div class="tile">
+          <span class="dot ok"></span>
+          <div class="tname">Routes</div>
+          <div class="tstat"><b>2</b> routes live<br>Exec summary · Customer signal</div>
+          <span class="tact">Edit</span>
+        </div>
+      </div>
+
+      <div class="home-foot">
+        <span class="fl">Usage &amp; logs</span>
+        <span>·</span>
+        <span class="fl">Keys &amp; access</span>
+        <span>·</span>
+        <span class="fl">Workspace settings</span>
+        <span style="margin-left:auto;">Everything here is reachable without redoing the journey.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

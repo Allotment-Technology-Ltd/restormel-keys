@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — M1 · Add Models (Variant B, refined)</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root {
+    --brut-ink:#0c0c0c; --brut-white:#fffef0; --brut-canvas:#f3ead0; --brut-neon:#ffd600;
+    --brut-blue:#1a3f8a; --brut-coral:#d94e47; --brut-font:"Space Mono",ui-monospace,Menlo,monospace;
+    --hairline:#d8cfb0; --teal-ink:#1c7c72; --amber-fg:#92400e;
+  }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; font-weight: 400; letter-spacing: 0.02em; color: #4a4538; max-width: 74ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+
+  .scr { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); overflow: hidden; }
+
+  /* mini journey ledger strip */
+  .led-strip { display: flex; align-items: center; gap: 0; border-bottom: 2px solid var(--color-ink); background: var(--color-surface); }
+  .led-cell { flex: 1; padding: 9px 12px; border-right: 1.5px solid var(--hairline); display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .led-cell:last-child { border-right: none; }
+  .led-cell .d { width: 16px; height: 16px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-size: 9px; flex: 0 0 auto; }
+  .led-cell.done { color: var(--color-ink); } .led-cell.done .d { background: var(--signal-teal); }
+  .led-cell.now { color: var(--color-ink); background: color-mix(in oklab, var(--color-yellow) 22%, var(--color-surface)); } .led-cell.now .d { background: var(--color-yellow); }
+  .led-cell.lock .d { border-style: dashed; color: var(--color-ink-faint); }
+
+  .body { padding: 24px 26px 26px; }
+  .h-eyebrow { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 9px; }
+  .h-title { font-family: var(--font-display); font-weight: 900; font-size: 40px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 10px; }
+  .h-desc { font-family: var(--font-body); font-size: 14px; line-height: 1.55; color: var(--color-ink-muted); margin: 0 0 20px; max-width: 52ch; }
+  .h-desc b { color: var(--color-ink); font-weight: 600; }
+
+  /* requirement tracker — the only two hard gates */
+  .reqbar { display: flex; gap: 12px; margin-bottom: 20px; }
+  .reqpill { flex: 1; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 12px 14px; display: flex; align-items: center; gap: 11px; }
+  .reqpill.met { background: color-mix(in oklab, var(--signal-teal) 14%, var(--color-surface)); }
+  .req-ic { width: 26px; height: 26px; flex: 0 0 auto; border: 2px solid var(--color-ink); display: grid; place-items: center; font-family: var(--font-mono); font-weight: 900; font-size: 14px; background: var(--color-bg); }
+  .reqpill.met .req-ic { background: var(--signal-teal); }
+  .req-tx b { display: block; font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .req-tx span { display: block; font-family: var(--font-mono); font-size: 9.5px; color: var(--color-ink-faint); margin-top: 2px; }
+  .reqpill.met .req-tx span { color: var(--teal-ink); }
+
+  .sec-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-ink); border-bottom: 2px solid var(--color-ink); padding-bottom: 8px; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; }
+
+  /* add-key (Variant B hero) */
+  .addkey { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 16px; margin-bottom: 14px; }
+  .ak-label { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 8px; }
+  .ak-row { display: flex; gap: 10px; }
+  .ak-field { flex: 1; border: 2px solid var(--color-ink); background: var(--color-bg); padding: 12px 13px; font-family: var(--font-mono); font-size: 13px; color: var(--color-ink-faint); }
+  .ak-verify { background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 0 18px; white-space: nowrap; cursor: pointer; }
+  .ak-providers { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+  .prov { border: 1.5px solid var(--color-ink); background: var(--color-bg); font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 4px 8px; }
+  .ak-note { font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; color: var(--color-ink-muted); margin: 12px 0 0; }
+  .ak-note b { color: var(--color-ink); }
+
+  /* added key cards */
+  .keys { display: flex; flex-direction: column; gap: 11px; margin-bottom: 13px; }
+  .keycard { border: 2px solid var(--color-ink); background: var(--color-bg); box-shadow: var(--shadow-sm); padding: 13px 15px; }
+  .kc-top { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .kc-prov { font-family: var(--font-display); font-weight: 900; font-size: 18px; text-transform: uppercase; line-height: 1; }
+  .kc-key { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); }
+  .kc-verified { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; background: var(--signal-teal); color: var(--color-ink); border: 1.5px solid var(--color-ink); font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; }
+  .kc-unlocks { font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-faint); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 7px; }
+  .kc-models { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mchip { border: 1.5px solid var(--color-ink); background: var(--color-surface); font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; padding: 3px 8px; }
+  .mchip.cap { background: color-mix(in oklab, var(--signal-teal) 16%, var(--color-surface)); color: var(--teal-ink); }
+  .addmore { display: inline-flex; align-items: center; gap: 8px; border: 2px dashed var(--color-ink); background: var(--color-surface); font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; cursor: pointer; color: var(--color-ink); width: 100%; justify-content: center; }
+  .addmore:hover { background: var(--color-bg-deep); }
+
+  /* model catalogue — gentle, optional reveal */
+  .cat { border: 2px solid var(--color-ink); background: var(--color-surface); margin-top: 16px; }
+  .cat-sum { display: flex; align-items: center; gap: 10px; padding: 13px 16px; cursor: pointer; font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .cat-sum .chev { color: var(--color-ink-faint); }
+  .cat-sum .opt { margin-left: auto; font-size: 9.5px; color: var(--color-ink-faint); border: 1.5px solid var(--color-ink-faint); padding: 2px 7px; letter-spacing: 0.04em; }
+  .cat-body { border-top: 2px solid var(--color-ink); }
+  .cat-intro { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-muted); padding: 11px 16px; border-bottom: 1.5px solid var(--hairline); line-height: 1.5; }
+  .cat-row { display: grid; grid-template-columns: 130px 1fr auto; gap: 12px; align-items: center; padding: 11px 16px; border-bottom: 1.5px solid var(--hairline); }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-stage { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .cat-stage small { display: block; font-size: 8.5px; font-weight: 400; color: var(--color-ink-faint); letter-spacing: 0.02em; margin-top: 2px; }
+  .cat-rec { font-family: var(--font-mono); font-size: 11.5px; color: var(--color-ink); }
+  .cat-rec .recby { color: var(--color-ink-faint); font-size: 9.5px; display: block; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .cov { font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border: 1.5px solid var(--color-ink); white-space: nowrap; }
+  .cov.ok { background: color-mix(in oklab, var(--signal-teal) 18%, var(--color-surface)); color: var(--teal-ink); border-color: var(--signal-teal); }
+  .cov.opt { background: color-mix(in oklab, var(--amber-insight) 22%, var(--color-surface)); color: var(--amber-fg); border-color: var(--brut-amber); }
+  .cov.todo { background: var(--color-bg); color: var(--color-ink-faint); border-style: dashed; }
+
+  /* footer / continue */
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 2px solid var(--color-ink); padding-top: 18px; margin-top: 20px; }
+  .foot-note { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); max-width: 40ch; line-height: 1.45; }
+  .btn-cont { display: inline-flex; align-items: center; gap: 9px; background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 14px 24px; text-decoration: none; white-space: nowrap; }
+  .btn-cont.disabled { background: var(--color-surface); color: var(--color-ink-faint); border-color: var(--color-ink-faint); box-shadow: none; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<!-- ════════════ STATE A · empty (first key) ════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:660px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">M1 · state A</span>
+      <span class="name">Add models — nothing yet</span>
+    </div>
+    <p class="sub">Variant B's hero, but coverage-based: <b>two hard requirements</b> (extract + embed), one paste-a-key field, and a gentle teaser that we'll recommend a model per stage. No provider pushed; no wall of options.</p>
+  </div>
+
+  <div class="scr" data-screen-label="M1 Add Models — empty">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell now"><span class="d">▸</span>M1 · Add models</div>
+      <div class="led-cell lock"><span class="d">○</span>M2</div>
+      <div class="led-cell lock"><span class="d">○</span>M3</div>
+      <div class="led-cell lock"><span class="d">○</span>M4</div>
+    </div>
+
+    <div class="body">
+      <p class="h-eyebrow">M1 · answer your own doc</p>
+      <h1 class="h-title">Add your models</h1>
+      <p class="h-desc">Bring any provider. You need <b>one model that can extract</b> and <b>one that can embed</b> — a single key may cover both. Paste a key to start.</p>
+
+      <div class="reqbar">
+        <div class="reqpill">
+          <span class="req-ic">○</span>
+          <span class="req-tx"><b>Extract</b><span>read docs → ideas</span></span>
+        </div>
+        <div class="reqpill">
+          <span class="req-ic">○</span>
+          <span class="req-tx"><b>Embed</b><span>for retrieval</span></span>
+        </div>
+      </div>
+
+      <div class="addkey">
+        <p class="ak-label">Provider API key</p>
+        <div class="ak-row">
+          <div class="ak-field">sk-•••• &nbsp;/&nbsp; paste any provider key</div>
+          <button type="button" class="ak-verify">Verify &amp; save →</button>
+        </div>
+        <div class="ak-providers">
+          <span class="prov">Together</span><span class="prov">Gemini</span><span class="prov">OpenAI</span><span class="prov">Anthropic</span><span class="prov">Voyage</span><span class="prov">Mistral</span><span class="prov">+ any</span>
+        </div>
+        <p class="ak-note"><b>One key can cover several models</b> — e.g. a Gemini key gives you both extract and embed. Or mix providers (say Together for chat stages, Voyage for embed). Your call.</p>
+      </div>
+
+      <div class="cat">
+        <div class="cat-sum"><span class="chev">▸</span> See recommended models by stage <span class="opt">Optional</span></div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note">Add a key that covers extract + embed to continue.</span>
+        <span class="btn-cont disabled">Continue → ingest</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ STATE B · keys added (the combination) ════════════ -->
+<div class="frame" style="position:absolute; left:820px; top:80px; width:780px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">M1 · state B</span>
+      <span class="name">Add models — mixed providers + catalogue revealed</span>
+    </div>
+    <p class="sub">The real-world case: a <b>multi-model key</b> (Together) covers extract/relation/validation, plus a <b>dedicated embed key</b> (Voyage). Both requirements met → Continue lights up. The per-stage catalogue is now open, showing recommendations and what each key covers — validation flagged as a <b>recommended, non-blocking</b> upgrade.</p>
+  </div>
+
+  <div class="scr" data-screen-label="M1 Add Models — populated">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell now"><span class="d">▸</span>M1 · Add models</div>
+      <div class="led-cell lock"><span class="d">○</span>M2</div>
+      <div class="led-cell lock"><span class="d">○</span>M3</div>
+      <div class="led-cell lock"><span class="d">○</span>M4</div>
+    </div>
+
+    <div class="body">
+      <p class="h-eyebrow">M1 · answer your own doc</p>
+      <h1 class="h-title">Add your models</h1>
+
+      <div class="reqbar">
+        <div class="reqpill met">
+          <span class="req-ic">✓</span>
+          <span class="req-tx"><b>Extract</b><span>covered · together</span></span>
+        </div>
+        <div class="reqpill met">
+          <span class="req-ic">✓</span>
+          <span class="req-tx"><b>Embed</b><span>covered · voyage</span></span>
+        </div>
+      </div>
+
+      <div class="sec-h">Your keys <span style="font-weight:400;color:var(--color-ink-faint);font-size:10px;">2 connected</span></div>
+      <div class="keys">
+        <div class="keycard">
+          <div class="kc-top">
+            <span class="kc-prov">Together</span>
+            <span class="kc-key">rk_•••• 8f2a</span>
+            <span class="kc-verified">✓ Verified</span>
+          </div>
+          <p class="kc-unlocks">Unlocks · multi-model gateway</p>
+          <div class="kc-models">
+            <span class="mchip cap">extract</span><span class="mchip cap">relation</span><span class="mchip cap">validation</span><span class="mchip cap">remediation</span><span class="mchip">qwen3-235b</span><span class="mchip">llama-3.3</span>
+          </div>
+        </div>
+        <div class="keycard">
+          <div class="kc-top">
+            <span class="kc-prov">Voyage</span>
+            <span class="kc-key">pa_•••• 1c70</span>
+            <span class="kc-verified">✓ Verified</span>
+          </div>
+          <p class="kc-unlocks">Unlocks · embeddings</p>
+          <div class="kc-models">
+            <span class="mchip cap">embed</span><span class="mchip">voyage-3</span><span class="mchip">voyage-3-lite</span>
+          </div>
+        </div>
+        <button type="button" class="addmore">+ Add another key</button>
+      </div>
+
+      <div class="cat">
+        <div class="cat-sum"><span class="chev">▾</span> Recommended models by stage <span class="opt">Optional</span></div>
+        <div class="cat-body">
+          <p class="cat-intro">You've met the minimum. These are our picks per stage from the keys you've added — add another key only if you want a recommended upgrade.</p>
+          <div class="cat-row">
+            <span class="cat-stage">Extract<small>docs → ideas</small></span>
+            <span class="cat-rec">qwen3-235b <span class="recby">via Together</span></span>
+            <span class="cov ok">✓ Covered</span>
+          </div>
+          <div class="cat-row">
+            <span class="cat-stage">Relation<small>link ideas</small></span>
+            <span class="cat-rec">qwen3-235b <span class="recby">via Together</span></span>
+            <span class="cov ok">✓ Covered</span>
+          </div>
+          <div class="cat-row">
+            <span class="cat-stage">Validation<small>cross-check</small></span>
+            <span class="cat-rec">claude-sonnet-4-6 <span class="recby">recommend a different family</span></span>
+            <span class="cov opt">＋ Optional</span>
+          </div>
+          <div class="cat-row">
+            <span class="cat-stage">Embed<small>retrieval</small></span>
+            <span class="cat-rec">voyage-3 <span class="recby">via Voyage</span></span>
+            <span class="cov ok">✓ Covered</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note">Requirements met. Validation upgrade can wait — you can add it at M2.</span>
+        <a class="btn-cont" href="#">Continue → ingest</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

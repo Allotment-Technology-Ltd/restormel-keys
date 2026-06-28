@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — M2 Flow (make ready → review)</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root {
+    --brut-ink:#0c0c0c; --brut-white:#fffef0; --brut-canvas:#f3ead0; --brut-neon:#ffd600;
+    --brut-blue:#1a3f8a; --brut-coral:#d94e47; --brut-font:"Space Mono",ui-monospace,Menlo,monospace;
+    --hairline:#d8cfb0; --teal-ink:#1c7c72; --amber-fg:#92400e;
+  }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; font-weight: 400; letter-spacing: 0.02em; color: #4a4538; max-width: 72ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+  .arch { margin: 9px 0 0; font-family: var(--font-mono); font-size: 11px; color: #5a5446; line-height: 1.65; max-width: 72ch; }
+  .arch .t { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #221f18; }
+  .arch .aha { color: var(--teal-ink); }
+
+  .scr { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); overflow: hidden; }
+  .led-strip { display: flex; border-bottom: 2px solid var(--color-ink); background: var(--color-surface); }
+  .led-cell { flex: 1; padding: 9px 12px; border-right: 1.5px solid var(--hairline); display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .led-cell:last-child { border-right: none; }
+  .led-cell .d { width: 16px; height: 16px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-size: 9px; flex: 0 0 auto; }
+  .led-cell.done { color: var(--color-ink); } .led-cell.done .d { background: var(--signal-teal); }
+  .led-cell.now { color: var(--color-ink); background: color-mix(in oklab, var(--color-yellow) 22%, var(--color-surface)); } .led-cell.now .d { background: var(--color-yellow); }
+  .led-cell.lock .d { border-style: dashed; color: var(--color-ink-faint); }
+
+  .body { padding: 24px 26px 26px; }
+  .h-eyebrow { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 9px; }
+  .h-title { font-family: var(--font-display); font-weight: 900; font-size: 38px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 10px; }
+  .h-desc { font-family: var(--font-body); font-size: 14px; line-height: 1.55; color: var(--color-ink-muted); margin: 0 0 18px; max-width: 52ch; }
+  .h-desc b { color: var(--color-ink); font-weight: 600; }
+
+  /* trust meter */
+  .trust { display: flex; align-items: center; gap: 14px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 13px 16px; margin-bottom: 18px; }
+  .trust .num { font-family: var(--font-display); font-weight: 900; font-size: 30px; line-height: 1; }
+  .trust .bar { flex: 1; height: 14px; border: 2px solid var(--color-ink); background: var(--color-bg); position: relative; overflow: hidden; }
+  .trust .bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--signal-teal); border-right: 2px solid var(--color-ink); }
+  .trust .lab { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ink-faint); }
+  .trust .lab b { color: var(--teal-ink); display: block; font-size: 11px; }
+
+  /* ready checklist */
+  .rrow { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 14px 16px; margin-bottom: 11px; }
+  .rrow.active { box-shadow: var(--shadow-md); border-left: 8px solid var(--color-yellow); padding-left: 10px; }
+  .rrow.done { background: color-mix(in oklab, var(--signal-teal) 8%, var(--color-surface)); }
+  .rg { width: 30px; height: 30px; flex: 0 0 auto; border: 2px solid var(--color-ink); display: grid; place-items: center; font-family: var(--font-mono); font-weight: 900; font-size: 14px; background: var(--color-bg); }
+  .rrow.done .rg { background: var(--signal-teal); }
+  .rl { font-family: var(--font-display); font-weight: 900; font-size: 19px; text-transform: uppercase; line-height: 1; margin: 0 0 5px; }
+  .rs { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-muted); margin: 0; }
+  .rs b { color: var(--color-ink); }
+  .ract { text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .btn-y { display: inline-flex; align-items: center; gap: 8px; background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 16px; text-decoration: none; white-space: nowrap; }
+  .btn-dis { display: inline-flex; align-items: center; gap: 6px; background: var(--color-surface); color: var(--color-ink-faint); border: 2px solid var(--color-ink-faint); font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 9px 13px; cursor: not-allowed; }
+  .reason { font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .done-chip { display: inline-flex; align-items: center; gap: 6px; border: 2px solid var(--color-ink); background: var(--signal-teal); color: var(--color-ink); font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 7px 11px; }
+
+  /* review claims */
+  .rev-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .pill-left { font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 2px solid var(--color-ink); background: var(--amber-insight); color: var(--color-ink); padding: 6px 12px; }
+  .pbar { flex: 1; height: 13px; border: 2px solid var(--color-ink); background: var(--color-surface); position: relative; overflow: hidden; }
+  .pbar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--signal-teal); border-right: 2px solid var(--color-ink); }
+  .pct { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); white-space: nowrap; }
+  .claim { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 14px 16px; display: grid; grid-template-columns: 1fr 168px; gap: 16px; align-items: start; margin-bottom: 11px; }
+  .claim.saving { box-shadow: var(--shadow-md); border-left: 8px solid var(--brut-amber); padding-left: 10px; }
+  .claim.resolved { background: color-mix(in oklab, var(--signal-teal) 9%, var(--color-surface)); }
+  .cid { font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-faint); margin: 0 0 6px; }
+  .ctext { font-family: var(--font-mono); font-size: 13px; line-height: 1.5; margin: 0 0 9px; }
+  .csrc { border-left: 3px solid var(--color-ink); padding: 3px 0 3px 10px; margin: 0; }
+  .csrc .q { font-family: var(--font-body); font-size: 12px; font-style: italic; color: var(--color-ink-muted); line-height: 1.45; }
+  .csrc .ct { display: block; font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-faint); margin-top: 4px; }
+  .verdicts { display: flex; flex-direction: column; gap: 7px; }
+  .vd { display: grid; grid-template-columns: 22px 1fr; align-items: center; gap: 8px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 8px 11px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; text-align: left; cursor: pointer; }
+  .vd .k { width: 22px; height: 22px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-weight: 900; font-size: 11px; }
+  .vd.chosen { background: var(--signal-teal); } .vd.chosen .k { background: var(--color-ink); color: var(--signal-teal); }
+  .vsaving { display: flex; align-items: center; gap: 8px; border: 2px solid var(--brut-amber); background: color-mix(in oklab, var(--amber-insight) 18%, var(--color-surface)); padding: 10px 12px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--amber-fg); }
+  .sdot { width: 9px; height: 9px; border-radius: 999px; background: var(--brut-amber); animation: sp 1s ease-in-out infinite; }
+  @keyframes sp { 0%,100%{opacity:1} 50%{opacity:.25} } @media (prefers-reduced-motion: reduce){ .sdot{animation:none} }
+  .vdone { display: inline-flex; align-items: center; gap: 7px; border: 2px solid var(--color-ink); background: var(--signal-teal); color: var(--color-ink); font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 9px 12px; }
+
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 2px solid var(--color-ink); padding-top: 16px; margin-top: 18px; }
+  .foot-note { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); max-width: 40ch; line-height: 1.45; }
+  .btn-cont { display: inline-flex; align-items: center; gap: 9px; background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 13px 22px; text-decoration: none; white-space: nowrap; }
+  .btn-cont.dis { background: var(--color-surface); color: var(--color-ink-faint); border-color: var(--color-ink-faint); box-shadow: none; cursor: not-allowed; }
+  .endbar { display: flex; align-items: center; gap: 13px; border: 2px solid var(--color-ink); background: var(--signal-teal); box-shadow: var(--shadow-md); padding: 14px 18px; margin-top: 4px; }
+  .endbar .g { width: 28px; height: 28px; flex: 0 0 auto; background: var(--color-ink); color: var(--signal-teal); display: grid; place-items: center; font-family: var(--font-mono); font-weight: 900; }
+  .endbar .t { font-family: var(--font-display); font-weight: 900; font-size: 19px; text-transform: uppercase; margin: 0; line-height: 1; }
+  .endbar .s { font-family: var(--font-mono); font-size: 10.5px; margin: 3px 0 0; }
+</style>
+</head>
+<body>
+
+<!-- ════════════ M2 · STEP 1 — MAKE READY ════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:700px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M2 · step 1</span><span class="name">Make ready — status + the one action left</span></div>
+    <p class="sub">After ingest the graph is already linked, embedded and mostly validated. Make-ready shows that status honestly — <b>re-validate is disabled with a reason</b> — and surfaces the single action that remains: review the few flagged claims.</p>
+    <p class="arch"><span class="t">AHA-min:</span> <span class="aha">clear the flags so trust hits production.</span> · <span class="t">Initial:</span> n/a — starter graph ships pre-trusted. · <span class="t">Learning:</span> a handful of flags from one doc — a ~1-min task. · <span class="t">Advanced:</span> large cohorts → batch-validate N unchecked, pick a different validation-model family, operate per-run.</p>
+  </div>
+  <div class="scr" data-screen-label="M2 step 1 — Make ready">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell now"><span class="d">▸</span>M2 · Make ready</div>
+      <div class="led-cell lock"><span class="d">○</span>M3</div>
+      <div class="led-cell lock"><span class="d">○</span>M4</div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M2 · make it trustworthy</p>
+      <h1 class="h-title">Make your graph ready</h1>
+
+      <div class="trust">
+        <span class="num">88</span>
+        <div class="bar"><i style="width:88%"></i></div>
+        <span class="lab">Trust score<b>4 flags from 100</b></span>
+      </div>
+
+      <div class="rrow done">
+        <span class="rg">✓</span>
+        <div><h3 class="rl">Link to sources</h3><p class="rs"><b>312 / 312</b> linked · every idea traces to a passage</p></div>
+        <div class="ract"><span class="done-chip">✓ Done</span></div>
+      </div>
+      <div class="rrow done">
+        <span class="rg">✓</span>
+        <div><h3 class="rl">Embed for retrieval</h3><p class="rs"><b>312 / 312</b> embedded</p></div>
+        <div class="ract"><span class="btn-dis">Re-embed</span><span class="reason">All ideas already embedded</span></div>
+      </div>
+      <div class="rrow done">
+        <span class="rg">✓</span>
+        <div><h3 class="rl">Validate ideas</h3><p class="rs"><b>308 / 312</b> validated · 4 came back weak</p></div>
+        <div class="ract"><span class="btn-dis">Re-validate</span><span class="reason">All ideas already validated</span></div>
+      </div>
+      <div class="rrow active">
+        <span class="rg">□</span>
+        <div><h3 class="rl">Review flagged claims</h3><p class="rs"><b>4 flagged</b> · give each a verdict to finish</p></div>
+        <div class="ract"><a class="btn-y" href="#">Review 4 →</a></div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note">One step left — review the 4 flagged claims.</span>
+        <a class="btn-cont" href="#">Review 4 flagged →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ M2 · STEP 2 — REVIEW ════════════ -->
+<div class="frame" style="position:absolute; left:840px; top:80px; width:760px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M2 · step 2</span><span class="name">Review — triage flagged claims (A / W / U)</span></div>
+    <p class="sub">Each flagged claim is one row: the claim, its source snippet, three keyed verdicts. One row sits in a resilient <b>SAVING…</b> state (no optimistic flip-back). At 0 left, trust finalises and M3 unlocks.</p>
+    <p class="arch"><span class="t">AHA-min:</span> <span class="aha">a verdict on each flag → trust 100.</span> · <span class="t">Initial:</span> n/a. · <span class="t">Learning:</span> 4 claims, keyboard A/W/U, ~1 min. · <span class="t">Advanced:</span> bulk-select verdicts, filter by severity/source, jump to the source passage.</p>
+  </div>
+  <div class="scr" data-screen-label="M2 step 2 — Review">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell now"><span class="d">▸</span>M2 · Review</div>
+      <div class="led-cell lock"><span class="d">○</span>M3</div>
+      <div class="led-cell lock"><span class="d">○</span>M4</div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M2 · make it trustworthy</p>
+      <h1 class="h-title">Triage flagged claims</h1>
+
+      <div class="rev-top">
+        <span class="pill-left">3 left</span>
+        <div class="pbar"><i style="width:25%"></i></div>
+        <span class="pct">1 of 4 reviewed</span>
+      </div>
+
+      <div class="claim resolved">
+        <div>
+          <p class="cid">c_204 · accepted</p>
+          <p class="ctext">“Home-office budget is £500 per full-time employee.”</p>
+          <blockquote class="csrc"><span class="q">“…a one-off £500 allowance toward home-office equipment.”</span><span class="ct">acme-handbook.pdf · p.14</span></blockquote>
+        </div>
+        <div class="verdicts"><span class="vdone">✓ Accepted</span></div>
+      </div>
+
+      <div class="claim saving">
+        <div>
+          <p class="cid">c_205 · flagged: weak support</p>
+          <p class="ctext">“The budget renews every year.”</p>
+          <blockquote class="csrc"><span class="q">“…renewed on a two-year cycle.”</span><span class="ct">acme-handbook.pdf · p.14</span></blockquote>
+        </div>
+        <div class="verdicts"><span class="vsaving"><span class="sdot"></span>Saving… → Unsupported</span></div>
+      </div>
+
+      <div class="claim">
+        <div>
+          <p class="cid">c_206 · flagged: weak support</p>
+          <p class="ctext">“Contractors are eligible for the equipment budget.”</p>
+          <blockquote class="csrc"><span class="q">“…available to full-time staff.”</span><span class="ct">acme-handbook.pdf · p.14</span></blockquote>
+        </div>
+        <div class="verdicts">
+          <button type="button" class="vd"><span class="k">A</span>Accept</button>
+          <button type="button" class="vd"><span class="k">W</span>Weak</button>
+          <button type="button" class="vd"><span class="k">U</span>Unsupported</button>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note">Resilient saves — a verdict is written before it shows as done.</span>
+        <span class="btn-cont dis">Continue → M3</span>
+      </div>
+
+      <div class="endbar">
+        <span class="g">✓</span>
+        <div><p class="t">End state · 0 left — trust 100</p><p class="s">All flags cleared → M3 “Own your stack” unlocks.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
