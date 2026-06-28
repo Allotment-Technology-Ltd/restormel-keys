@@ -59,6 +59,7 @@ import {
   captureServerPostHogEvent,
   workspacePostHogDistinctId,
 } from "$lib/server/posthog-capture";
+import { resolveModuleFlags } from "$lib/server/module-flags";
 
 async function resolveJobQualityPreset(job: ConnectIngestJobRecord) {
   if (!job.domainPackId) return resolveQualityPreset(null);
@@ -249,6 +250,17 @@ export async function processConnectIngestJobRecord(
       // into request logs (source=connect_ingest) so Logs/Usage see Connect traffic.
       // Capture is best-effort — hooks never throw into the pipeline.
       const attribution = new StageAttributionCollector();
+      // RES-113 PR-I: the structured backoff signal → amber rate-limit state is the NEW
+      // behaviour and is gated behind the workspace's onboardingJourney flag. With the
+      // flag OFF (prod default) we install NO onBackoff hook, so the executor's retry
+      // timing and the persisted job shape are byte-identical to today (REC-ADR-021 §4:
+      // the whole RES-113 cut is one flagged release). Flag read is best-effort —
+      // failing closed (no wiring) on any error keeps current behaviour.
+      const backoffSignalEnabled = await resolveModuleFlags(
+        workspacePostHogDistinctId(job.workspaceId),
+      )
+        .then((flags) => flags.onboardingJourney)
+        .catch(() => false);
       const routeCtx: ConnectRouteExecutionContext | null = baseRouteCtx
         ? {
             ...baseRouteCtx,
@@ -260,7 +272,27 @@ export async function processConnectIngestJobRecord(
               if (changed) {
                 void reporter.recordStageAttribution(stage, entry).catch(() => {});
               }
+              // A stage that just resolved successfully is no longer backing off —
+              // clear any amber overlay so it never lingers past the throttle.
+              if (backoffSignalEnabled) {
+                void reporter.clearBackoff().catch(() => {});
+              }
             },
+            // Only present when the flag is ON → flag-OFF is unchanged behaviour.
+            ...(backoffSignalEnabled
+              ? {
+                  onBackoff: (signal) => {
+                    void reporter
+                      .signalBackoff(signal.stage, {
+                        reasonCode: signal.reasonCode,
+                        attempt: signal.attempt,
+                        delayMs: signal.delayMs,
+                        at: signal.at,
+                      })
+                      .catch(() => {});
+                  },
+                }
+              : {}),
             onResolveAttempt: (stage, rec) => {
               void insertRequestLog({
                 workspaceId: baseRouteCtx.workspaceId,

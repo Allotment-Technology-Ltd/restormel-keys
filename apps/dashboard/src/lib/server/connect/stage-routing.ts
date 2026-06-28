@@ -48,6 +48,26 @@ export type ConnectResolveAttemptRecord = {
   attemptNumber: number;
 };
 
+/**
+ * RES-113 PR-I — structured backoff signal a stage call raises before retrying after a
+ * transient/rate-limit upstream error. Optional + fire-and-forget (same contract as the
+ * K5 hooks): a sink that throws must never break a run. Structural shape (not imported)
+ * to keep this module free of a server-module import cycle. When ABSENT, the executor's
+ * retry behaviour is byte-identical to today (no signal, no added sleep) — this is the
+ * flag-gated wiring point.
+ */
+export type ConnectStageBackoffSignal = {
+  stage: ConnectModelStage;
+  provider?: string;
+  model?: string;
+  reasonCode: string;
+  /** 1-based index of the upcoming retry attempt. */
+  attempt: number;
+  /** Backoff delay applied before the retry, in ms. */
+  delayMs: number;
+  at: string;
+};
+
 export type ConnectRouteExecutionContext = {
   workspaceId: string;
   userId: string;
@@ -58,6 +78,12 @@ export type ConnectRouteExecutionContext = {
   onStageServed?: (stage: ConnectModelStage, snap: ConnectStageServedSnapshot) => void;
   /** K5: write a request-log row (source=connect_ingest) per resolve attempt. */
   onResolveAttempt?: (stage: ConnectModelStage, rec: ConnectResolveAttemptRecord) => void;
+  /**
+   * RES-113 PR-I: publish a structured backoff signal before a transient retry. When
+   * set, the executor ALSO applies a bounded backoff sleep on rate-limit-class failures
+   * (so the amber "backing off" state is honest). When unset, retry timing is unchanged.
+   */
+  onBackoff?: (signal: ConnectStageBackoffSignal) => void;
 };
 
 export type StageRouteUiRow = {

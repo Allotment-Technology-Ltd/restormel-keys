@@ -6,6 +6,10 @@
  */
 import type { ConnectIngestStage } from "@restormel/contracts/connect";
 import { CONNECT_INGEST_PIPELINE_STAGES } from "./job-record.js";
+import {
+  parseStageBackoff,
+  type ConnectIngestStageBackoff,
+} from "../stages/backoff-signal.js";
 
 export type ConnectIngestStageProgressMetrics = {
   percent: number;
@@ -21,6 +25,15 @@ export type ConnectIngestStageProgress = {
   completed_at?: string;
   error?: string;
   progress?: ConnectIngestStageProgressMetrics;
+  /**
+   * RES-113 PR-I — transient backoff/rate-limit state for THIS stage while it is
+   * running. Present only while the engine is backing off + retrying; cleared once
+   * the stage advances or the run settles. Drives the M1 console's amber state from a
+   * REAL signal (REC-ADR-016) — `status` stays the canonical 5-value enum, so this is
+   * an additive overlay, not a status overload (an unknown status would normalise to
+   * `pending` and be lost).
+   */
+  backoff?: ConnectIngestStageBackoff;
 };
 
 const STAGE_SET = new Set<string>(CONNECT_INGEST_PIPELINE_STAGES);
@@ -56,6 +69,7 @@ function parseStageRow(raw: unknown): ConnectIngestStageProgress | null {
       };
     }
   }
+  const backoff = parseStageBackoff(rec.backoff);
   return {
     stage: stage as ConnectIngestStage,
     status,
@@ -63,6 +77,10 @@ function parseStageRow(raw: unknown): ConnectIngestStageProgress | null {
     ...(typeof rec.completed_at === "string" ? { completed_at: rec.completed_at } : {}),
     ...(typeof rec.error === "string" ? { error: rec.error } : {}),
     ...(progress ? { progress } : {}),
+    // Preserve a live backoff overlay across the JSONB round-trip, but only on a still-
+    // running stage — a settled stage (completed/failed/skipped) must never carry a stale
+    // amber state into the console.
+    ...(backoff && status === "running" ? { backoff } : {}),
   };
 }
 

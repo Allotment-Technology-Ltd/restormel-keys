@@ -23,6 +23,8 @@ import {
   m1RunConsoleRungs,
   m1FriendlyStageLabel,
   isM1RateLimitedStatus,
+  isM1StageBackingOff,
+  isM1StageRateLimited,
   type M1BuildRungId,
 } from "./pipeline-config";
 
@@ -139,5 +141,36 @@ describe("M1 rate-limit state (presentational, honest)", () => {
   it("carries amber no-action-needed banner copy", () => {
     expect(M1_RATE_LIMIT_BANNER.title).toMatch(/rate-limited/i);
     expect(M1_RATE_LIMIT_BANNER.body).toMatch(/no action needed/i);
+  });
+});
+
+describe("M1 rate-limit from the REAL structured backoff signal (PR-I)", () => {
+  it("lights from a rate-limit-class structured backoff field", () => {
+    expect(isM1StageBackingOff({ status: "running", backoff: { reason_code: "rate_limit" } })).toBe(
+      true,
+    );
+    expect(isM1StageBackingOff({ status: "running", backoff: { reason_code: "overloaded" } })).toBe(
+      true,
+    );
+  });
+
+  it("does NOT light for transient-but-not-throttle reasons (honest labelling)", () => {
+    expect(isM1StageBackingOff({ status: "running", backoff: { reason_code: "server_error" } })).toBe(
+      false,
+    );
+    expect(isM1StageBackingOff({ status: "running", backoff: { reason_code: "timeout" } })).toBe(
+      false,
+    );
+    expect(isM1StageBackingOff({ status: "running" })).toBe(false);
+    expect(isM1StageBackingOff(null)).toBe(false);
+  });
+
+  it("combined helper accepts EITHER the structured field or the legacy status string", () => {
+    expect(isM1StageRateLimited({ backoff: { reason_code: "rate_limit" } })).toBe(true);
+    expect(isM1StageRateLimited({ status: "rate_limited" })).toBe(true);
+    expect(isM1StageRateLimited({ status: "running" })).toBe(false);
+    expect(isM1StageRateLimited({ status: "running", backoff: { reason_code: "timeout" } })).toBe(
+      false,
+    );
   });
 });

@@ -18,6 +18,10 @@ import type {
   IngestModelCallDeps,
 } from '../ports.js';
 import { shouldOmitGenerateTextTemperature } from '../ingest/generate-text-temperature.js';
+import {
+	classifyBackoffReason,
+	type IngestBackoffEmitter,
+} from './backoff-signal.js';
 
 /** When `INGEST_STAGE_JSON_REPAIR_MAX_OUTPUT_TOKENS` is unset on the shared `StageBudget`. */
 const DEFAULT_JSON_REPAIR_MAX_OUTPUT_TOKENS = 8192;
@@ -194,6 +198,13 @@ export async function callStageModel(params: {
 	systemPrompt: string;
 	userMessage: string;
 	maxTokens?: number;
+	/**
+	 * RES-113 PR-I — optional structured backoff sink. Called once per retry with the
+	 * classified reason + applied delay so a host can surface a real amber rate-limit
+	 * state (engine → job-record → SSE → console). Absent by default → behaviour (and
+	 * the stub/CI path) is byte-identical: the `[RETRY]` log + sleep are unchanged.
+	 */
+	onBackoff?: IngestBackoffEmitter;
 }): Promise<string> {
 	const {
 		deps,
@@ -205,7 +216,8 @@ export async function callStageModel(params: {
 		timing,
 		systemPrompt,
 		userMessage,
-		maxTokens = 32768
+		maxTokens = 32768,
+		onBackoff
 	} = params;
 	let lastError: Error | null = null;
 
@@ -224,6 +236,27 @@ export async function callStageModel(params: {
 				console.log(
 					`  [RETRY] ${stage} ${plan.provider}:${plan.model} attempt ${attempt + 1}/${budget.maxRetries + 1} (${delayMs}ms backoff)`
 				);
+				// Emit a STRUCTURED backoff signal alongside the log so a host can light a
+				// real rate-limit state. Best-effort: a sink that throws must not break the
+				// retry, and a non-transient `lastError` (reason null) is reported as a
+				// generic server_error backoff since the engine is, in fact, retrying.
+				if (onBackoff) {
+					const reason = classifyBackoffReason(lastError?.message) ?? 'server_error';
+					try {
+						onBackoff({
+							stage,
+							provider: plan.provider,
+							model: plan.model,
+							reason_code: reason,
+							attempt: attempt + 1,
+							max_attempts: budget.maxRetries + 1,
+							delay_ms: delayMs,
+							at: new Date().toISOString()
+						});
+					} catch {
+						/* backoff telemetry is best-effort — never fail a stage on it */
+					}
+				}
 				await sleep(delayMs);
 			}
 
@@ -284,16 +317,9 @@ export async function callStageModel(params: {
 		} catch (error) {
 			lastError = error instanceof Error ? error : new Error(String(error));
 			const msg = lastError.message;
-			const retryable =
-				msg.includes('429') ||
-				msg.includes('529') ||
-				msg.includes('500') ||
-				msg.includes('overloaded') ||
-				msg.includes('timeout') ||
-				msg.includes('prompt_too_long') ||
-				msg.includes('context_length') ||
-				/resource exhausted/i.test(msg) ||
-				/rate limit|quota|too many requests/i.test(msg);
+			// Single retryability oracle (shared with the live route executor) — a non-null
+			// classified reason means transient/retryable.
+			const retryable = classifyBackoffReason(msg) != null;
 			console.warn(
 				`  [WARN] ${stage} ${plan.provider}:${plan.model} failed: ${formatModelCallErrorDetails(error)}`
 			);
@@ -319,8 +345,9 @@ export async function fixJsonWithModel(params: {
 	originalJson: string;
 	parseError: string;
 	schema: string;
+	onBackoff?: IngestBackoffEmitter;
 }): Promise<string> {
-	const { repairPlan, repairBudget, repairTracker, costs, timing, originalJson, parseError, schema } =
+	const { repairPlan, repairBudget, repairTracker, costs, timing, originalJson, parseError, schema, onBackoff } =
 		params;
 	if (timing) timing.json_repair_invocations += 1;
 	console.log(`  [FIX] Repair route: ${repairPlan.provider}:${repairPlan.model}`);
@@ -347,6 +374,7 @@ Respond ONLY with the corrected JSON array. No explanation, no markdown backtick
 		systemPrompt:
 			'You are a JSON repair assistant. Fix the malformed JSON to be valid. Respond with only the corrected JSON.',
 		userMessage: fixPrompt,
-		maxTokens: repairBudget.maxOutputTokens ?? DEFAULT_JSON_REPAIR_MAX_OUTPUT_TOKENS
+		maxTokens: repairBudget.maxOutputTokens ?? DEFAULT_JSON_REPAIR_MAX_OUTPUT_TOKENS,
+		...(onBackoff ? { onBackoff } : {})
 	});
 }

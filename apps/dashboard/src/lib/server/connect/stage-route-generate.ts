@@ -2,7 +2,13 @@
  * Knowledge ingestion LLM calls via Keys route resolve (visual route builder).
  * Falls back to legacy OPENAI_API_KEY + model chains when routing is not configured.
  */
-import type { ExtractionGenerate, EmbeddingPort } from "@restormel/connect-core";
+import {
+  classifyBackoffReason,
+  computeBackoffDelayMs,
+  isRateLimitBackoffReason,
+  type ExtractionGenerate,
+  type EmbeddingPort,
+} from "@restormel/connect-core";
 import type { EmbeddingPort as GraphRagEmbeddingPort } from "@restormel/graphrag-core";
 import {
   CONNECT_STAGE_TO_INGESTION_ROUTE_STAGE,
@@ -271,6 +277,16 @@ async function callResolvedChat(args: {
       attemptNumber,
     });
     lastErr = new Error(chat.value.message);
+    // RES-113 PR-I: surface a real backoff before retrying the next route step.
+    await maybeBackoffBeforeRetry({
+      ctx: args.ctx,
+      stage: args.stage,
+      provider: providerType,
+      modelId,
+      errorMessage: chat.value.message,
+      attemptNumber,
+      willRetry: i < MAX_ROUTE_ATTEMPTS - 1 && !routeRetryDeadlineExceeded(startedAtMs),
+    });
     attemptNumber++;
     previousFailure = {
       selectedStepId: resolved.selectedStepId,
@@ -313,6 +329,50 @@ function recordStageAttribution(
   } catch {
     /* attribution capture is best-effort */
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * RES-113 PR-I — on a transient rate-limit/overload failure, publish a structured
+ * backoff signal AND apply a bounded backoff sleep before the next route attempt, so the
+ * M1 console's amber "provider rate-limited" state lights from a REAL signal. No-op (and
+ * therefore zero timing change) unless `ctx.onBackoff` is wired — that wiring is itself
+ * flag-gated in the worker. Only genuine throttling (rate_limit/overloaded) triggers it;
+ * plain 5xx/timeout keep today's silent immediate failover. Best-effort: never throws.
+ */
+async function maybeBackoffBeforeRetry(args: {
+  ctx: ConnectRouteExecutionContext;
+  stage: ConnectModelStage;
+  provider?: string | null;
+  modelId?: string | null;
+  errorMessage: string;
+  /** 0-based attempt index that just failed. */
+  attemptNumber: number;
+  /** False when no further route attempts remain — skip the wasted sleep. */
+  willRetry: boolean;
+}): Promise<void> {
+  if (!args.ctx.onBackoff || !args.willRetry) return;
+  const reason = classifyBackoffReason(args.errorMessage);
+  if (!reason || !isRateLimitBackoffReason(reason)) return;
+  const nextAttempt = args.attemptNumber + 1; // 1-based upcoming retry
+  const delayMs = computeBackoffDelayMs(nextAttempt);
+  try {
+    args.ctx.onBackoff({
+      stage: args.stage,
+      ...(args.provider ? { provider: args.provider } : {}),
+      ...(args.modelId ? { model: args.modelId } : {}),
+      reasonCode: reason,
+      attempt: nextAttempt,
+      delayMs,
+      at: new Date().toISOString(),
+    });
+  } catch {
+    /* backoff telemetry is best-effort */
+  }
+  await sleep(delayMs);
 }
 
 function writeResolveAttempt(
@@ -494,6 +554,16 @@ async function embedViaRoute(
         attemptNumber,
       });
       lastErr = e;
+      // RES-113 PR-I: surface a real backoff before retrying the next embedding step.
+      await maybeBackoffBeforeRetry({
+        ctx,
+        stage: "embedding",
+        provider: pt,
+        modelId,
+        errorMessage: e instanceof Error ? e.message : String(e),
+        attemptNumber,
+        willRetry: i < MAX_ROUTE_ATTEMPTS - 1 && !routeRetryDeadlineExceeded(startedAtMs),
+      });
       attemptNumber++;
       previousFailure = {
         selectedStepId: resolved.selectedStepId,
