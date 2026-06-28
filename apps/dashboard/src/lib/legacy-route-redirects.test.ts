@@ -207,16 +207,20 @@ describe("RES-113 PR-G — flag-gated landing + journey aliases", () => {
     expect(on.location).toBe(`${B}/claims?filter=review`);
   });
 
-  it("/build 308s to the ingest guided flow", async () => {
-    const r = await caughtWithLocals(import("../routes/keys/dashboard/build/+page.server.js"), `${B}/build`, false);
-    expect(r.status).toBe(308);
-    expect(r.location).toBe(`${B}/sources/ingest`);
+  it("/build: ON → 308 to the ingest guided flow, OFF → 404 (route does not exist, fully reversible)", async () => {
+    const on = await caughtWithLocals(import("../routes/keys/dashboard/build/+page.server.js"), `${B}/build`, true);
+    expect(on.status).toBe(308);
+    expect(on.location).toBe(`${B}/sources/ingest`);
+    const off = await caughtWithLocals(import("../routes/keys/dashboard/build/+page.server.js"), `${B}/build`, false);
+    expect(off.status).toBe(404);
   });
 
-  it("/verify 308s to the make-ready / stamping desk", async () => {
-    const r = await caughtWithLocals(import("../routes/keys/dashboard/verify/+page.server.js"), `${B}/verify`, false);
-    expect(r.status).toBe(308);
-    expect(r.location).toBe(`${B}/claims`);
+  it("/verify: ON → 308 to the make-ready / stamping desk, OFF → 404 (route does not exist, fully reversible)", async () => {
+    const on = await caughtWithLocals(import("../routes/keys/dashboard/verify/+page.server.js"), `${B}/verify`, true);
+    expect(on.status).toBe(308);
+    expect(on.location).toBe(`${B}/claims`);
+    const off = await caughtWithLocals(import("../routes/keys/dashboard/verify/+page.server.js"), `${B}/verify`, false);
+    expect(off.status).toBe(404);
   });
 });
 
