@@ -1,0 +1,44 @@
+# G4 retrieval gate — host-managed Postgres spine vs the SOPHIA/Surreal baseline
+# (REC-ADR-008, Stage-1). GitHub mirror of .forgejo/workflows/connect-g4-retrieval-gate.yml
+# (Forgejo is primary CI; .forgejo overrides .github on the mirror). Keep both in sync.
+#
+# Proves the Postgres store-side trust-state retrieval filter admits the IDENTICAL strict-mode
+# claim set as the canonical Surreal admission over a fixed golden corpus, parameterised by
+# store backend (postgres vs surreal), and that coverage does not regress vs the baseline.
+name: Connect G4 retrieval gate
+on:
+  push:
+    paths:
+      - 'scripts/ci/connect-g4/**'
+      - 'apps/dashboard/src/lib/server/graph-comparison/**'
+      - 'apps/dashboard/src/lib/server/connect-v1/postgres-orchestrator-bridge.ts'
+      - 'packages/graphrag-core/**'
+      - '.github/workflows/connect-g4-retrieval-gate.yml'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  g4-retrieval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
+      - name: Build graphrag-core (parity suite imports) + its deps
+        run: |
+          # store-parity.test.ts imports postgres-graph-retrieve.ts, which imports RUNTIME
+          # values from @restormel/graphrag-core, so graphrag-core's dist must exist or vitest
+          # aborts with a Vite packageEntryFailure. graphrag-core needs only contracts +
+          # graph-core; build them first (topological order), then graphrag-core.
+          # NOTE: do NOT build @restormel/connect-core here — it pulls @restormel/dispatch +
+          # @restormel/keys (not built in this job) and would fail the step; the parity suite
+          # does not import it.
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/graph-core run build
+          pnpm --filter @restormel/graphrag-core run build
+      - name: Store-parity suite (proves embedded G4 logic matches live code, incl. P7)
+        run: pnpm --filter dashboard exec vitest run src/lib/server/graph-comparison/store-parity.test.ts
+      - name: G4 gate — zero strict-mode claim-set delta vs Surreal + no coverage regression
+        run: node scripts/ci/connect-g4/g4-retrieval-postgres.mjs

@@ -5,9 +5,9 @@
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
   // R4-S2(c): the "your graph store is set up automatically" promise is only true
-  // when host-managed Neon auto-provisioning is ON. With the flag OFF (MVP default)
+  // when host-managed Postgres auto-provisioning is ON. With the flag OFF (MVP default)
   // the store is BYO — claiming it's automatic would be false. Gate the copy.
-  $: neonGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectNeonGraphStore;
+  $: hostManagedGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectHostManagedGraphStore;
 </script>
 
 <svelte:head>
@@ -22,7 +22,7 @@
       <span class="pipeline-exit-note">Setup wizard — side tasks open in place with a return link.</span>
     </p>
     <h1 id="pipeline-heading" class="h1">Ingest your sources</h1>
-    <p class="lede">Provider key, sources, domain, and review &amp; launch{#if neonGraphStoreOn} — your graph store is set up automatically{:else} — connect a graph store on the review step{/if}. Wire agents from the Agents section afterwards.</p>
+    <p class="lede">Provider key, sources, domain, and review &amp; launch{#if hostManagedGraphStoreOn} — your graph store is set up automatically{:else} — connect a graph store on the review step{/if}. Wire agents from the Agents section afterwards.</p>
     <slot />
   </section>
 </div>

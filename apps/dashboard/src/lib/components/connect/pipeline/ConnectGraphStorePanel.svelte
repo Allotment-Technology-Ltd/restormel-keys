@@ -12,7 +12,7 @@
 
   export let embedded = false;
 
-  $: neonGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectNeonGraphStore;
+  $: hostManagedGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectHostManagedGraphStore;
 
   const dispatch = createEventDispatcher<{ updated: void }>();
   const API_BASE = CONNECT_PIPELINE_API;
@@ -53,9 +53,9 @@
     username_present?: boolean;
   } | null = null;
 
-  let connectingNeon = false;
-  let neonMsg: string | null = null;
-  let neonError = false;
+  let connectingHostStore = false;
+  let hostStoreMsg: string | null = null;
+  let hostStoreError = false;
 
   // ── Multi-database selector (Build 2A) ──────────────────────────────
   type DbKind = "surrealdb" | "neo4j" | "weaviate" | "neptune";
@@ -343,27 +343,27 @@
     }
   }
 
-  async function connectNeon() {
-    connectingNeon = true;
-    neonMsg = null;
-    neonError = false;
+  async function connectHostStore() {
+    connectingHostStore = true;
+    hostStoreMsg = null;
+    hostStoreError = false;
     try {
-      const res = await fetch(API_BASE + "/pipeline/graph-target/neon", { method: "POST" });
+      const res = await fetch(API_BASE + "/pipeline/graph-target/host-managed", { method: "POST" });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
-        neonError = true;
-        neonMsg = d.message ?? `Could not connect (HTTP ${res.status}).`;
+        hostStoreError = true;
+        hostStoreMsg = d.message ?? `Could not connect (HTTP ${res.status}).`;
         return;
       }
       applyTargetToForm(d.target ?? null);
-      neonError = !(d.test?.ok ?? false);
-      neonMsg = d.test?.message ?? "Connected to this workspace's Neon database.";
+      hostStoreError = !(d.test?.ok ?? false);
+      hostStoreMsg = d.test?.message ?? "Connected to this workspace's host-managed Postgres graph store.";
       notifyUpdated();
     } catch {
-      neonError = true;
-      neonMsg = "Network error while connecting.";
+      hostStoreError = true;
+      hostStoreMsg = "Network error while connecting.";
     } finally {
-      connectingNeon = false;
+      connectingHostStore = false;
     }
   }
 
@@ -461,7 +461,7 @@
   $: storeConnected = Boolean(target && (target.status === "ok" || target.secret_set));
   $: storeDisplayUrl =
     target?.provider === "postgres" && target.use_dashboard_database
-      ? "Workspace Neon database"
+      ? "Host-managed Postgres graph store"
       : target?.connection.endpoint ?? (target ? target.provider : "Not connected");
   $: storeNsDb =
     target?.connection.namespace && target?.connection.database
@@ -490,8 +490,8 @@
     {#if !embedded}
       <h2 id="store-heading" class="h2">Graph store</h2>
       <p class="card-desc">
-        {#if neonGraphStoreOn}
-          Connect your own SurrealDB instance or use this workspace's Neon database.
+        {#if hostManagedGraphStoreOn}
+          Connect your own SurrealDB instance or use this workspace's host-managed Postgres graph store.
         {:else}
           Connect your own SurrealDB instance (Surreal Cloud or self-hosted).
         {/if}
@@ -548,17 +548,17 @@
 
     <hr class="store-divider" />
 
-    {#if neonGraphStoreOn}
+    {#if hostManagedGraphStoreOn}
       <div class="oneclick">
         <div class="oneclick-text">
-          <strong>Use this workspace's Neon database</strong>
-          <span class="field-hint">One click — reuses your dashboard's existing Neon connection. No credentials, no setup.</span>
+          <strong>Use the host-managed Postgres graph store</strong>
+          <span class="field-hint">One click — reuses your dashboard's own database (self-hosted EU Postgres). No credentials, no setup.</span>
         </div>
-        <button type="button" class="btn btn-primary" on:click={connectNeon} disabled={connectingNeon}>
-          {connectingNeon ? "Connecting…" : "Use Neon"}
+        <button type="button" class="btn btn-primary" on:click={connectHostStore} disabled={connectingHostStore}>
+          {connectingHostStore ? "Connecting…" : "Use host store"}
         </button>
       </div>
-      {#if neonMsg}<p class:err={neonError} class:notice={!neonError} role={neonError ? "alert" : "status"}>{neonMsg}</p>{/if}
+      {#if hostStoreMsg}<p class:err={hostStoreError} class:notice={!hostStoreError} role={hostStoreError ? "alert" : "status"}>{hostStoreMsg}</p>{/if}
 
       <p class="or-sep"><span>or bring your own SurrealDB</span></p>
     {/if}
@@ -716,7 +716,7 @@
       <p class="notice" role="status">
         Ingest runs don't write to Neo4j yet — your settings are saved and testable now, ready for
         adapter support. To continue the wizard, connect <strong>SurrealDB</strong> or use the
-        <strong>workspace Neon database</strong>.
+        <strong>host-managed Postgres graph store</strong>.
       </p>
       <form class="form" on:submit|preventDefault={saveNeo4j}>
         <p class="card-desc">
@@ -775,7 +775,7 @@
       <p class="notice" role="status">
         Ingest runs don't write to Weaviate yet — your settings are saved and testable now, ready for
         adapter support. To continue the wizard, connect <strong>SurrealDB</strong> or use the
-        <strong>workspace Neon database</strong>.
+        <strong>host-managed Postgres graph store</strong>.
       </p>
       <form class="form" on:submit|preventDefault={saveWeaviate}>
         <p class="card-desc">

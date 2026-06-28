@@ -241,7 +241,10 @@ export async function buildJobWriter(job: ConnectIngestJobRecord): Promise<Graph
   if (!target) throw new IngestConfigError("graph_target_not_configured");
   if (target.provider === "postgres") {
     const flags = resolveModuleFlagsSync();
-    if (!isModuleEnabled(flags, "connectNeonGraphStore")) {
+    // REC-ADR-008: flag renamed to connectHostManagedGraphStore; the error code
+    // `connect_neon_graph_store_disabled` is kept as a data/API-compat boundary
+    // (renamed only after inventorying external/SOPHIA consumers).
+    if (!isModuleEnabled(flags, "connectHostManagedGraphStore")) {
       throw new IngestConfigError("connect_neon_graph_store_disabled");
     }
   }
@@ -1043,10 +1046,10 @@ export async function writeJobSourcesToGraphStore(
   }
   const sources = parseSources(job.sources);
 
-  // Postgres spine (host Neon): write into workspace-scoped tables when explicitly enabled.
+  // Host-managed Postgres spine: write into workspace-scoped tables when explicitly enabled.
   if (target.provider === "postgres") {
     const flags = resolveModuleFlagsSync();
-    if (!isModuleEnabled(flags, "connectNeonGraphStore")) {
+    if (!isModuleEnabled(flags, "connectHostManagedGraphStore")) {
       throw new IngestConfigError("connect_neon_graph_store_disabled");
     }
     let written = 0;

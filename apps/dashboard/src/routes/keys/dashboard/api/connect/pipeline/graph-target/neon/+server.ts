@@ -1,39 +1,20 @@
 /**
- * One-click connect: use this workspace's existing Neon database as the graph
- * spine. Reuses the dashboard's configured DATABASE_URL — zero credentials.
+ * Back-compat alias route (REC-ADR-008 rename). The host-managed Postgres graph-store
+ * provisioner moved to `/graph-target/host-managed`; this path 308-redirects there.
+ *
+ * 308 (Permanent Redirect) preserves the POST method and body, so any in-flight client
+ * still pointed at `/graph-target/neon` keeps working. The client `fetch` + the route are
+ * one deploy unit, so the in-app caller already targets the new path; this alias only
+ * covers external/cached callers.
  */
-import { json } from "@sveltejs/kit";
-import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
-import {
-  connectDashboardNeonTarget,
-  testGraphTargetConnection,
-} from "$lib/server/connect/graph-target-service";
-import { isModuleEnabled } from "$lib/server/module-flags";
-import {
-  isKnowledgeSessionFailure,
-  resolveKnowledgeSessionContext,
-} from "$lib/server/connect/session-context";
+import { redirect } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-export const POST: RequestHandler = async ({ locals }) => {
-  const flags = locals.moduleFlags ?? MVP_MODULE_DEFAULTS;
-  if (!isModuleEnabled(flags, "connectNeonGraphStore")) {
-    return json(
-      {
-        error: "module_disabled",
-        module: "connectNeonGraphStore",
-        message:
-          "The host-managed Neon graph store is disabled. Connect your own SurrealDB instance instead.",
-      },
-      { status: 404 },
-    );
-  }
+/** Resolve the sibling `host-managed` path from the current request URL. */
+function hostManagedHref(url: URL): string {
+  return url.pathname.replace(/\/neon\/?$/, "/host-managed") + url.search;
+}
 
-  const ctx = await resolveKnowledgeSessionContext(locals);
-  if (isKnowledgeSessionFailure(ctx)) {
-    return json({ error: ctx.error, message: ctx.message }, { status: ctx.status });
-  }
-  const target = await connectDashboardNeonTarget(ctx.workspaceId);
-  const test = await testGraphTargetConnection(ctx.workspaceId);
-  return json({ target, test });
+export const POST: RequestHandler = ({ url }) => {
+  throw redirect(308, hostManagedHref(url));
 };

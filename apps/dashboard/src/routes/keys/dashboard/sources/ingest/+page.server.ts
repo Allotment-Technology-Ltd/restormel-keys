@@ -13,7 +13,7 @@ import { listProviderIntegrations } from "$lib/server/db";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
 import { peekConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 import { loadConnectTrustScorecard } from "$lib/server/connect/trust-scorecard-service";
-import { getGraphTargetForUi, connectDashboardNeonTarget } from "$lib/server/connect/graph-target-service";
+import { getGraphTargetForUi, connectHostManagedGraphTarget } from "$lib/server/connect/graph-target-service";
 import { isModuleEnabled } from "$lib/server/module-flags";
 import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 import {
@@ -63,7 +63,7 @@ function resolveProviderVerifyReceipt(
 
 function graphStoreLabel(target: Awaited<ReturnType<typeof getGraphTargetForUi>>): string | null {
   if (!target) return null;
-  if (target.provider === "postgres" && target.use_dashboard_database) return "Workspace Neon database";
+  if (target.provider === "postgres" && target.use_dashboard_database) return "Host-managed Postgres graph store";
   if (target.provider === "postgres") return "Postgres";
   const ns = target.connection.namespace;
   const db = target.connection.database;
@@ -174,24 +174,30 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
       );
     });
 
-    // R4 (§1.1): the store step is demoted to automated-with-override. When the
-    // host-managed Neon graph store is enabled, provision the workspace Neon
-    // default best-effort on flow entry (idempotent — reuses any existing
-    // dashboard-Neon graph), so the `!target && step !== "store"` gate below no
-    // longer forces the store step onto the default path. Best-effort: a failure
-    // never blocks flow entry, and BYO store + claim-versions stay reachable via
-    // "Configure store" on the launch panel (W3.6 placement). When the module is
-    // disabled (MVP default), this is a no-op and the BYO store override applies.
+    // R4 (§1.1) + REC-ADR-008 (Stage-1): the store step is demoted to
+    // automated-with-override. When the host-managed Postgres graph store is enabled,
+    // provision the workspace host-managed default on flow entry (idempotent — reuses
+    // any existing host-managed graph), so the `!target` gates below no longer force the
+    // store step onto the default path. BYO store + claim-versions stay reachable via
+    // "Configure store" on the launch panel (W3.6 placement). When the module is disabled
+    // (MVP default), this is a no-op and the BYO store override applies.
     //
-    // STREAMING AUDIT: fire-and-forget — do NOT await. Same reasoning as above.
+    // LOAD-BEARING (Stage-1 correctness fix): this MUST be AWAITED before the
+    // launch-step gate below resolves the graph target — when it was fire-and-forget,
+    // a cold first entry could read `!target` before the auto-provision committed and
+    // bounce the user to `?step=store`, breaking the "zero-setup" promise on the very
+    // first run. Still best-effort: a provisioning failure is caught and never blocks
+    // flow entry (the launch gate + jobs BFF re-enforce a graph target server-side).
     const moduleFlags = locals.moduleFlags ?? MVP_MODULE_DEFAULTS;
-    if (isModuleEnabled(moduleFlags, "connectNeonGraphStore")) {
-      void connectDashboardNeonTarget(workspace.id).catch((e) => {
+    if (isModuleEnabled(moduleFlags, "connectHostManagedGraphStore")) {
+      try {
+        await connectHostManagedGraphTarget(workspace.id);
+      } catch (e) {
         console.warn(
-          "[connect] workspace Neon graph-store auto-provision skipped:",
+          "[connect] workspace host-managed graph-store auto-provision skipped:",
           e instanceof Error ? e.message.slice(0, 160) : String(e),
         );
-      });
+      }
     }
 
     if (!requestedStep) {

@@ -61,18 +61,18 @@
   // R4: the store step is demoted off the stepper strip — it's an aside reached
   // via "Configure store" or a `?step=store` deep link, not a numbered flow step.
   $: isStoreAside = step === "store";
-  // R4-S2(c): the auto-provision promise only holds when host-managed Neon is ON.
-  $: neonGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectNeonGraphStore;
+  // R4-S2(c): the auto-provision promise only holds when the host-managed Postgres store is ON.
+  $: hostManagedGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectHostManagedGraphStore;
   // Flag-gated store lead: append the "provisioned automatically" claim ONLY when
   // the module is ON. With it OFF (MVP default) the base BYO-honest lead stands.
-  $: storeLead = neonGraphStoreOn
-    ? `${DEMOTED_PIPELINE_WIZARD_STEP.lead} Your workspace Neon database is provisioned automatically on flow entry — connect a store you manage here to override it.`
+  $: storeLead = hostManagedGraphStoreOn
+    ? `${DEMOTED_PIPELINE_WIZARD_STEP.lead} Your host-managed Postgres graph store is provisioned automatically on flow entry — connect a store you manage here to override it.`
     : DEMOTED_PIPELINE_WIZARD_STEP.lead;
   // Provisioning receipt: when auto-provision is ON and a target now exists, the
   // workspace store was provisioned for them — say so honestly (no fabricated
   // receipt when the flag is OFF or no store exists).
   $: showProvisionReceipt =
-    isStoreAside && neonGraphStoreOn && Boolean(progress?.hasGraphStore);
+    isStoreAside && hostManagedGraphStoreOn && Boolean(progress?.hasGraphStore);
   $: stepIndex = PIPELINE_WIZARD_STEPS.findIndex((s) => s.id === step);
   $: current =
     isStoreAside
@@ -265,7 +265,7 @@
     {/if}
     {#if showProvisionReceipt}
       <p class="wizard-provision-receipt" role="status">
-        ✓ Provisioned automatically — <strong>{progress?.graphStoreLabel ?? "Workspace Neon database"}</strong>
+        ✓ Provisioned automatically — <strong>{progress?.graphStoreLabel ?? "Host-managed Postgres graph store"}</strong>
         is your graph store. Connect a store you manage below to override it.
       </p>
     {/if}

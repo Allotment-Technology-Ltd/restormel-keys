@@ -147,11 +147,11 @@ export const DEMOTED_PIPELINE_WIZARD_STEP = {
   id: "store",
   label: "Graph store",
   title: "Choose where your graph lives",
-  // R4-S2(c): this lead must be true with the `connectNeonGraphStore` flag OFF
+  // R4-S2(c): this lead must be true with the `connectHostManagedGraphStore` flag OFF
   // (MVP default), where the store is BYO and nothing is auto-provisioned. The
   // "provisioned automatically" claim is added by the wizard ONLY when the flag is
   // ON (see `storeLead` in ConnectPipelineWizard). Keep this copy flag-neutral.
-  lead: "Agents need a durable home for ideas and relationships. Connect the workspace Neon database or a SurrealDB you manage, and opt into the claim-versions table if you need point-in-time history.",
+  lead: "Agents need a durable home for ideas and relationships. Connect the host-managed Postgres graph store or a SurrealDB you manage, and opt into the claim-versions table if you need point-in-time history.",
   required: false,
 } as const;
 

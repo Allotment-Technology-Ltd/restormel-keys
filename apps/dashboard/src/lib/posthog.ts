@@ -46,8 +46,12 @@ export function getClientModuleFlagsFromPostHog(): ModuleFlags {
       hostedRuntime: posthog.isFeatureEnabled?.("restormel-module-hosted-runtime") ?? false,
       catalogExternalSignals:
         posthog.isFeatureEnabled?.("restormel-module-catalog-external-signals") ?? false,
-      connectNeonGraphStore:
-        posthog.isFeatureEnabled?.("restormel-module-connect-neon-graph-store") ?? false,
+      // REC-ADR-008 dual-read: new key OR the legacy `…-neon-graph-store` key until the
+      // EU PostHog flag is re-keyed (mirrors the server-side flagsFromPostHogPayload read).
+      connectHostManagedGraphStore:
+        posthog.isFeatureEnabled?.("restormel-module-connect-host-managed-graph-store") ??
+        posthog.isFeatureEnabled?.("restormel-module-connect-neon-graph-store") ??
+        false,
       monitor: posthog.isFeatureEnabled?.("restormel-module-monitor") ?? false,
       fromEnvOverride: false,
     };
