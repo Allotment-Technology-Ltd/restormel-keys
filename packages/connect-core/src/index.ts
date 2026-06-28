@@ -204,6 +204,19 @@ export {
 } from "./ingest/verification-state.js";
 
 export {
+  decideServedState,
+  decideServedStates,
+  summarizeReadTimeRecheck,
+  applyDemotionsToSummary,
+  buildRecheckAuditRows,
+  type ReadTimeRecheckReason,
+  type ReadTimeRecheckOutcome,
+  type ServedClaimRecheck,
+  type ReadTimeRecheckResult,
+  type ReadTimeRecheckSummary,
+} from "./ingest/read-time-recheck.js";
+
+export {
   ENTAILMENT_PROMPT_VERSION,
   ENTAILMENT_LOW_CONFIDENCE,
   ENTAILMENT_BATCH_SIZE,
