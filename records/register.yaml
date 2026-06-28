@@ -544,13 +544,13 @@ records:
   - id: REC-INC-022
     title: "Alert — NodeMemoryLimitOvercommit (K3s memory limits >100% of node RAM)"
     class: evidence
-    status: open
+    status: closed
     classification: internal
     control-tier: 3
     owner: founder
-    last-reviewed: 2026-06-27
+    last-reviewed: 2026-06-28
     review-interval: P12M
-    next-review: 2027-06-27
+    next-review: 2027-06-28
     retention: P6Y
     path: evidence/incidents/2026-06-27-node-memory-limit-overcommit.md
   - id: REC-INC-023
