@@ -351,3 +351,163 @@ export function withWizardReturn(href: string, wizardStep: PipelineWizardStepId 
 export function isPipelineWizardPath(pathname: string): boolean {
   return pathname === CONNECT_PIPELINE_BASE;
 }
+
+// ── RES-113 · M1 "Build" friendly reskin model (PR-C) ────────────────────────
+// Additive + purely presentational. Every export below is consumed ONLY behind
+// the `onboardingJourney` module flag (default OFF). With the flag OFF these are
+// dead code: the live Provider→Sources→Domain→Review wizard and the seven-stage
+// run console render byte-for-byte unchanged. This is a RESKIN over the real
+// components, never a re-route — the underlying wizard steps and pipeline stages
+// are untouched. Grounding: REC-ADR-013 (M0–M4 ladder), REC-ADR-015 (model
+// choice happens at ingest, never retroactively), REC-ADR-016 (honest pipeline
+// states — name the real state, never fake progress).
+
+/** The friendly four-rung M1 grouping (03_SCREENS §M1: Sources · Configure · Ingest · Ask). */
+export type M1BuildRungId = "sources" | "configure" | "running" | "done";
+
+export type M1BuildRung = {
+  id: M1BuildRungId;
+  /** Stepper chip text. */
+  label: string;
+  /** Friendly screen title. */
+  title: string;
+  /** One-line friendly lead. */
+  lead: string;
+};
+
+export const M1_BUILD_RUNGS: readonly M1BuildRung[] = [
+  {
+    id: "sources",
+    label: "Sources",
+    title: "Add your sources",
+    lead: "Point us at where your documents live — uploads, URLs, connectors, or a crawl.",
+  },
+  {
+    id: "configure",
+    label: "Configure",
+    title: "Choose models",
+    lead: "Recommended models are picked for you. Models are chosen here, at ingest — never retroactively.",
+  },
+  {
+    id: "running",
+    label: "Running",
+    title: "Building your graph",
+    lead: "Reading your documents and turning them into a connected, citable graph. This can take a few minutes.",
+  },
+  {
+    id: "done",
+    label: "Done",
+    title: "Ask your own data",
+    lead: "Your graph is ready. Ask a question and get a grounded answer with citations — from your sources.",
+  },
+] as const;
+
+/**
+ * Map each live wizard step → its friendly M1 rung. Provider key, domain pack,
+ * and the demoted store aside all FOLD INTO "Configure" (one friendly decision
+ * point); the launch/review panel is the final Configure sub-state before the
+ * run starts. "Running" and "Done" are owned by the run console, not the wizard.
+ *
+ * Note: the live wizard orders provider→sources→domain→launch, while the
+ * friendly ladder reads Sources→Configure. Rung state is therefore derived from
+ * real completion signals (not live step position) so the friendly stepper never
+ * shows a step backwards — see `m1CompletedRungsFromSteps`.
+ */
+export const M1_WIZARD_STEP_TO_RUNG: Record<PipelineWizardStepId, M1BuildRungId> = {
+  provider: "configure",
+  sources: "sources",
+  domain: "configure",
+  store: "configure",
+  launch: "configure",
+};
+
+export function m1RungForWizardStep(step: PipelineWizardStepId): M1BuildRungId {
+  return M1_WIZARD_STEP_TO_RUNG[step] ?? "sources";
+}
+
+export function m1BuildRung(id: M1BuildRungId): M1BuildRung {
+  return M1_BUILD_RUNGS.find((r) => r.id === id) ?? M1_BUILD_RUNGS[0];
+}
+
+export type M1RungVisualState = "completed" | "active" | "upcoming";
+
+/**
+ * The friendly rungs that are genuinely complete, derived from the wizard's own
+ * per-step completion signals (REC-ADR-016: real state, not position). "Sources"
+ * is done once a document is selected; "Configure" once a domain pack or provider
+ * key is in place. Running/Done are never complete inside the wizard.
+ */
+export function m1CompletedRungsFromSteps(completedStepIds: readonly PipelineWizardStepId[]): M1BuildRungId[] {
+  const out: M1BuildRungId[] = [];
+  if (completedStepIds.includes("sources")) out.push("sources");
+  if (completedStepIds.includes("domain") || completedStepIds.includes("provider")) out.push("configure");
+  return out;
+}
+
+export function m1RungVisualState(
+  rung: M1BuildRungId,
+  ctx: { activeRung: M1BuildRungId; completedRungs: readonly M1BuildRungId[] },
+): M1RungVisualState {
+  if (rung === ctx.activeRung) return "active";
+  if (ctx.completedRungs.includes(rung)) return "completed";
+  return "upcoming";
+}
+
+/**
+ * The friendly active/completed rungs FOR THE RUN CONSOLE. By the time a run is
+ * executing, Sources + Configure are behind the user; "Running" is active until
+ * the job completes, then "Done" (ask your data) takes over. Honest: nothing is
+ * marked done until the run actually completes (REC-ADR-016).
+ */
+export function m1RunConsoleRungs(input: {
+  isCompleted: boolean;
+}): { activeRung: M1BuildRungId; completedRungs: M1BuildRungId[] } {
+  const completedRungs: M1BuildRungId[] = ["sources", "configure"];
+  if (input.isCompleted) {
+    completedRungs.push("running");
+    return { activeRung: "done", completedRungs };
+  }
+  return { activeRung: "running", completedRungs };
+}
+
+/**
+ * Friendly, plain-language relabels for the seven technical pipeline stages,
+ * shown in the run console's friendly view. The real `PIPELINE_STAGES` keys are
+ * unchanged — this is a display map only.
+ */
+export const M1_FRIENDLY_STAGE_LABELS: Record<(typeof PIPELINE_STAGES)[number], string> = {
+  extracting: "Reading your documents",
+  relating: "Connecting the ideas",
+  grouping: "Organising into topics",
+  embedding: "Making it searchable",
+  validating: "Checking the claims",
+  remediating: "Fixing weak spots",
+  storing: "Saving to your graph",
+};
+
+export function m1FriendlyStageLabel(stageKey: string): string {
+  return (M1_FRIENDLY_STAGE_LABELS as Record<string, string>)[stageKey] ?? stageKey;
+}
+
+/** Front-half stages (build the graph) — shown up front in the friendly run view. */
+export const M1_RUN_FRONT_STAGES = ["extracting", "relating", "grouping", "embedding"] as const;
+/** Back-half stages (check & store) — the detail tucked under the "what's happening" expander. */
+export const M1_RUN_BACK_STAGES = ["validating", "remediating", "storing"] as const;
+
+/**
+ * Presentational rate-limit banner copy (03_SCREENS §M1 edge states). Shown as an
+ * AMBER, no-action-needed state — the run keeps itself moving. The real backoff
+ * signal is wired in PR-I; until then this banner only renders if a stage reports
+ * a rate-limited status, so it never fabricates a state that isn't happening.
+ */
+export const M1_RATE_LIMIT_BANNER = {
+  title: "Provider rate-limited",
+  body: "Backing off and retrying automatically — no action needed. Your run resumes on its own.",
+} as const;
+
+/** Stage statuses an ingest engine may emit to signal a transient rate-limit / backoff. */
+const M1_RATE_LIMITED_STAGE_STATUSES = new Set(["rate_limited", "rate-limited", "backoff", "throttled"]);
+
+export function isM1RateLimitedStatus(status: string | null | undefined): boolean {
+  return status != null && M1_RATE_LIMITED_STAGE_STATUSES.has(status);
+}

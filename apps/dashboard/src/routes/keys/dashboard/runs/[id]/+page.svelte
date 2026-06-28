@@ -5,6 +5,7 @@
   import ConnectSpineLedger from "$lib/components/connect/ConnectSpineLedger.svelte";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
   import { CLAIMS_HREF, HOME_HREF, RUNS_HREF } from "$lib/nav-config";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import type { ConnectSpine } from "$lib/connect/connect-spine";
 
   export let data: { spine?: Promise<ConnectSpine | null> } = {};
@@ -30,6 +31,8 @@
   $: graphTaskRaw = $page.url.searchParams.get("task");
   $: graphTask = parseGraphRepairTask(graphTaskRaw);
   $: statusApi = DASHBOARD_BASE + "/api/connect/ingest/jobs/" + jobId + "/status";
+  // RES-113 PR-C: opt the run console into the friendly M1 reskin (default OFF).
+  $: onboardingJourney = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).onboardingJourney;
 </script>
 
 <svelte:head>
@@ -59,7 +62,7 @@
     {/if}
   </p>
 
-  <ConnectIngestRunConsole {jobId} statusApiBase={statusApi} {fromPipeline} {fromGraph} {fromHub} {graphTask} />
+  <ConnectIngestRunConsole {jobId} statusApiBase={statusApi} {fromPipeline} {fromGraph} {fromHub} {graphTask} {onboardingJourney} />
 </section>
 
 <style>
