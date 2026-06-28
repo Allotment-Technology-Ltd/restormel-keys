@@ -10,6 +10,8 @@ import {
   buildConnectSpine,
   spineNumeral,
   spineReviewCount,
+  spineStageAdvanceEvents,
+  SPINE_STAGE_JOURNEY_TOKEN,
   type ConnectSpineSignals,
   type ConnectSpineStageId,
 } from "./connect-spine";
@@ -243,5 +245,93 @@ describe("spineNumeral", () => {
     expect(spineNumeral(1)).toBe("①");
     expect(spineNumeral(5)).toBe("⑤");
     expect(spineNumeral(99)).toBe("99");
+  });
+});
+
+describe("stage vocabulary (RES-113 PR-H — flag-gated rename)", () => {
+  const signals: ConnectSpineSignals = {
+    readiness: readinessOk(),
+    ingest: { jobCount: 1, latestJob: { id: "j", status: "succeeded" }, storeReady: true, documentsReady: true },
+    graph: { units: 100, embedded: 100, validation: { ok: 100, weak: 0, unsupported: 0, unvalidated: 0 } },
+  };
+
+  function labels(spine: ReturnType<typeof buildConnectSpine>): Record<string, string> {
+    return Object.fromEntries(spine.stages.map((s) => [s.id, s.label]));
+  }
+
+  it("defaults to legacy labels — flag OFF is byte-for-byte the shipped names", () => {
+    const legacyDefault = labels(buildConnectSpine(signals));
+    const legacyExplicit = labels(buildConnectSpine(signals, { vocabulary: "legacy" }));
+    expect(legacyDefault).toEqual(legacyExplicit);
+    expect(legacyDefault).toEqual({
+      connect: "Connect",
+      ingest: "Ingest",
+      make_ready: "Make ready",
+      review: "Review",
+      go_live: "Go live",
+    });
+  });
+
+  it("journey vocabulary renames to M0–M4 / Build·Verify·Connect labels", () => {
+    const journey = labels(buildConnectSpine(signals, { vocabulary: "journey" }));
+    expect(journey).toEqual({
+      connect: "Set up",
+      ingest: "Build",
+      make_ready: "Verify",
+      review: "Review",
+      go_live: "Connect",
+    });
+  });
+
+  it("rename changes ONLY labels — ids, indices, states, summaries and CTAs are identical", () => {
+    const legacy = buildConnectSpine(signals, { vocabulary: "legacy" });
+    const journey = buildConnectSpine(signals, { vocabulary: "journey" });
+    expect(journey.stages.map((s) => s.id)).toEqual(legacy.stages.map((s) => s.id));
+    expect(journey.stages.map((s) => s.index)).toEqual(legacy.stages.map((s) => s.index));
+    expect(journey.stages.map((s) => s.state)).toEqual(legacy.stages.map((s) => s.state));
+    expect(journey.stages.map((s) => s.summary)).toEqual(legacy.stages.map((s) => s.summary));
+    expect(journey.stages.map((s) => s.cta)).toEqual(legacy.stages.map((s) => s.cta));
+    expect(journey.currentStageId).toBe(legacy.currentStageId);
+    expect(journey.done).toBe(legacy.done);
+  });
+});
+
+describe("spineStageAdvanceEvents (RES-113 PR-H — dual-emit continuity)", () => {
+  it("emits BOTH the old connect_stage_advance and the new journey_stage_advance", () => {
+    const events = spineStageAdvanceEvents("ingest", "make_ready");
+    expect(events.map((e) => e.name)).toEqual([
+      "connect_stage_advance",
+      "journey_stage_advance",
+    ]);
+  });
+
+  it("old event keeps the shipped spine ids verbatim (funnel continuity)", () => {
+    const [oldEvent] = spineStageAdvanceEvents("review", "go_live");
+    expect(oldEvent).toEqual({
+      name: "connect_stage_advance",
+      props: { from: "review", to: "go_live" },
+    });
+  });
+
+  it("new event re-keys to the M0–M4 / Build·Verify·Connect tokens, 1:1", () => {
+    const [, newEvent] = spineStageAdvanceEvents("ingest", "make_ready");
+    expect(newEvent).toEqual({
+      name: "journey_stage_advance",
+      props: { from: "build", to: "verify" },
+    });
+  });
+
+  it("maps the hub origin to `home` and go_live to `connect`", () => {
+    const [, newEvent] = spineStageAdvanceEvents("hub", "go_live");
+    expect(newEvent.props).toEqual({ from: "home", to: "connect" });
+    // Token map mirrors the rename exactly.
+    expect(SPINE_STAGE_JOURNEY_TOKEN).toEqual({
+      hub: "home",
+      connect: "set_up",
+      ingest: "build",
+      make_ready: "verify",
+      review: "review",
+      go_live: "connect",
+    });
   });
 });

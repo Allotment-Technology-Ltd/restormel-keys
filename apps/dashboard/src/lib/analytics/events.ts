@@ -199,6 +199,22 @@ export interface AnalyticsEventMap {
     to: "connect" | "ingest" | "make_ready" | "review" | "go_live";
   };
 
+  /**
+   * RES-113 PR-H (REC-ADR-021 §2): the SAME stage advance as
+   * `connect_stage_advance`, re-keyed to the M0–M4 / Build·Verify·Connect
+   * vocabulary the supersede cut adopts. DUAL-EMITTED alongside the old event
+   * during the migration window so funnels never break, then the OLD event is
+   * RETIRED once dashboards re-point here (see connect-spine.ts
+   * `spineStageAdvanceEvents`). 1:1 with the spine stages — full granularity:
+   *   hub→home  connect→set_up  ingest→build  make_ready→verify
+   *   review→review  go_live→connect
+   * Keep these names STABLE once dashboards adopt them.
+   */
+  journey_stage_advance: {
+    from: "home" | "set_up" | "build" | "verify" | "review" | "connect";
+    to: "set_up" | "build" | "verify" | "review" | "connect";
+  };
+
   // --- Engagement (emitted by global handlers in hooks.client.ts) ----------
   /** A scroll-depth milestone was reached on the current page. */
   scroll_depth: {
@@ -244,6 +260,7 @@ export const ANALYTICS_EVENTS = [
   "verified_claim_source_span_opened",
   "connect_door_choice",
   "connect_stage_advance",
+  "journey_stage_advance",
   "scroll_depth",
 ] as const satisfies readonly AnalyticsEventName[];
 

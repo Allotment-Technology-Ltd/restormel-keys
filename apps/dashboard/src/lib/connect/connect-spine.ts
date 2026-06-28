@@ -125,6 +125,19 @@ export type ConnectSpineSignals = {
     | null;
 };
 
+/**
+ * Which stage VOCABULARY the rail renders (RES-113 PR-H / REC-ADR-021 §2).
+ *  - `legacy`  — the shipped names (`Connect · Ingest · Make ready · Review · Go live`).
+ *  - `journey` — the M0–M4 / Build · Verify · Connect names adopted by the supersede cut.
+ *
+ * Only the user-visible LABELS change; the stage `id`s (and therefore every code
+ * path, the derivation logic and the `connect_stage_advance` analytics keys) are
+ * IDENTICAL across both vocabularies. The vocabulary is selected at build time
+ * from the `onboardingJourney` module flag, so flag-OFF is byte-for-byte the
+ * current product (default `legacy`).
+ */
+export type SpineVocabulary = "legacy" | "journey";
+
 const STAGE_META: Record<
   ConnectSpineStageId,
   { index: number; label: string; blurb: string }
@@ -134,6 +147,27 @@ const STAGE_META: Record<
   make_ready: { index: 3, label: "Make ready", blurb: "Link · embed · validate" },
   review: { index: 4, label: "Review", blurb: "Triage flagged claims" },
   go_live: { index: 5, label: "Go live", blurb: "Publish for your app" },
+};
+
+/**
+ * Journey (M0–M4 / Build · Verify · Connect) labels — the canonical post-cut
+ * vocabulary (REC-ADR-021 §2). The rename map vs `legacy`:
+ *   connect    "Connect"   → "Set up"   (the foundation setup, ahead of Build)
+ *   ingest     "Ingest"    → "Build"    (M1 Build)
+ *   make_ready "Make ready"→ "Verify"   (M2 Verify — make-ready half)
+ *   review     "Review"    → "Review"   (unchanged — M2 Verify — triage half)
+ *   go_live    "Go live"   → "Connect"  (M4 Connect — wire your app)
+ * Index + blurb are intentionally unchanged; only the verb labels move.
+ */
+const STAGE_META_JOURNEY: Record<
+  ConnectSpineStageId,
+  { index: number; label: string; blurb: string }
+> = {
+  connect: { index: 1, label: "Set up", blurb: "Store · provider · routes" },
+  ingest: { index: 2, label: "Build", blurb: "Run on your documents" },
+  make_ready: { index: 3, label: "Verify", blurb: "Link · embed · validate" },
+  review: { index: 4, label: "Review", blurb: "Triage flagged claims" },
+  go_live: { index: 5, label: "Connect", blurb: "Publish for your app" },
 };
 
 function cta(
@@ -377,8 +411,17 @@ function goLiveStage(s: ConnectSpineSignals): {
  * order); when several stages have outstanding work, only that first one is
  * highlighted so there is exactly one "do this now". `blocked`/`todo`/`unknown`
  * are shown but never highlighted as the current action.
+ *
+ * `options.vocabulary` selects the user-visible stage LABELS only (REC-ADR-021
+ * §2): `legacy` (default — the shipped names) or `journey` (the M0–M4 supersede
+ * names). It changes NO state, id, summary, CTA or derivation — flag-OFF is
+ * byte-for-byte identical to today.
  */
-export function buildConnectSpine(signals: ConnectSpineSignals): ConnectSpine {
+export function buildConnectSpine(
+  signals: ConnectSpineSignals,
+  options: { vocabulary?: SpineVocabulary } = {},
+): ConnectSpine {
+  const meta = options.vocabulary === "journey" ? STAGE_META_JOURNEY : STAGE_META;
   const connect = connectStage(signals);
   const ingest = ingestStage(signals, connect.state);
   const makeReady = makeReadyStage(signals);
@@ -397,12 +440,12 @@ export function buildConnectSpine(signals: ConnectSpineSignals): ConnectSpine {
   const currentStageId = raw.find((s) => s.r.state === "current")?.id ?? null;
 
   const stages: ConnectSpineStage[] = raw.map(({ id, r }) => {
-    const meta = STAGE_META[id];
+    const m = meta[id];
     return {
       id,
-      index: meta.index,
-      label: meta.label,
-      blurb: meta.blurb,
+      index: m.index,
+      label: m.label,
+      blurb: m.blurb,
       state: r.state,
       summary: r.summary,
       cta: r.cta,
@@ -425,4 +468,75 @@ export function buildConnectSpine(signals: ConnectSpineSignals): ConnectSpine {
 export function spineNumeral(index: number): string {
   const circled = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨"];
   return circled[index - 1] ?? String(index);
+}
+
+// ---------------------------------------------------------------------------
+// Stage-advance analytics — dual-emit during the vocabulary migration window
+// (RES-113 PR-H / REC-ADR-021 §2).
+//
+// We RENAME the spine vocabulary to M0–M4 / Build·Verify·Connect, but the
+// funnel `connect_stage_advance` is keyed on the OLD stage ids. Renaming the
+// event in place would break every historical PostHog funnel. So during the
+// migration window we emit BOTH:
+//   ① `connect_stage_advance`  — OLD ids (continuity; dashboards unbroken).
+//   ② `journey_stage_advance`  — NEW M0–M4 tokens (the canonical post-cut feed).
+// Both fire UNCONDITIONALLY on a real advance (additive analytics; no
+// user-facing change, so not flag-gated — only the LABELS are flag-gated).
+//
+// RETIREMENT: once the PostHog funnels have been re-pointed at
+// `journey_stage_advance`, delete the OLD `connect_stage_advance` entry from
+// the returned array (and from events.ts). Keep the NEW one. Tracked under
+// RES-113 — do not retire before dashboards are migrated, or a data gap opens.
+// ---------------------------------------------------------------------------
+
+/** Where a stage advance originates: a spine stage, or the Home hub. */
+export type SpineAdvanceFrom = "hub" | ConnectSpineStageId;
+
+/**
+ * New (journey) analytics token for each spine origin — the M0–M4 /
+ * Build·Verify·Connect vocabulary, 1:1 with the stage ids so the new funnel
+ * keeps full per-stage granularity. `hub` → `home` (the Home origin).
+ * Mirrors STAGE_META_JOURNEY's rename map. `as const` so each key keeps its
+ * exact literal token (the funnel `from`/`to` unions stay narrow, matching
+ * events.ts `journey_stage_advance`).
+ */
+export const SPINE_STAGE_JOURNEY_TOKEN = {
+  hub: "home",
+  connect: "set_up",
+  ingest: "build",
+  make_ready: "verify",
+  review: "review",
+  go_live: "connect",
+} as const satisfies Record<SpineAdvanceFrom, string>;
+
+export type SpineStageAdvanceEvent =
+  | {
+      name: "connect_stage_advance";
+      props: { from: SpineAdvanceFrom; to: ConnectSpineStageId };
+    }
+  | {
+      name: "journey_stage_advance";
+      props: {
+        from: (typeof SPINE_STAGE_JOURNEY_TOKEN)[SpineAdvanceFrom];
+        to: (typeof SPINE_STAGE_JOURNEY_TOKEN)[ConnectSpineStageId];
+      };
+    };
+
+/**
+ * The two analytics events to emit for a single stage advance, in order:
+ * the OLD `connect_stage_advance` (continuity) then the NEW
+ * `journey_stage_advance` (M0–M4 tokens). Pure — unit-tested directly; the
+ * caller (ConnectSpineLedger) just fires `track()` for each.
+ */
+export function spineStageAdvanceEvents(
+  from: SpineAdvanceFrom,
+  to: ConnectSpineStageId,
+): SpineStageAdvanceEvent[] {
+  return [
+    { name: "connect_stage_advance", props: { from, to } },
+    {
+      name: "journey_stage_advance",
+      props: { from: SPINE_STAGE_JOURNEY_TOKEN[from], to: SPINE_STAGE_JOURNEY_TOKEN[to] },
+    },
+  ];
 }
