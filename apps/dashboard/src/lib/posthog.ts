@@ -53,6 +53,7 @@ export function getClientModuleFlagsFromPostHog(): ModuleFlags {
         posthog.isFeatureEnabled?.("restormel-module-connect-neon-graph-store") ??
         false,
       monitor: posthog.isFeatureEnabled?.("restormel-module-monitor") ?? false,
+      onboardingJourney: posthog.isFeatureEnabled?.("restormel-module-onboarding-journey") ?? false,
       fromEnvOverride: false,
     };
   } catch {

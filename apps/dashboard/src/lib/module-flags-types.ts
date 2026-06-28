@@ -21,6 +21,12 @@ export type ModuleFlags = {
   connectHostManagedGraphStore: boolean;
   /** Usage, logs, and health dashboard (Monitor nav). Default off — coming-soon shell tracks interest. */
   monitor: boolean;
+  /**
+   * RES-113 onboarding redesign (M0–M4 learn-by-doing journey, REC-ADR-021). Gates the new
+   * onboarding UI built in PR-B..E so the whole supersede cut lands as one flagged all-green
+   * release. Default OFF — the live north-star IA is unchanged until the cut flips on.
+   */
+  onboardingJourney: boolean;
   /** True when RESTORMEL_MODULE_FLAGS env override is active (skips PostHog). */
   fromEnvOverride: boolean;
 };
@@ -36,7 +42,8 @@ export type ModuleFlagKey =
   | "hostedRuntime"
   | "catalogExternalSignals"
   | "connectHostManagedGraphStore"
-  | "monitor";
+  | "monitor"
+  | "onboardingJourney";
 
 /** PostHog feature flag keys (EU project 123553). */
 export const POSTHOG_MODULE_FLAG_KEYS = {
@@ -51,6 +58,7 @@ export const POSTHOG_MODULE_FLAG_KEYS = {
   catalogExternalSignals: "restormel-module-catalog-external-signals",
   connectHostManagedGraphStore: "restormel-module-connect-host-managed-graph-store",
   monitor: "restormel-module-monitor",
+  onboardingJourney: "restormel-module-onboarding-journey",
 } as const;
 
 /**
@@ -76,6 +84,8 @@ export const MVP_MODULE_DEFAULTS: ModuleFlags = {
   catalogExternalSignals: false,
   connectHostManagedGraphStore: false,
   monitor: false,
+  // RES-113: onboarding redesign stays OFF in prod until the one-cut flip (REC-ADR-021 §4).
+  onboardingJourney: false,
   fromEnvOverride: false,
 };
 
