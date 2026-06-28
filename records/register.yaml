@@ -1057,6 +1057,18 @@ records:
     next-review: 2026-12-24
     retention: review-only
     path: planning/family-jewels-offcluster-dr.md
+  - id: REC-PLAN-022
+    title: Pre-merge integration env — the 'Integration Train' plan (replace preview+staging with ONE)
+    class: planning
+    status: approved
+    classification: internal
+    control-tier: 2
+    owner: founder
+    last-reviewed: 2026-06-28
+    review-interval: P12M
+    next-review: 2027-06-28
+    retention: review-only
+    path: docs/design/staging-env-integration-train-plan-2026-06-27.md
   - id: REC-POL-001
     title: Information Security Policy
     class: governance
@@ -1621,18 +1633,6 @@ records:
     next-review: 2026-12-27
     retention: ""
     path: docs/design/routing-ux-simplification-2026-06-27.md
-  - id: "UNSET:docs/design/staging-env-integration-train-plan-2026-06-27.md"
-    title: Pre-merge integration env — the 'Integration Train' plan (replace preview+staging with ONE)
-    class: technical
-    status: draft
-    classification: internal
-    control-tier: 1
-    owner: founder
-    last-reviewed: 2026-06-27
-    review-interval: P6M
-    next-review: 2026-12-27
-    retention: ""
-    path: docs/design/staging-env-integration-train-plan-2026-06-27.md
   - id: "UNSET:docs/design/ux-contracts.md"
     title: UX contracts
     class: technical
