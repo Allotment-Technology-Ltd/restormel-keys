@@ -79,13 +79,28 @@ Confirmed 2026-06-29: `hardcoreeng/account:v0.7.423` reads **`OPENID_CLIENT_ID`,
    drops straight into the workspace. **Kills the second login.**
 4. Keep `DISABLE_SIGNUP=true` + retain a managed local admin strictly for break-glass.
 
+**Phase 1 BUILT — gitops PR #87 (WIP, 2026-06-29).** The vendored chart was already OIDC-capable;
+PR flips `auth.oidc.clientId` (mount gate, `values/huly-prod.yaml`) so the account Deployment mounts
+`OPENID_CLIENT_ID/SECRET/ISSUER`, and the ESO ExternalSecret (`applications/huly/40-externalsecret.yaml`)
+renders them into `huly-secret` (issuer = non-secret git literal; id/secret ← Infisical
+`/huly/HULY_OPENID_CLIENT_ID|SECRET`). **Both huly Argo apps are LIVE auto-sync → merge = deploy**
+(stale "MANUAL sync" comments corrected). WIP-gated on the founder confirming the two Infisical key
+names. Forgejo self-registration verified **disabled**. The post-deploy unknown = whether v0.7.423's
+openid handler links by email to the *password*-origin account (vs minting a separate one) — break-glass
+stays the fallback. High-risk-security review: **PASS WITH NOTES**.
+
 ---
 
 ## 4. Forgejo IdP mechanics (cross-cutting)
 
-- **OAuth2 apps:** one Forgejo OAuth2 application per client (launchpad, grafana, argocd, huly,
-  oauth2-proxy). Client id/secret stored as secrets (ESO/Infisical *secret storage* — not Infisical
-  SSO, so in scope) per consuming namespace.
+- **OAuth2 apps — secret topology DECIDED (founder, 2026-06-29):** **one shared Forgejo OAuth2
+  application carrying many redirect URIs**, with its single `client_id`/`client_secret` stored
+  **once** in a shared Infisical **infra** project that every namespace references — so a rotation is
+  a one-place change. *Interim:* Huly reuses the existing `restormel-integration` app (its Huly
+  callback added) with the secret **duplicated** into the `/huly` folder; consolidation to the single
+  infra-project secret happens **once Huly OIDC is proven**. **Accepted risk** (see §9): a shared
+  `client_secret` has estate-wide blast radius and loses per-app revoke/audit isolation — deliberately
+  traded for rotation simplicity at solo-founder scale.
 - **Discovery:** `https://git.allotmentology.tech/.well-known/openid-configuration`; issuer must
   carry the **trailing slash** (oauth2-proxy + others do strict issuer matching).
 - **Roles/groups:** **RESOLVED (Phase 0, 2026-06-29) — Forgejo DOES emit a `groups` claim.** The
@@ -197,6 +212,11 @@ and for the local break-glass account's own recovery.
 
 ## 9. Risks
 
+- **Shared `client_secret` blast radius (ACCEPTED, founder 2026-06-29)** — the single shared OAuth2
+  app means one leaked secret compromises every app's OIDC, and there's no per-app revoke/rotate/audit
+  isolation. Accepted in exchange for one-place rotation at solo-founder scale; revisit if multi-user
+  or if any consuming namespace's trust level diverges. Mitigation: the secret lives only in Infisical
+  (ESO-delivered, never in git) and Forgejo self-registration is disabled.
 - **IdP SPOF shifts to Forgejo** — mitigated by crown-jewels DR + a real Forgejo break-glass.
 - **Role-claim gap** — if Forgejo can't emit groups, RBAC depth on Grafana/ArgoCD is limited until
   worked around.
