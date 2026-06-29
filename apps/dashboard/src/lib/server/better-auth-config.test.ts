@@ -41,7 +41,8 @@ describe("betterAuthOptions (P4 self-host config)", () => {
     expect(betterAuthOptions.basePath).toBe("/keys/dashboard/api/auth");
   });
 
-  it("uses the prod canonical origin as baseURL in production", async () => {
+  it("falls back to the prod canonical origin as baseURL in production (no explicit origin set)", async () => {
+    // The env mock sets neither BETTER_AUTH_URL nor ORIGIN, so prod is the fallback.
     const { betterAuthOptions } = await import("./better-auth");
     expect(betterAuthOptions.baseURL).toBe("https://restormel.dev");
   });
@@ -54,7 +55,7 @@ describe("betterAuthOptions (P4 self-host config)", () => {
     expect(github.scope).toEqual(["read:user", "user:email"]);
   });
 
-  it("trusts only the prod + localhost origins", async () => {
+  it("trusts the prod + localhost origins when no explicit origin is set", async () => {
     const { betterAuthOptions } = await import("./better-auth");
     expect(betterAuthOptions.trustedOrigins).toEqual([
       "https://restormel.dev",
@@ -87,5 +88,58 @@ describe("betterAuthOptions (P4 self-host config)", () => {
   it("passes the secret through from env", async () => {
     const { betterAuthOptions } = await import("./better-auth");
     expect(betterAuthOptions.secret).toBe("test-secret-please-rotate");
+  });
+});
+
+// Origin resolution for non-prod PRODUCTION builds (the integration pre-merge env
+// runs NODE_ENV=production on integration.restormel.dev). Regression for RES-119:
+// the GitHub OAuth redirect_uri + CSRF allow-list must follow the deployed host,
+// not be pinned to prod restormel.dev. resolveBaseOrigin/resolveTrustedOrigins take
+// an explicit env slice so we can assert each combination without re-mocking.
+describe("resolveBaseOrigin / resolveTrustedOrigins (per-deployment origin)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it("honours BETTER_AUTH_URL as the origin in production (integration env)", async () => {
+    const { resolveBaseOrigin, resolveTrustedOrigins } = await import("./better-auth");
+    const e = { NODE_ENV: "production", BETTER_AUTH_URL: "https://integration.restormel.dev" };
+    expect(resolveBaseOrigin(e)).toBe("https://integration.restormel.dev");
+    expect(resolveTrustedOrigins(e)).toEqual([
+      "https://integration.restormel.dev",
+      "https://restormel.dev",
+      "http://localhost:5173",
+    ]);
+  });
+
+  it("strips a trailing slash and falls back to ORIGIN when BETTER_AUTH_URL is unset", async () => {
+    const { resolveBaseOrigin } = await import("./better-auth");
+    expect(
+      resolveBaseOrigin({ NODE_ENV: "production", ORIGIN: "https://integration.restormel.dev/" })
+    ).toBe("https://integration.restormel.dev");
+  });
+
+  it("refuses a non-https explicit origin in production and uses the canonical prod origin", async () => {
+    const { resolveBaseOrigin } = await import("./better-auth");
+    expect(
+      resolveBaseOrigin({ NODE_ENV: "production", BETTER_AUTH_URL: "http://evil.example" })
+    ).toBe("https://restormel.dev");
+  });
+
+  it("falls back to the prod origin in production when no origin is set", async () => {
+    const { resolveBaseOrigin } = await import("./better-auth");
+    expect(resolveBaseOrigin({ NODE_ENV: "production" })).toBe("https://restormel.dev");
+  });
+
+  it("uses localhost for local dev (non-production, no explicit origin)", async () => {
+    const { resolveBaseOrigin } = await import("./better-auth");
+    expect(resolveBaseOrigin({ NODE_ENV: "development" })).toBe("http://localhost:5173");
+  });
+
+  it("allows a plain-http explicit origin OUTSIDE production (local tunnels/dev)", async () => {
+    const { resolveBaseOrigin } = await import("./better-auth");
+    expect(
+      resolveBaseOrigin({ NODE_ENV: "development", ORIGIN: "http://127.0.0.1:4173" })
+    ).toBe("http://127.0.0.1:4173");
   });
 });
