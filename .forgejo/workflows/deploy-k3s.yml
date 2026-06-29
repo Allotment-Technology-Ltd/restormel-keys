@@ -295,7 +295,10 @@ jobs:
   # ===========================================================================
   deploy-prod:
     name: Build, push, bump (prod) — Argo auto-syncs
-    runs-on: ubuntu-latest
+    # docker-build = the dedicated 8Gi build-runner on node2 (gitops cluster/forgejo-build-runner).
+    # The shared ubuntu-latest runner's dind is 2Gi → buildkit OOMs on dashboard/worker (the reason
+    # prod was hand-built via one-off Jobs). Its act_runner config honours options: --privileged.
+    runs-on: docker-build
     container:
       image: moby/buildkit:v0.16.0
       options: --privileged
