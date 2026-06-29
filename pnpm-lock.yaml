@@ -17,6 +17,7 @@ overrides:
   basic-ftp: 5.3.1
   brace-expansion: '>=5.0.5'
   linkify-it: 5.0.1
+  vite: 6.4.3
   defu: '>=6.1.7'
   hono: '>=4.12.25'
   jsondiffpatch: '>=0.7.2'
@@ -45,7 +46,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.39)(jsdom@25.0.1)(vite@6.4.2(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.39)(jsdom@25.0.1)(vite@6.4.3(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))
 
   apps/cli:
     dependencies:
@@ -88,7 +89,7 @@ importers:
         version: 1.17.0(svelte@5.55.7(@typescript-eslint/types@8.57.0))
       '@neondatabase/neon-js':
         specifier: 0.2.0-beta.1
-        version: 0.2.0-beta.1(695d00d93773be3a94c9498e905a0e91)
+        version: 0.2.0-beta.1(3d723eea96d18261bb0aaf5fb782e7db)
       '@neondatabase/serverless':
         specifier: ^1.0.2
         version: 1.0.2
@@ -145,22 +146,22 @@ importers:
         version: 1.58.0(tailwindcss@4.2.1)(typescript@5.9.3)(zod@4.3.6)
       '@sveltejs/adapter-node':
         specifier: ^5.5.4
-        version: 5.5.4(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
+        version: 5.5.4(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
       '@sveltejs/adapter-vercel':
         specifier: ^6.3.3
-        version: 6.3.3(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(rollup@4.60.1)
+        version: 6.3.3(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(rollup@4.60.1)
       '@sveltejs/kit':
         specifier: ^2.60.1
-        version: 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       '@sveltejs/vite-plugin-svelte':
         specifier: ^5.0.0
-        version: 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
       better-auth:
         specifier: 1.6.19
-        version: 1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3))
+        version: 1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3))
       dotenv:
         specifier: ^17.3.1
         version: 17.3.1
@@ -195,15 +196,15 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
       vite:
-        specifier: ^6.4.2
-        version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+        specifier: 6.4.3
+        version: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
       zod:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
       '@testing-library/svelte':
         specifier: ^5.0.0
-        version: 5.3.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
+        version: 5.3.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
       '@types/markdown-it':
         specifier: ^14.1.2
         version: 14.1.2
@@ -218,7 +219,7 @@ importers:
         version: 5.14.0(rollup@4.60.1)
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   apps/demo-next:
     dependencies:
@@ -265,13 +266,13 @@ importers:
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^3.0.0
-        version: 3.3.1(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
+        version: 3.3.1(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
       '@sveltejs/kit':
         specifier: ^2.60.1
-        version: 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       '@sveltejs/vite-plugin-svelte':
         specifier: ^5.0.0
-        version: 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       svelte:
         specifier: ^5.55.7
         version: 5.55.7(@typescript-eslint/types@8.57.0)
@@ -282,8 +283,8 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
       vite:
-        specifier: ^6.4.2
-        version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+        specifier: 6.4.3
+        version: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
 
   apps/mcp-server:
     dependencies:
@@ -308,7 +309,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.39)(jsdom@25.0.1)(vite@6.4.2(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.39)(jsdom@25.0.1)(vite@6.4.3(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))
 
   apps/restormel-graph-demo:
     dependencies:
@@ -321,13 +322,13 @@ importers:
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^3.0.0
-        version: 3.3.1(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
+        version: 3.3.1(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
       '@sveltejs/kit':
         specifier: ^2.60.1
-        version: 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       '@sveltejs/vite-plugin-svelte':
         specifier: ^5.0.0
-        version: 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       svelte:
         specifier: ^5.55.7
         version: 5.55.7(@typescript-eslint/types@8.57.0)
@@ -338,8 +339,8 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
       vite:
-        specifier: ^6.4.2
-        version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+        specifier: 6.4.3
+        version: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
 
   apps/site: {}
 
@@ -432,7 +433,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/connect-core:
     dependencies:
@@ -454,7 +455,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/connect-eval-github-action:
     devDependencies:
@@ -466,7 +467,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/context-packs:
     devDependencies:
@@ -475,7 +476,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/contracts:
     dependencies:
@@ -488,7 +489,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/core:
     devDependencies:
@@ -500,7 +501,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/dispatch:
     dependencies:
@@ -519,7 +520,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/doctor:
     dependencies:
@@ -538,7 +539,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/elements:
     dependencies:
@@ -562,14 +563,14 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
       vite:
-        specifier: ^6.4.2
-        version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+        specifier: 6.4.3
+        version: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
       vite-plugin-dts:
         specifier: ^4.0.0
-        version: 4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/graph-core:
     devDependencies:
@@ -578,7 +579,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/graph-elements:
     dependencies:
@@ -602,14 +603,14 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
       vite:
-        specifier: ^6.4.2
-        version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+        specifier: 6.4.3
+        version: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
       vite-plugin-dts:
         specifier: ^4.0.0
-        version: 4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/graph-reasoning-extensions:
     dependencies:
@@ -625,7 +626,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/graphrag-core:
     dependencies:
@@ -644,7 +645,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.39)(jsdom@25.0.1)(vite@6.4.2(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.39)(jsdom@25.0.1)(vite@6.4.3(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/keys-tokens:
     devDependencies:
@@ -690,7 +691,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/observability:
     dependencies:
@@ -703,7 +704,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/react:
     dependencies:
@@ -722,7 +723,7 @@ importers:
         version: 18.3.28
       '@vitejs/plugin-react':
         specifier: ^4.3.0
-        version: 4.7.0(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.7.0(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       jsdom:
         specifier: ^25.0.0
         version: 25.0.1
@@ -736,11 +737,11 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
       vite:
-        specifier: ^6.4.2
-        version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+        specifier: 6.4.3
+        version: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/reasoning-core:
     dependencies:
@@ -759,7 +760,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/restormel-testing:
     dependencies:
@@ -781,7 +782,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/support:
     dependencies:
@@ -806,7 +807,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.39)(jsdom@25.0.1)(vite@6.4.2(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.39)(jsdom@25.0.1)(vite@6.4.3(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/svelte:
     dependencies:
@@ -816,13 +817,13 @@ importers:
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^5.0.0
-        version: 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       '@testing-library/jest-dom':
         specifier: ^6.6.0
         version: 6.9.1
       '@testing-library/svelte':
         specifier: ^5.0.0
-        version: 5.3.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
+        version: 5.3.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))
       axe-core:
         specifier: ^4.10.2
         version: 4.11.1
@@ -836,14 +837,14 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
       vite:
-        specifier: ^6.4.2
-        version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+        specifier: 6.4.3
+        version: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
       vite-plugin-dts:
         specifier: ^4.0.0
-        version: 4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/testing-browser-playwright:
     dependencies:
@@ -1002,7 +1003,7 @@ importers:
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^5.0.0
-        version: 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       svelte:
         specifier: ^5.55.7
         version: 5.55.7(@typescript-eslint/types@8.57.0)
@@ -1013,11 +1014,11 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
       vite:
-        specifier: ^6.4.2
-        version: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+        specifier: 6.4.3
+        version: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
       vite-plugin-dts:
         specifier: ^4.0.0
-        version: 4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/validate:
     dependencies:
@@ -1039,7 +1040,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
 packages:
 
@@ -3574,7 +3575,7 @@ packages:
       '@sveltejs/vite-plugin-svelte': ^3.0.0 || ^4.0.0-next.1 || ^5.0.0 || ^6.0.0-next.0 || ^7.0.0
       svelte: ^4.0.0 || ^5.0.0-next.0
       typescript: ^5.3.3 || ^6.0.0
-      vite: ^5.0.3 || ^6.0.0 || ^7.0.0-beta.0 || ^8.0.0
+      vite: 6.4.3
     peerDependenciesMeta:
       '@opentelemetry/api':
         optional: true
@@ -3587,14 +3588,14 @@ packages:
     peerDependencies:
       '@sveltejs/vite-plugin-svelte': ^5.0.0
       svelte: ^5.0.0
-      vite: ^6.0.0
+      vite: 6.4.3
 
   '@sveltejs/vite-plugin-svelte@5.1.1':
     resolution: {integrity: sha512-Y1Cs7hhTc+a5E9Va/xwKlAJoariQyHY+5zBgCZg4PFWNYQ1nMN9sjK1zhw1gK69DuqVP++sht/1GZg1aRwmAXQ==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22}
     peerDependencies:
       svelte: ^5.0.0
-      vite: ^6.0.0
+      vite: 6.4.3
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -3649,7 +3650,7 @@ packages:
     engines: {node: '>= 10'}
     peerDependencies:
       svelte: ^3 || ^4 || ^5 || ^5.0.0-next.0
-      vite: '*'
+      vite: 6.4.3
       vitest: '*'
     peerDependenciesMeta:
       vite:
@@ -3844,7 +3845,7 @@ packages:
     resolution: {integrity: sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
-      vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
+      vite: 6.4.3
 
   '@vitest/expect@4.1.0':
     resolution: {integrity: sha512-EIxG7k4wlWweuCLG9Y5InKFwpMEOyrMb6ZJ1ihYu02LVj/bzUwn2VMU+13PinsjRW75XnITeFrQBMH5+dLvCDA==}
@@ -3853,7 +3854,7 @@ packages:
     resolution: {integrity: sha512-evxREh+Hork43+Y4IOhTo+h5lGmVRyjqI739Rz4RlUPqwrkFFDF6EMvOOYjTx4E8Tl6gyCLRL8Mu7Ry12a13Tw==}
     peerDependencies:
       msw: ^2.4.9
-      vite: ^6.0.0 || ^7.0.0 || ^8.0.0-0
+      vite: 6.4.3
     peerDependenciesMeta:
       msw:
         optional: true
@@ -5747,11 +5748,6 @@ packages:
     resolution: {integrity: sha512-avsJQhyd+680gKXyG/sQc0nXaC6rBkPOfyHYcFb9+hdkqQkR9bdnkJ0AMZhke0oesPqIO+mFFJ+IdBc7mst4IA==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
-  nanoid@3.3.11:
-    resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
-    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
   nanoid@3.3.12:
     resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -6065,10 +6061,6 @@ packages:
 
   postcss@8.4.31:
     resolution: {integrity: sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==}
-    engines: {node: ^10 || ^12 || >=14}
-
-  postcss@8.5.10:
-    resolution: {integrity: sha512-pMMHxBOZKFU6HgAZ4eyGnwXF/EvPGGqUr0MnZ5+99485wwW41kW91A4LOGxSHhgugZmSChL5AlElNdwlNgcnLQ==}
     engines: {node: ^10 || ^12 || >=14}
 
   postcss@8.5.15:
@@ -7027,13 +7019,13 @@ packages:
     resolution: {integrity: sha512-d4sOM8M/8z7vRXHHq/ebbblfaxENjogAAekcfcDCCwAyvGqnPrc7f4NZbvItS+g4WTgerW0xDwSz5qz11JT3vg==}
     peerDependencies:
       typescript: '*'
-      vite: '*'
+      vite: 6.4.3
     peerDependenciesMeta:
       vite:
         optional: true
 
-  vite@6.4.2:
-    resolution: {integrity: sha512-2N/55r4JDJ4gdrCvGgINMy+HH3iRpNIz8K6SFwVsA+JbQScLiC+clmAxBgwiSPgcG9U15QmvqCGWzMbqda5zGQ==}
+  vite@6.4.3:
+    resolution: {integrity: sha512-NTKlcQjlAK7MlQoyb6LgaqHc8sso/pVyUJYWMws3jg21uTJw/LddqIFPcPqP6PzpgbIcZyKI85sFE4HBrQDA8A==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
     peerDependencies:
@@ -7075,7 +7067,7 @@ packages:
   vitefu@1.1.2:
     resolution: {integrity: sha512-zpKATdUbzbsycPFBN71nS2uzBUQiVnFoOrr2rvqv34S1lcAgMKKkjWleLGeiJlZ8lwCXvtWaRn7R3ZC16SYRuw==}
     peerDependencies:
-      vite: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-beta.0
+      vite: 6.4.3
     peerDependenciesMeta:
       vite:
         optional: true
@@ -7094,7 +7086,7 @@ packages:
       '@vitest/ui': 4.1.0
       happy-dom: '*'
       jsdom: '*'
-      vite: ^6.0.0 || ^7.0.0 || ^8.0.0-0
+      vite: 6.4.3
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -7842,14 +7834,14 @@ snapshots:
       '@better-auth/core': 1.6.19(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.0)(better-call@1.3.6(zod@4.4.3))(jose@6.2.1)(kysely@0.28.17)(nanostores@1.2.0)
       '@better-auth/utils': 0.4.2
 
-  '@better-auth/passkey@1.5.5(ccd94d1b7a91ac05cadc6e2537117984)':
+  '@better-auth/passkey@1.5.5(fdb93ed4d2f12d04ba00c15f0c371277)':
     dependencies:
       '@better-auth/core': 1.6.19(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.0)(better-call@1.3.6(zod@4.4.3))(jose@6.2.1)(kysely@0.28.17)(nanostores@1.2.0)
       '@better-auth/utils': 0.4.2
       '@better-fetch/fetch': 1.3.1
       '@simplewebauthn/browser': 13.3.0
       '@simplewebauthn/server': 13.3.1
-      better-auth: 1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3))
+      better-auth: 1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3))
       better-call: 1.3.6(zod@4.3.6)
       nanostores: 1.2.0
       zod: 4.4.3
@@ -7995,20 +7987,20 @@ snapshots:
 
   '@csstools/css-tokenizer@3.0.4': {}
 
-  '@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@daveyplate/better-auth-tanstack@1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@tanstack/query-core': 5.90.20
       '@tanstack/react-query': 5.90.21(react@18.3.1)
-      better-auth: 1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3))
+      better-auth: 1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3))
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@daveyplate/better-auth-ui@3.3.9(da5664f1366df7d2869c4c42252d175a)':
+  '@daveyplate/better-auth-ui@3.3.9(86e5fc3fddfcf58472fd8c866d607bbd)':
     dependencies:
-      '@better-auth/passkey': 1.5.5(ccd94d1b7a91ac05cadc6e2537117984)
+      '@better-auth/passkey': 1.5.5(fdb93ed4d2f12d04ba00c15f0c371277)
       '@better-fetch/fetch': 1.1.21
       '@captchafox/react': 1.11.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@daveyplate/better-auth-tanstack': 1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@daveyplate/better-auth-tanstack': 1.3.6(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@18.3.1))(better-auth@1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@hcaptcha/react-hcaptcha': 1.17.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@hookform/resolvers': 5.2.2(react-hook-form@7.71.2(react@18.3.1))
       '@instantdb/react': 0.22.158(react@18.3.1)
@@ -8032,7 +8024,7 @@ snapshots:
       '@triplit/client': 1.0.50(typescript@5.9.3)(uuidv7@1.2.1)
       '@triplit/react': 1.0.51(react@18.3.1)(typescript@5.9.3)(uuidv7@1.2.1)
       '@wojtekmaj/react-recaptcha-v3': 0.1.4(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      better-auth: 1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3))
+      better-auth: 1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3))
       class-variance-authority: 0.7.1
       clsx: 2.1.1
       input-otp: 1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -8584,14 +8576,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@neondatabase/auth-ui@0.1.0-alpha.11(9b13f102e6b25b42307bfdb0ba19c002)':
+  '@neondatabase/auth-ui@0.1.0-alpha.11(d5dacc7472ecc68cf82c586e156bddb7)':
     dependencies:
       '@captchafox/react': 1.11.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@daveyplate/better-auth-ui': 3.3.9(da5664f1366df7d2869c4c42252d175a)
+      '@daveyplate/better-auth-ui': 3.3.9(86e5fc3fddfcf58472fd8c866d607bbd)
       '@hcaptcha/react-hcaptcha': 1.17.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@hookform/resolvers': 5.2.2(react-hook-form@7.71.2(react@18.3.1))
       '@marsidev/react-turnstile': 1.4.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@neondatabase/auth': 0.2.0-beta.1(695d00d93773be3a94c9498e905a0e91)
+      '@neondatabase/auth': 0.2.0-beta.1(3d723eea96d18261bb0aaf5fb782e7db)
       '@radix-ui/react-avatar': 1.1.11(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-checkbox': 1.3.3(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-context': 1.1.3(@types/react@18.3.28)(react@18.3.1)
@@ -8634,11 +8626,11 @@ snapshots:
       - '@types/react-dom'
       - better-auth
 
-  '@neondatabase/auth@0.2.0-beta.1(695d00d93773be3a94c9498e905a0e91)':
+  '@neondatabase/auth@0.2.0-beta.1(3d723eea96d18261bb0aaf5fb782e7db)':
     dependencies:
-      '@neondatabase/auth-ui': 0.1.0-alpha.11(9b13f102e6b25b42307bfdb0ba19c002)
+      '@neondatabase/auth-ui': 0.1.0-alpha.11(d5dacc7472ecc68cf82c586e156bddb7)
       '@supabase/auth-js': 2.79.0
-      better-auth: 1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3))
+      better-auth: 1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3))
       jose: 6.1.2
       zod: 4.1.12
     optionalDependencies:
@@ -8673,9 +8665,9 @@ snapshots:
       - vitest
       - vue
 
-  '@neondatabase/neon-js@0.2.0-beta.1(695d00d93773be3a94c9498e905a0e91)':
+  '@neondatabase/neon-js@0.2.0-beta.1(3d723eea96d18261bb0aaf5fb782e7db)':
     dependencies:
-      '@neondatabase/auth': 0.2.0-beta.1(695d00d93773be3a94c9498e905a0e91)
+      '@neondatabase/auth': 0.2.0-beta.1(3d723eea96d18261bb0aaf5fb782e7db)
       '@neondatabase/postgrest-js': 0.1.0-alpha.2
       '@supabase/postgres-meta': 0.93.1
       meow: 14.0.0
@@ -10425,22 +10417,22 @@ snapshots:
     dependencies:
       acorn: 8.16.0
 
-  '@sveltejs/adapter-auto@3.3.1(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))':
+  '@sveltejs/adapter-auto@3.3.1(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))':
     dependencies:
-      '@sveltejs/kit': 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      '@sveltejs/kit': 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       import-meta-resolve: 4.2.0
 
-  '@sveltejs/adapter-node@5.5.4(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))':
+  '@sveltejs/adapter-node@5.5.4(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))':
     dependencies:
       '@rollup/plugin-commonjs': 29.0.3(rollup@4.60.1)
       '@rollup/plugin-json': 6.1.0(rollup@4.60.1)
       '@rollup/plugin-node-resolve': 16.0.3(rollup@4.60.1)
-      '@sveltejs/kit': 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      '@sveltejs/kit': 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       rollup: 4.60.1
 
-  '@sveltejs/adapter-vercel@6.3.3(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(rollup@4.60.1)':
+  '@sveltejs/adapter-vercel@6.3.3(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(rollup@4.60.1)':
     dependencies:
-      '@sveltejs/kit': 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      '@sveltejs/kit': 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       '@vercel/nft': 1.3.2(rollup@4.60.1)
       esbuild: 0.25.0
     transitivePeerDependencies:
@@ -10448,11 +10440,11 @@ snapshots:
       - rollup
       - supports-color
 
-  '@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))':
+  '@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@sveltejs/acorn-typescript': 1.0.10(acorn@8.16.0)
-      '@sveltejs/vite-plugin-svelte': 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      '@sveltejs/vite-plugin-svelte': 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       '@types/cookie': 0.6.0
       acorn: 8.16.0
       cookie: 1.1.1
@@ -10464,30 +10456,30 @@ snapshots:
       set-cookie-parser: 3.1.0
       sirv: 3.0.2
       svelte: 5.55.7(@typescript-eslint/types@8.57.0)
-      vite: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       typescript: 5.9.3
 
-  '@sveltejs/vite-plugin-svelte-inspector@4.0.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))':
+  '@sveltejs/vite-plugin-svelte-inspector@4.0.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
-      '@sveltejs/vite-plugin-svelte': 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      '@sveltejs/vite-plugin-svelte': 5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       debug: 4.4.3
       svelte: 5.55.7(@typescript-eslint/types@8.57.0)
-      vite: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
     transitivePeerDependencies:
       - supports-color
 
-  '@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))':
+  '@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
-      '@sveltejs/vite-plugin-svelte-inspector': 4.0.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      '@sveltejs/vite-plugin-svelte-inspector': 4.0.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       debug: 4.4.3
       deepmerge: 4.3.1
       kleur: 4.1.5
       magic-string: 0.30.21
       svelte: 5.55.7(@typescript-eslint/types@8.57.0)
-      vite: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
-      vitefu: 1.1.2(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      vite: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+      vitefu: 1.1.2(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
     transitivePeerDependencies:
       - supports-color
 
@@ -10543,14 +10535,14 @@ snapshots:
     dependencies:
       svelte: 5.55.7(@typescript-eslint/types@8.57.0)
 
-  '@testing-library/svelte@5.3.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))':
+  '@testing-library/svelte@5.3.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))':
     dependencies:
       '@testing-library/dom': 10.4.1
       '@testing-library/svelte-core': 1.0.0(svelte@5.55.7(@typescript-eslint/types@8.57.0))
       svelte: 5.55.7(@typescript-eslint/types@8.57.0)
     optionalDependencies:
-      vite: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
-      vitest: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      vite: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+      vitest: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
 
   '@tootallnate/quickjs-emscripten@0.23.0': {}
 
@@ -10775,7 +10767,7 @@ snapshots:
 
   '@vercel/oidc@3.1.0': {}
 
-  '@vitejs/plugin-react@4.7.0(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))':
+  '@vitejs/plugin-react@4.7.0(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       '@babel/core': 7.29.0
       '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.29.0)
@@ -10783,7 +10775,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -10796,21 +10788,21 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.0(vite@6.4.2(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))':
+  '@vitest/mocker@4.1.0(vite@6.4.3(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       '@vitest/spy': 4.1.0
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 6.4.2(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 6.4.3(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3)
 
-  '@vitest/mocker@4.1.0(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))':
+  '@vitest/mocker@4.1.0(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
       '@vitest/spy': 4.1.0
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
 
   '@vitest/pretty-format@4.1.0':
     dependencies:
@@ -11172,7 +11164,7 @@ snapshots:
 
   basic-ftp@5.3.1: {}
 
-  better-auth@1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3)):
+  better-auth@1.6.19(@opentelemetry/api@1.9.0)(@sveltejs/kit@2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(next@16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(pg@8.20.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(vue@3.5.35(typescript@5.9.3)):
     dependencies:
       '@better-auth/core': 1.6.19(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.0)(better-call@1.3.6(zod@4.4.3))(jose@6.2.1)(kysely@0.28.17)(nanostores@1.2.0)
       '@better-auth/drizzle-adapter': 1.6.19(@better-auth/core@1.6.19(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.0)(better-call@1.3.6(zod@4.4.3))(jose@6.2.1)(kysely@0.28.17)(nanostores@1.2.0))(@better-auth/utils@0.4.2)
@@ -11192,13 +11184,13 @@ snapshots:
       nanostores: 1.2.0
       zod: 4.4.3
     optionalDependencies:
-      '@sveltejs/kit': 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      '@sveltejs/kit': 2.63.0(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.7(@typescript-eslint/types@8.57.0))(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.7(@typescript-eslint/types@8.57.0))(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       next: 16.2.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       pg: 8.20.0
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       svelte: 5.55.7(@typescript-eslint/types@8.57.0)
-      vitest: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      vitest: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       vue: 3.5.35(typescript@5.9.3)
     transitivePeerDependencies:
       - '@cloudflare/workers-types'
@@ -12934,8 +12926,6 @@ snapshots:
 
   mute-stream@1.0.0: {}
 
-  nanoid@3.3.11: {}
-
   nanoid@3.3.12: {}
 
   nanoid@5.1.11: {}
@@ -13241,12 +13231,6 @@ snapshots:
   postcss@8.4.31:
     dependencies:
       nanoid: 3.3.12
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
-
-  postcss@8.5.10:
-    dependencies:
-      nanoid: 3.3.11
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -14364,7 +14348,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-plugin-dts@4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)):
+  vite-plugin-dts@4.5.4(@types/node@25.5.0)(rollup@4.60.1)(typescript@5.9.3)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)):
     dependencies:
       '@microsoft/api-extractor': 7.57.7(@types/node@25.5.0)
       '@rollup/pluginutils': 5.3.0(rollup@4.60.1)
@@ -14377,18 +14361,18 @@ snapshots:
       magic-string: 0.30.21
       typescript: 5.9.3
     optionalDependencies:
-      vite: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
     transitivePeerDependencies:
       - '@types/node'
       - rollup
       - supports-color
 
-  vite@6.4.2(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3):
+  vite@6.4.3(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3):
     dependencies:
       esbuild: 0.25.0
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
-      postcss: 8.5.10
+      postcss: 8.5.15
       rollup: 4.60.1
       tinyglobby: 0.2.15
     optionalDependencies:
@@ -14397,12 +14381,12 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.8.3
 
-  vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3):
+  vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3):
     dependencies:
       esbuild: 0.25.0
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
-      postcss: 8.5.10
+      postcss: 8.5.15
       rollup: 4.60.1
       tinyglobby: 0.2.15
     optionalDependencies:
@@ -14411,14 +14395,14 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.8.3
 
-  vitefu@1.1.2(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)):
+  vitefu@1.1.2(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)):
     optionalDependencies:
-      vite: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
 
-  vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.39)(jsdom@25.0.1)(vite@6.4.2(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3)):
+  vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.39)(jsdom@25.0.1)(vite@6.4.3(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3)):
     dependencies:
       '@vitest/expect': 4.1.0
-      '@vitest/mocker': 4.1.0(vite@6.4.2(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))
+      '@vitest/mocker': 4.1.0(vite@6.4.3(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3))
       '@vitest/pretty-format': 4.1.0
       '@vitest/runner': 4.1.0
       '@vitest/snapshot': 4.1.0
@@ -14435,7 +14419,7 @@ snapshots:
       tinyexec: 1.0.4
       tinyglobby: 0.2.15
       tinyrainbow: 3.1.0
-      vite: 6.4.2(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 6.4.3(@types/node@20.19.39)(tsx@4.21.0)(yaml@2.8.3)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
@@ -14444,10 +14428,10 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)):
+  vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@25.0.1)(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)):
     dependencies:
       '@vitest/expect': 4.1.0
-      '@vitest/mocker': 4.1.0(vite@6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
+      '@vitest/mocker': 4.1.0(vite@6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3))
       '@vitest/pretty-format': 4.1.0
       '@vitest/runner': 4.1.0
       '@vitest/snapshot': 4.1.0
@@ -14464,7 +14448,7 @@ snapshots:
       tinyexec: 1.0.4
       tinyglobby: 0.2.15
       tinyrainbow: 3.1.0
-      vite: 6.4.2(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
+      vite: 6.4.3(@types/node@25.5.0)(tsx@4.21.0)(yaml@2.8.3)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.0

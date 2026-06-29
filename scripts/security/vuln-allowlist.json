@@ -1,22 +1,7 @@
 [
   {
     "id": "GHSA-gv7w-rqvm-qjhr",
-    "reason": "esbuild@0.28.1 fix conflicts with vite@6.4.2 (requires ^0.25.0) and tsx@4.21.0 (~0.27.0). Cannot upgrade esbuild without a coordinated vite/tsx major bump. The vuln is a missing binary integrity check in the Deno module path — the dashboard build uses Node/pnpm, not Deno, so this code path is unreachable in production. Track via a follow-up vite upgrade. Expiry set to 30-day max per High policy.",
-    "expires": "2026-07-14"
-  },
-  {
-    "id": "GHSA-rcmh-qjqh-p98v",
-    "reason": "nodemailer DoS fix (CVE-2025-14874) requires v7.0.11 which is a breaking major bump from v6.x (new API surface). Bumping without full auth-flow regression testing risks breaking transactional email in production. Scheduled for coordinated upgrade with better-auth email plugin review. Expiry set to 30-day max per High policy.",
-    "expires": "2026-07-14"
-  },
-  {
-    "id": "GHSA-p6gq-j5cr-w38f",
-    "reason": "nodemailer message-level `raw` option bypasses disableFileAccess/disableUrlAccess (arbitrary file read + SSRF). HIGH (CVSS 3.1 8.1). Fixed only in 9.0.1 (affected range [0,9.0.1) — no 6.x/7.x/8.x backport), a 6.x->9.x triple-major bump on a runtime-critical auth-email package. NOT reachable: the sole sendMail call site (apps/dashboard/src/lib/server/email/send-mail.ts) passes a fixed internal field set (to/from/replyTo/subject/text/html) and never sets `raw`, attachments, file paths or URLs; the module is also dormant under the default neon AUTH_PROVIDER. Advisory published 2026-06-18 against the unchanged lockfile, so it blocks the whole open-PR train. Time-boxed risk-accept; coordinated nodemailer 9.x upgrade tracked in forgejo#141 (closes this + GHSA-rcmh-qjqh-p98v). Expiry within the 30-day max per High policy.",
-    "expires": "2026-07-14"
-  },
-  {
-    "id": "GHSA-fx2h-pf6j-xcff",
-    "reason": "vite@6.4.2 server.fs.deny bypass (CVE-2026-53571) affects the Vite DEV server on Windows alternate paths only. Restormel production runs the built adapter-node output on Linux (node:22-alpine) with no Vite dev server exposed, so the path is not reachable in production. A patched vite requires a coordinated vite/esbuild major bump (esbuild is pinned to 0.25.0 per GHSA-gv7w-rqvm-qjhr) — scheduled with that upgrade. Expiry set to 30-day max per High policy.",
+    "reason": "esbuild@0.28.1 (the fixed version) requires dropping the esbuild ^0.25.x pin that vite@6.4.3 and tsx@4.21.0 both depend on — it cannot land without a coordinated vite/tsx major bump, so esbuild stays pinned to 0.25.0 via pnpm.overrides. The vuln is a missing binary integrity check in the Deno module path; the dashboard build uses Node/pnpm, not Deno, so the code path is unreachable in production. Genuine risk-accept (no clean fix). Re-evaluate on the next vite major. Expiry set to 30-day max per High policy.",
     "expires": "2026-07-14"
   }
 ]
