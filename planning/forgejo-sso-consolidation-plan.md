@@ -88,11 +88,53 @@ Confirmed 2026-06-29: `hardcoreeng/account:v0.7.423` reads **`OPENID_CLIENT_ID`,
   SSO, so in scope) per consuming namespace.
 - **Discovery:** `https://git.allotmentology.tech/.well-known/openid-configuration`; issuer must
   carry the **trailing slash** (oauth2-proxy + others do strict issuer matching).
-- **Roles/groups:** confirm whether Forgejo emits a `groups` claim (orgs/teams) for OIDC. Grafana
-  + ArgoCD role-mapping depend on it; if absent, fall back to a default role + manual elevation, or
-  a Forgejo claim customisation. **(Open item — Phase 0.)**
+- **Roles/groups:** **RESOLVED (Phase 0, 2026-06-29) — Forgejo DOES emit a `groups` claim.** The
+  discovery doc lists `groups` in **both** `scopes_supported` *and* `claims_supported`
+  (`['openid','profile','email','groups']`). The claim carries the user's orgs/teams, so Grafana +
+  ArgoCD can map team→role natively. Request the `groups` scope from each client.
 - **MFA becomes centralised:** Forgejo TOTP/WebAuthn becomes the MFA for the whole estate → enable
   + enforce MFA on Forgejo as part of this (supersedes per-app MFA gaps, e.g. the portal's no-MFA note).
+
+---
+
+## 4a. Phase 0 — confirmed foundations (2026-06-29)
+
+All four Phase-0 confirmations are **done** (read-only checks against live Forgejo + the Huly account
+image). Phase 0 needs no code; its only *action* item is the founder registering the OAuth2 apps (below).
+
+**Confirmed:**
+
+| Item | Result |
+|------|--------|
+| Forgejo `groups` claim | **YES** — in `scopes_supported` + `claims_supported` (see §4). |
+| OIDC issuer | `https://git.allotmentology.tech/` (trailing slash present). |
+| authorize / token / userinfo / jwks | `/login/oauth/authorize` · `/login/oauth/access_token` · `/login/oauth/userinfo` · `/login/oauth/keys`. |
+| Huly OIDC callback | account `ACCOUNTS_URL=/_accounts` (host-relative) + callback `/auth/openid/callback` ⇒ **`https://huly.allotmentology.tech/_accounts/auth/openid/callback`**. Confirm against the first live attempt — Forgejo allows multiple redirect URIs, so add the exact one if Huly sends a variant. |
+
+**OAuth2 app registration — founder action, in the Forgejo UI** (Settings → Applications → *Create OAuth2
+Application*). Registering in the UI keeps each `client_secret` entirely founder-side: it goes Forgejo →
+clipboard → Infisical and **never** passes through the agent or a file. (The agent's token lacks
+`write:user`, so it cannot — and by hygiene should not — create these.) Tick **Confidential Client** on all.
+
+| App | Redirect URI | Register when |
+|-----|-------------|---------------|
+| **Huly** | `https://huly.allotmentology.tech/_accounts/auth/openid/callback` | **now** (Phase 1 next) |
+| **Launchpad** (Better Auth) | `https://allotmentology.tech/api/auth/callback/forgejo` *(confirm Better-Auth providerId)* | Phase 2 |
+| **Grafana** | `https://grafana.allotmentology.tech/login/generic_oauth` | Phase 3 |
+| **ArgoCD** | `https://argo.allotmentology.tech/auth/callback` | Phase 3 |
+
+After registering Huly: put `OPENID_CLIENT_ID` + `OPENID_CLIENT_SECRET` into Infisical (`huly` scope).
+The agent then wires the ESO key-refs + account-Deployment env (`OPENID_ISSUER`/`_CLIENT_ID`/`_CLIENT_SECRET`)
+via a gitops PR — **no secret values in the PR**.
+
+**Role-mapping per app (decided Phase 0):**
+
+| App | Identity | Role source |
+|-----|----------|-------------|
+| **Huly** | email-match links the existing account | **identity only** — v0.7 account service has no group→role map; workspace roles stay in Huly. |
+| **Launchpad** | Forgejo social login | single-founder = the admin; groups claim available later for multi-user. |
+| **Grafana** | `auth.generic_oauth` | `role_attribute_path` JMESPath over `groups` → org `Allotment-Technology-Ltd` (or a dedicated `admins` team) = `Admin`, else `Viewer`. |
+| **ArgoCD** | `oidc.config` (request `groups` scope) | `policy.csv`: `g, <forgejo-group>, role:admin`; default = read-only. |
 
 ---
 
@@ -126,8 +168,9 @@ and for the local break-glass account's own recovery.
 
 ## 7. Phased rollout
 
-- **Phase 0 — Foundations.** Register Forgejo OAuth2 apps; confirm the Forgejo `groups`/roles claim;
-  confirm Huly's exact OIDC callback path; decide role-mapping per app.
+- **Phase 0 — Foundations. ✅ DONE (2026-06-29, see §4a).** `groups` claim confirmed, endpoints +
+  Huly callback confirmed, role-mapping decided. Only the founder's UI registration of the OAuth2 apps
+  remains (Huly first) — that's the single gate into Phase 1.
 - **Phase 1 — Huly OIDC (highest value; fixes the lockout pain).** Wire `OPENID_*` → Forgejo; test
   email-match link to the existing account; retain local admin break-glass.
 - **Phase 2 — Launchpad → Forgejo.** Better Auth gains "Sign in with Forgejo" as the primary
@@ -143,8 +186,9 @@ and for the local break-glass account's own recovery.
 
 ## 8. Open decisions / to confirm before execution
 
-1. Does Forgejo emit an OIDC `groups` claim for team→role mapping? (gates Grafana/ArgoCD RBAC depth)
-2. Huly's exact OIDC callback URL for v0.7.423.
+1. ~~Does Forgejo emit an OIDC `groups` claim?~~ **RESOLVED (Phase 0): yes** — see §4a.
+2. ~~Huly's exact OIDC callback URL for v0.7.423.~~ **RESOLVED (Phase 0):**
+   `https://huly.allotmentology.tech/_accounts/auth/openid/callback` (verify on first live attempt).
 3. Tier-B apps: keep portal-forward-auth, or move all to oauth2-proxy→Forgejo for single-IdP purity?
 4. Mail transport for Huly SMTP: dedicated relay vs the existing transactional-email path.
 5. Enforce Forgejo MFA estate-wide as part of Phase 5, or as a fast-follow?
