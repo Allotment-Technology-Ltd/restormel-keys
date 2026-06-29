@@ -107,6 +107,18 @@ stays the fallback. High-risk-security review: **PASS WITH NOTES**.
   discovery doc lists `groups` in **both** `scopes_supported` *and* `claims_supported`
   (`['openid','profile','email','groups']`). The claim carries the user's orgs/teams, so Grafana +
   ArgoCD can map team→role natively. Request the `groups` scope from each client.
+- **Canonical identity — `adam@allotmentology.tech` (LOCKED, founder 2026-06-29).** ONE company
+  email is the single identity across the estate: it is the Forgejo primary email (the IdP source of
+  truth, org `Allotment-Technology-Ltd:owners`) and every downstream app must key the operator account
+  to it — **launchpad** (Better Auth user), **Huly**, **Grafana**, **ArgoCD**, **Supabase Studio**, etc.
+  This is what OIDC email-match links on. The 2026-06-29 Huly failure was exactly an identity split
+  (Huly account = personal `adam.boon1984@googlemail.com` ≠ Forgejo `adam@allotmentology.tech`) → fixed
+  by adding the company email as a verified social_id on the existing Huly account (kept the googlemail
+  as a local-password fallback). **Per-app rollout:** as each app joins SSO, ensure its operator account
+  uses `adam@allotmentology.tech` (add-as-alias where the app supports multiple emails; migrate where it
+  doesn't). **Caveat:** non-email-principal systems (e.g. **Postgres roles**) don't take an email — there
+  "register this email" means the human-facing console/owner account (Supabase Studio, pgAdmin), not the
+  DB role itself; the DB role stays role-based and is reached *through* an SSO'd console.
 - **MFA becomes centralised:** Forgejo TOTP/WebAuthn becomes the MFA for the whole estate → enable
   + enforce MFA on Forgejo as part of this (supersedes per-app MFA gaps, e.g. the portal's no-MFA note).
 
