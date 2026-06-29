@@ -80,11 +80,20 @@ on:
         options:
           - integration
           - prod
-      dry_run:
-        description: "Build + push images only; skip the gitops tag bump (pipeline validation)"
+      action:
+        # SAFE-BY-DEFAULT (REC near-miss 2026-06-29): this REPLACES the old boolean `dry_run`
+        # input. Forgejo's workflow_dispatch silently DROPPED that boolean (a string "true" sent
+        # via the API was not honoured) and it fell back to its UNSAFE default (deploy) — so a run
+        # intended as validation shipped to prod. A `choice` input IS honoured (the `environment`
+        # choice always was) and here defaults to the SAFE value: `validate` builds+pushes only;
+        # only an explicit `deploy` bumps prod. (A `dashboard-v*` TAG push is always a real release.)
+        description: "validate = build+push only (DEFAULT, safe). deploy = also bump prod (real release)."
         required: false
-        default: false
-        type: boolean
+        default: "validate"
+        type: choice
+        options:
+          - validate
+          - deploy
   # workflow_call — lets integration-train.yml invoke the INTEGRATION build keyed to
   # the disposable `integration` branch HEAD (the batched, stage-labelled PRs). The
   # presence of the `ref` input is how the integration job detects a train-invoked
@@ -327,15 +336,24 @@ jobs:
           REG_TOKEN: ${{ secrets.FORGEJO_REGISTRY_TOKEN }}
           GITOPS_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
           ENV_NAME: prod
-          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          # SAFE-BY-DEFAULT bump gate. DRY_RUN=true ⇒ build+push only (no gitops bump). It is empty
+          # (⇒ real bump) ONLY for a `dashboard-v*` TAG push (a real release) or an explicit
+          # `action: deploy` dispatch. Any other dispatch (default `validate`, or a dropped input)
+          # ⇒ DRY_RUN=true ⇒ NEVER touches prod. The condition is written POSITIVELY (validate ⇒
+          # 'true') because the Actions `a && b || c` idiom collapses to c whenever b is '' (falsy) —
+          # putting the empty string on the truthy branch would force-validate even real releases.
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.action != 'deploy') && 'true' || '' }}
         run: |
           set -euo pipefail
           if [[ -z "${REG_TOKEN:-}" || -z "${GITOPS_TOKEN:-}" ]]; then
             echo "::warning::registry/gitops token absent — no-op (expected on the GitHub mirror / fork)."; exit 0
           fi
           cd src && bash .forgejo/scripts/k3s-build-push-bump.sh "${ENV_NAME}"
-          echo "::notice::PROD image tag bumped in restormel-gitops. Argo will show restormel-app-prod OutOfSync."
-          echo "::notice::OPERATOR ACTION REQUIRED — sync by hand: argocd app sync restormel-app-prod (or click Sync in the Argo UI)."
+          if [[ "${DRY_RUN}" == "true" ]]; then
+            echo "::notice::VALIDATE-only run — dashboard+worker built and pushed; prod gitops was NOT bumped (no deploy)."
+          else
+            echo "::notice::PROD image tag bumped in restormel-gitops. Argo CD AUTO-SYNCS restormel-app-prod (REC-ADR-011, 2026-06-27) — no manual sync needed. Rollback = revert the gitops bump commit."
+          fi
 
       - name: Alert on deploy failure (Telegram / PostHog)
         if: ${{ failure() }}
