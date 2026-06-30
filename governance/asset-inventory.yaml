@@ -130,6 +130,18 @@
 #   Forgejo) → suppliers.yaml UNCHANGED; only empty/synthetic data ever → ropa.yaml/data-inventory.yaml
 #   UNCHANGED. Plan of record REC-PLAN-022. last-reviewed UNCHANGED (founder re-approval on merge);
 #   the asset history above is append-only.
+# 2026-06-30 (records/infra-alert-storm-node-rescale — REC-INC-026 / RES-123): NODE SWAP.
+#   AST-022 cluster: node3 (.167, the cx33 "surreal-forgejo" 8GiB box) was RETIRED and its Hetzner
+#   server DELETED, replaced by node4 — a cx43 (8c/16GiB, k8s name restormel-node4, public
+#   157.180.79.201, private 172.16.0.2, Hetzner id 146553066) — via a blue-green etcd swap (join a 4th
+#   control-plane+etcd member with node2's exact config → drain old node3 → k3s auto-removed the etcd
+#   member via raft ConfChangeRemoveNode → delete the cx33 box). Cluster is now 3× cx43 HOMOGENEOUS
+#   (master1 + node2 + node4, all 8c/16GiB), resolving the node3-PENDING placeholder from the
+#   2026-06-24 reconcile and the lean-heterogeneous NodeMemoryLimitOvercommit class (REC-INC-024/022).
+#   3-member etcd quorum preserved throughout (never <3 members). NO new sub-processor (same Hetzner
+#   Cloud / same AVV) → suppliers.yaml / ropa.yaml / data-inventory.yaml UNCHANGED. Net server cost
+#   +£7.50/mo (cx33 £8.49 → cx43 £15.99; founder lifted the £57/mo cap). last-reviewed UNCHANGED
+#   (founder re-approval on merge); the asset history above is append-only.
   - id: AST-001
     asset: "restormel-keys repo"
     type: code/records
