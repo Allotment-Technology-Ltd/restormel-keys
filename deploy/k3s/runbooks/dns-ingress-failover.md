@@ -45,7 +45,8 @@ marks that target unhealthy within ~30s and serves via the other two. etcd still
 Verify:
 
 ```bash
-export HCLOUD_TOKEN="$(infisical secrets get HCLOUD_TOKEN --projectId=7ea6ec41-1998-4899-8e47-0bd81b8f5b71 --env=prod --domain=https://secrets.restormel.dev --plain)"
+# Load HCLOUD_TOKEN into env first (Infisical "infrastructure" project, scoped fetch — never echo it);
+# the exact command + projectId live in the restormel-infra-access skill.
 hcloud load-balancer describe restormel-ingress -o json | \
   python3 -c "import sys,json;[print(t['server']['id'],[h['status'] for h in t.get('health_status',[])]) for t in json.load(sys.stdin)['targets']]"
 ```
@@ -57,7 +58,8 @@ If `77.42.13.120` is unreachable, fail public ingress back onto a single healthy
 restores service. TTL is 300s so propagation ≤ 5 min.
 
 ```bash
-export HCLOUD_TOKEN="$(infisical secrets get HCLOUD_TOKEN --projectId=7ea6ec41-1998-4899-8e47-0bd81b8f5b71 --env=prod --domain=https://secrets.restormel.dev --plain)"
+# Load HCLOUD_TOKEN into env first (Infisical "infrastructure" project, scoped fetch — never echo it);
+# the exact command + projectId live in the restormel-infra-access skill.
 NODE=204.168.216.166   # pick a node whose Traefik is confirmed serving
 for pair in "restormel.dev @" "restormel.dev www" "restormel.dev surreal" "restormel.dev secrets" "restormel.dev integration" \
             "allotmentology.tech @" "allotmentology.tech www" "allotmentology.tech git" "allotmentology.tech grafana" \
