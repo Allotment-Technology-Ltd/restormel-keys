@@ -208,6 +208,39 @@ export async function testGraphStoreConfigDraft(
   });
 }
 
+/**
+ * Read-only node-count probe of the workspace's saved Neo4j store (RES-113 PR-K /
+ * REC-ADR-017 §2). Connects the proven Neo4jAdapter and reads `discoverSchema()`'s
+ * estimated node count — a `MATCH (c:Claim) RETURN count(c)` read; no writes, no
+ * DDL. Returns null count when no Neo4j config is saved. ENV-PENDING: verified
+ * against a live Neo4j only on the integration environment.
+ */
+export async function probeSavedNeo4jNodeCount(
+  workspaceId: string,
+): Promise<{ ok: true; nodeCount: number } | { ok: false; error: string }> {
+  const stored = await readStored(workspaceId);
+  if (!stored || stored.type !== "neo4j") {
+    return { ok: false, error: "No Neo4j store is configured for this workspace." };
+  }
+  const secret = decryptStoredSecret(stored) ?? "";
+  const adapter = new Neo4jAdapter();
+  try {
+    await adapter.connect({
+      type: "neo4j",
+      connectionString: stored.connection_string,
+      database: stored.database,
+      credentials: { username: stored.username, password: secret },
+      schemaMode: "fresh",
+    });
+    const discovered = await adapter.discoverSchema();
+    return { ok: true, nodeCount: discovered.estimatedNodeCount };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Probe failed." };
+  } finally {
+    await adapter.disconnect().catch(() => undefined);
+  }
+}
+
 async function runNeo4jHealthCheck(args: {
   connectionString: string;
   database: string;
