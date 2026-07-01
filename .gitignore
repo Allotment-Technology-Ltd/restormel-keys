@@ -12,6 +12,9 @@ repomix-output.txt
 # Build and tooling
 dist/
 build/
+# RES-113 PR-G: the journey IA `/build` route is a real source folder, not a build artefact.
+!apps/dashboard/src/routes/keys/dashboard/build/
+!apps/dashboard/src/routes/keys/dashboard/build/**
 infra/bin/
 *.tsbuildinfo
 

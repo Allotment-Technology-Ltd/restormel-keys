@@ -2,10 +2,9 @@ import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import {
-  NAV_GROUPS,
-  filterNavGroupsForModuleFlags,
-  filterWorkNavForModuleFlags,
-  filterTestingNavForModuleFlags,
+  resolveNavGroupsForModuleFlags,
+  resolveWorkNavForModuleFlags,
+  resolveTestingNavForModuleFlags,
   HOME_HREF,
 } from "$lib/nav-config";
 import {
@@ -35,10 +34,13 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     dashboardUiHiddenSet.add(token as DashboardUiSection);
   }
   const dashboardUiHidden = [...dashboardUiHiddenSet];
-  let navGroupsForUi = filterNavGroupsForModuleFlags(NAV_GROUPS, moduleFlags);
+  // RES-113 PR-G: nav is flag-resolved. With onboardingJourney OFF these helpers
+  // return the north-star IA byte-for-byte; ON they return the Home·Build·Verify·
+  // Connect verb spine. The dashboard-ui/monitor filter pass still applies on top.
+  let navGroupsForUi = resolveNavGroupsForModuleFlags(moduleFlags);
   navGroupsForUi = filterNavGroupsForDashboardUi(navGroupsForUi, dashboardUiHiddenSet);
-  const workNavForUi = filterWorkNavForModuleFlags(moduleFlags);
-  const testingNavForUi = filterTestingNavForModuleFlags(moduleFlags);
+  const workNavForUi = resolveWorkNavForModuleFlags(moduleFlags);
+  const testingNavForUi = resolveTestingNavForModuleFlags(moduleFlags);
 
   // Fix malformed redirect from Neon Auth: params appended as path (e.g. /keys/dashboard/state=...&error=...)
   const pathname = url.pathname;

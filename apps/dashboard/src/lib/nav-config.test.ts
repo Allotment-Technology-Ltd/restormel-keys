@@ -24,6 +24,16 @@ import {
   filterWorkNavForModuleFlags,
   filterTestingNavForModuleFlags,
   filterNavGroupsForModuleFlags,
+  resolveWorkNavForModuleFlags,
+  resolveNavGroupsForModuleFlags,
+  resolveTestingNavForModuleFlags,
+  resolveWorkspaceHomeHref,
+  JOURNEY_NAV_ITEMS,
+  JOURNEY_WORKSPACE_HOME_HREF,
+  BUILD_HREF,
+  VERIFY_HREF,
+  CONNECT_HUB_HREF,
+  AGENTS_WIRING_HREF,
   type NavItem,
   type NavGroup,
 } from "./nav-config";
@@ -416,5 +426,98 @@ describe("topbarTitle", () => {
 
   it("returns Routes for /routes", () => {
     expect(topbarTitle(DASHBOARD_BASE + "/routes")).toBe("Routes");
+  });
+});
+
+/**
+ * RES-113 PR-G — the flag-gated IA re-spine (REC-ADR-021 §1/§3/§5).
+ *
+ * The `resolve*` helpers branch on `onboardingJourney`. These tests prove BOTH
+ * states: with the flag OFF they return the shipped north-star IA byte-for-byte
+ * (delegating to the `filter*` helpers the suite above already locks), and with
+ * the flag ON they return the Home·Build·Verify·Connect verb spine.
+ */
+describe("RES-113 journey IA re-spine (onboardingJourney flag-gated)", () => {
+  const OFF = { ...MVP_MODULE_DEFAULTS, onboardingJourney: false };
+  const ON = { ...MVP_MODULE_DEFAULTS, onboardingJourney: true, connect: true };
+
+  it("flag OFF — work nav is the north-star four, byte-for-byte (delegates to filter*)", () => {
+    expect(resolveWorkNavForModuleFlags(OFF)).toEqual(filterWorkNavForModuleFlags(OFF));
+    expect(resolveWorkNavForModuleFlags(OFF).map((i) => i.label)).toEqual([
+      "Answer Console",
+      "Sources",
+      "Traces",
+      "Keys & Routing",
+    ]);
+  });
+
+  it("flag ON — work nav is the Home·Build·Verify·Connect verb spine", () => {
+    expect(resolveWorkNavForModuleFlags(ON).map((i) => i.label)).toEqual([
+      "Home",
+      "Build",
+      "Verify",
+      "Connect",
+    ]);
+    expect(resolveWorkNavForModuleFlags(ON).map((i) => i.href)).toEqual([
+      DASHBOARD_BASE + "/home",
+      DASHBOARD_BASE + "/build",
+      DASHBOARD_BASE + "/verify",
+      DASHBOARD_BASE + "/connect",
+    ]);
+    // The journey spine constants are wired to the canonical paths.
+    expect(JOURNEY_NAV_ITEMS.map((i) => i.href)).toEqual([
+      HOME_HREF,
+      BUILD_HREF,
+      VERIFY_HREF,
+      CONNECT_HUB_HREF,
+    ]);
+  });
+
+  it("flag ON — Build/Verify/Connect require the connect module; Home always shows", () => {
+    const noConnect = resolveWorkNavForModuleFlags({ ...ON, connect: false });
+    expect(noConnect.map((i) => i.label)).toEqual(["Home"]);
+  });
+
+  it("flag OFF — nav groups are the north-star Operator/Foundation/Observe, byte-for-byte", () => {
+    expect(resolveNavGroupsForModuleFlags(OFF)).toEqual(
+      filterNavGroupsForModuleFlags(NAV_GROUPS, OFF),
+    );
+    expect(resolveNavGroupsForModuleFlags(OFF).map((g) => g.id)).toEqual([
+      "operator",
+      "foundation",
+      "observe",
+    ]);
+  });
+
+  it("flag ON — nav groups collapse to one tucked-away Settings group (design §3)", () => {
+    const groups = resolveNavGroupsForModuleFlags(ON);
+    expect(groups.map((g) => g.label)).toEqual(["Settings"]);
+    expect(groups[0].defaultOpen).toBe(false);
+    expect(groups[0].items.map((i) => i.label)).toEqual([
+      "Providers",
+      "Store",
+      "Routes",
+      "Audit log",
+      "Metrics",
+    ]);
+    // No primary north-star surface leaks into the journey Settings group.
+    expect(groups[0].items.map((i) => i.label)).not.toContain("Stamping desk");
+  });
+
+  it("Testing nav: OFF delegates to the testing flag; ON folds away (no primary destination)", () => {
+    expect(resolveTestingNavForModuleFlags(OFF)).toEqual(filterTestingNavForModuleFlags(OFF));
+    expect(resolveTestingNavForModuleFlags({ ...OFF, testing: true })).toEqual(TESTING_NAV_ITEM);
+    expect(resolveTestingNavForModuleFlags({ ...ON, testing: true })).toBeNull();
+  });
+
+  it("landing: OFF keeps the verified Answer Console; ON leads to the persistent Home", () => {
+    expect(resolveWorkspaceHomeHref(OFF)).toBe(DASHBOARD_BASE + "/prove/proof");
+    expect(resolveWorkspaceHomeHref(OFF)).toBe(WORKSPACE_HOME_HREF);
+    expect(resolveWorkspaceHomeHref(ON)).toBe(DASHBOARD_BASE + "/home");
+    expect(resolveWorkspaceHomeHref(ON)).toBe(JOURNEY_WORKSPACE_HOME_HREF);
+  });
+
+  it("the Connect nav lands on the M4 wiring surface (catch-all alias target)", () => {
+    expect(AGENTS_WIRING_HREF).toBe(DASHBOARD_BASE + "/agents/wiring");
   });
 });

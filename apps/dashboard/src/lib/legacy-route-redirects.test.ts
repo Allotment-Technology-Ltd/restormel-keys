@@ -67,6 +67,12 @@ const REDIRECT_TABLE: [string, string, string][] = [
   [`${B}/connect/unknown-thing`, "", `${B}/home`],
   // /projects/[id]/usage KILL → redirect → /analytics?project=
   [`${B}/projects/p-1/usage`, "", `${B}/analytics?project=p-1`],
+  // RES-113 PR-G — journey IA section-aliases (additive; query preserved). `/build`
+  // (M1) → the ingest guided flow; `/verify` (M2) → the make-ready / stamping desk.
+  [`${B}/build`, "", `${B}/sources/ingest`],
+  [`${B}/build`, "?step=sources", `${B}/sources/ingest?step=sources`],
+  [`${B}/verify`, "", `${B}/claims`],
+  [`${B}/verify`, "?filter=review", `${B}/claims?filter=review`],
 ];
 
 describe("R2 redirect table (§2.3)", () => {
@@ -123,6 +129,98 @@ describe("R2 redirect routes serve 308 (permanent)", () => {
     const r = await caught(import("../routes/keys/dashboard/+page.server.js"), B);
     expect(r.status).toBe(308);
     expect(r.location).toBe(`${B}/prove/proof`);
+  });
+});
+
+/**
+ * RES-113 PR-G — flag-gated landing + journey section-alias routes.
+ *
+ * Proves BOTH flag states at the redirect boundary. With `onboardingJourney` OFF
+ * the landing + `/connect` behaviour is byte-for-byte unchanged (the suite above,
+ * which passes no locals, already asserts the OFF defaults). ON, the landing leads
+ * to the persistent Home and the bare `/connect` consolidates onto the M4 surface,
+ * while every existing `/connect/*` sub-redirect is left intact.
+ */
+describe("RES-113 PR-G — flag-gated landing + journey aliases", () => {
+  async function caughtWithLocals(
+    loadModule: Promise<{ load: (e: never) => unknown }>,
+    pathname: string,
+    onboardingJourney: boolean,
+    search = "",
+  ) {
+    const { load } = await loadModule;
+    try {
+      await load({
+        url: new URL(`https://keys.test${pathname}${search}`),
+        params: { legacy: pathname.split("/connect/")[1] ?? "" },
+        locals: { moduleFlags: { onboardingJourney } },
+      } as never);
+    } catch (e) {
+      return e as { status: number; location: string };
+    }
+    throw new Error("expected redirect");
+  }
+
+  it("dashboard root: ON → /home, OFF → /prove/proof (flag-OFF byte-for-byte)", async () => {
+    const on = await caughtWithLocals(import("../routes/keys/dashboard/+page.server.js"), B, true);
+    expect(on.status).toBe(308);
+    expect(on.location).toBe(`${B}/home`);
+    const off = await caughtWithLocals(import("../routes/keys/dashboard/+page.server.js"), B, false);
+    expect(off.location).toBe(`${B}/prove/proof`);
+  });
+
+  it("dashboard root: ON preserves the query string", async () => {
+    const on = await caughtWithLocals(
+      import("../routes/keys/dashboard/+page.server.js"),
+      B,
+      true,
+      "?template=mythology",
+    );
+    expect(on.location).toBe(`${B}/home?template=mythology`);
+  });
+
+  it("bare /connect: ON → /agents/wiring, OFF → /home (legacy, unchanged)", async () => {
+    const on = await caughtWithLocals(
+      import("../routes/keys/dashboard/connect/[...legacy]/+page.server.js"),
+      `${B}/connect`,
+      true,
+    );
+    expect(on.status).toBe(308);
+    expect(on.location).toBe(`${B}/agents/wiring`);
+    const off = await caughtWithLocals(
+      import("../routes/keys/dashboard/connect/[...legacy]/+page.server.js"),
+      `${B}/connect`,
+      false,
+    );
+    expect(off.location).toBe(`${B}/home`);
+  });
+
+  it("/connect/* sub-redirects are NOT hijacked by the journey branch (ON or OFF)", async () => {
+    // The bare-path consolidation only fires for exactly /connect — sub-paths keep
+    // their legacy 308 targets regardless of the flag.
+    const on = await caughtWithLocals(
+      import("../routes/keys/dashboard/connect/[...legacy]/+page.server.js"),
+      `${B}/connect/graph`,
+      true,
+      "?filter=review",
+    );
+    expect(on.location).toBe(`${B}/claims?filter=review`);
+  });
+
+  it("/build: ON → 308 to the ingest guided flow, OFF → 404 (route does not exist, fully reversible)", async () => {
+    const on = await caughtWithLocals(import("../routes/keys/dashboard/build/+page.server.js"), `${B}/build`, true);
+    expect(on.status).toBe(308);
+    expect(on.location).toBe(`${B}/sources/ingest`);
+    const off = await caughtWithLocals(import("../routes/keys/dashboard/build/+page.server.js"), `${B}/build`, false);
+    expect(off.status).toBe(404);
+  });
+
+  it("/verify: ON → 308 to the make-ready / stamping desk, OFF → 404 (route does not exist, fully reversible)", async () => {
+    const on = await caughtWithLocals(import("../routes/keys/dashboard/verify/+page.server.js"), `${B}/verify`, true);
+    expect(on.status).toBe(308);
+    expect(on.location).toBe(`${B}/claims`);
+    const off = await caughtWithLocals(import("../routes/keys/dashboard/verify/+page.server.js"), `${B}/verify`, false);
+    expect(off.status).toBe(404);
   });
 });
 
