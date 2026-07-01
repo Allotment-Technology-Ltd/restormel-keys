@@ -15,12 +15,16 @@
    * No new queries: every value is read from the streamed load (Pivot 1.8). The
    * `+page.server.ts` is unchanged; the W2.6 no-second-formula test stays green.
    */
+  import { page } from "$app/stores";
   import LivePulse from "$lib/components/dashboard/LivePulse.svelte";
   import ConnectPageSkeleton from "$lib/components/connect/ConnectPageSkeleton.svelte";
   import ConnectVerifiedReadiness from "$lib/components/connect/ConnectVerifiedReadiness.svelte";
   import ConnectSpineLedger from "$lib/components/connect/ConnectSpineLedger.svelte";
   import ConnectGraphSwitcher from "$lib/components/connect/ConnectGraphSwitcher.svelte";
   import ConnectTrustScorecard from "$lib/components/connect/ConnectTrustScorecard.svelte";
+  import M2VerifyHub from "$lib/components/connect/m2/M2VerifyHub.svelte";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+  import type { MakeReadySignals } from "$lib/connect/make-ready-hub";
   import BrutalPageHeader from "$lib/components/brutalist/BrutalPageHeader.svelte";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
@@ -122,6 +126,42 @@
   };
 
   const isFree = data.entitlements?.plan === "free";
+
+  // RES-113 (PR-D): the M2 "Verify" make-ready hub reskins this verified-context
+  // masthead behind the onboarding flag. Default OFF → the existing masthead below
+  // renders byte-for-byte unchanged (the {:else} branch).
+  $: onboardingJourney = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).onboardingJourney;
+
+  /** Map the streamed scorecard + hub graph-stats onto the M2 make-ready signals. */
+  function makeReadySignals(
+    card: ConnectTrustScorecardData | null,
+    hub: ConnectHubPayload | null,
+  ): MakeReadySignals {
+    const stats = hub?.journey.stats ?? null;
+    const v = stats?.validation;
+    return {
+      trustScore: card?.trust_score ?? null,
+      lastVerifiedAt: card?.last_verified_at ?? null,
+      units: card?.units ?? stats?.units ?? 0,
+      embedded: card?.embedding.embedded ?? stats?.embedded ?? 0,
+      evidence: card
+        ? {
+            bound: card.evidence.bound,
+            unbound: card.evidence.unbound,
+            noEvidence: card.evidence.no_evidence,
+            boundPct: card.evidence.bound_pct,
+          }
+        : null,
+      validation: {
+        ok: v?.ok ?? 0,
+        weak: v?.weak ?? 0,
+        unsupported: v?.unsupported ?? 0,
+        unvalidated: v?.unvalidated ?? 0,
+        awaitingTriage: v?.awaiting_triage ?? 0,
+        unsupportedUntriaged: v?.unsupported_untriaged ?? 0,
+      },
+    };
+  }
 
   let retryingHub = false;
   async function retryHub() {
@@ -229,6 +269,17 @@
     </p>
   {/if}
 
+  {#if onboardingJourney}
+    <!-- RES-113 M2: the make-ready hub supersedes the verified-context masthead.
+         Reuses the SAME streamed scorecard + readiness ledger + graph stats. -->
+    {#await Promise.all([data.scorecard, data.hub]) then [card, hub]}
+      <M2VerifyHub
+        signals={makeReadySignals(card, hub)}
+        scorecard={data.scorecard}
+        readiness={hub?.readiness ?? null}
+      />
+    {/await}
+  {:else}
   <!-- ── 1. Trust cap — the masthead numeral (NS §3.3 / rubric R3-V1, R3-V2) ──
        Quotes the scorecard service score — never recomputes (R3-S2). The cap is a
        brutal cap: oversized numeral, flat neon fill, zero radius, hard offset shadow. -->
@@ -459,6 +510,7 @@
       {/snippet}
     </BrutalErrorBanner>
   {/await}
+  {/if}
 
   <!-- Live gateway pulse — the request console below the masthead. -->
   <section class="panel pulse-panel" aria-labelledby="pulse-h">
