@@ -2,8 +2,21 @@
  * Connect hub journey — single source of truth for initial vs operational mode,
  * setup step order, and primary next actions.
  */
-import { AGENTS_HREF, CLAIMS_HREF, RUNS_HREF, INGEST_ROUTES_HREF } from "$lib/nav-config";
+import {
+  AGENTS_HREF,
+  CLAIMS_HREF,
+  RUNS_HREF,
+  INGEST_ROUTES_HREF,
+  INGEST_FLOW_HREF,
+} from "$lib/nav-config";
 import { pipelineWizardHref, withReturnTo, type PipelineWizardStepId } from "$lib/connect/pipeline-config";
+import {
+  buildConnectSpine,
+  type ConnectSpine,
+  type ConnectSpineCta,
+  type ConnectSpineSignals,
+  type ConnectSpineStageId,
+} from "$lib/connect/connect-spine";
 
 
 /** Ingest job is actively executing (not the suite-wide Monitor nav section). */
@@ -417,4 +430,274 @@ export function resolveConnectHubSecondaryActions(params: {
     for (const id of HUB_SECONDARY_OMIT_WHEN_RUN_TILE) omit.add(id);
   }
   return params.operationalActions.filter((a) => !omit.has(a.id));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// M0–M4 onboarding milestone position (RES-113 PR-F)
+//
+// Maps the server-derived Connect spine signals → the single milestone the user
+// is positioned at (m0 Explore → m4 Connect) plus ONE honest next action.
+//
+// ONE adaptive path, NO personas (REC-ADR-020): depth (M2 Verify / M3 Store) is
+// surfaced from real graph state, never a pre-assigned archetype. The position
+// is DERIVED from the same server payload the spine already consumes — there is
+// NO persisted client graph store (REC-ADR-021 §5). This deliberately REUSES the
+// five-stage spine (connect·ingest·make_ready·review·go_live) rather than adding
+// a parallel state machine: the milestone is a view over the spine's stage
+// states, and the next action is the spine's own honest current-stage CTA.
+//
+//   Mandatory spine (every user):  m0 → m1 → m4   (REC-ADR-020)
+//   Opt-in depth, surfaced by state:
+//     • m2 Verify — when the graph has make-ready / review work outstanding.
+//     • m3 Store  — only when the user has opted into bringing their own DB;
+//                   never forced (managed default ⇒ m3 skipped).
+//
+// Milestone ↔ spine stage groups (the spine remains the engine of truth):
+//   m0/m1 ← connect + ingest   m2 ← make_ready + review   m4 ← go_live
+//   m3 has no spine stage (own-DB is an advanced affordance, not a gate).
+//
+// Consumed by PR-B…E (per-milestone reskins: which surface leads) and PR-G (the
+// IA re-spine: which Home tile / section is primary).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type OnboardingMilestoneId = "m0" | "m1" | "m2" | "m3" | "m4";
+
+export type OnboardingMilestoneSection = "home" | "build" | "verify" | "store" | "connect";
+
+/** Milestone → section slug (05_STATE.md §4: m0→home, m1→build, m2→verify, m3→store, m4→connect). */
+export const MILESTONE_SECTION: Record<OnboardingMilestoneId, OnboardingMilestoneSection> = {
+  m0: "home",
+  m1: "build",
+  m2: "verify",
+  m3: "store",
+  m4: "connect",
+};
+
+/** Human label for each milestone (the verb spine). */
+export const MILESTONE_LABEL: Record<OnboardingMilestoneId, string> = {
+  m0: "Explore",
+  m1: "Build",
+  m2: "Verify",
+  m3: "Store",
+  m4: "Connect",
+};
+
+/** A single honest next action — disabled-with-reason when it cannot act yet. */
+export type OnboardingNextAction = {
+  /** Which milestone this action advances. */
+  milestone: OnboardingMilestoneId;
+  label: string;
+  href: string;
+  /** Render inert + show `disabledReason` when true. Never clickable-but-inert. */
+  disabled: boolean;
+  disabledReason: string | null;
+};
+
+export type OnboardingMilestonePosition = {
+  /** First incomplete milestone in the adaptive path (the user's current position). */
+  milestone: OnboardingMilestoneId;
+  label: string;
+  section: OnboardingMilestoneSection;
+  /** "complete" only once m4 is reached and satisfied (live); otherwise "current". */
+  status: "current" | "complete";
+  /** Milestones already satisfied (mandatory + any engaged opt-in depth). */
+  completed: OnboardingMilestoneId[];
+  /** Opt-in depth currently relevant: m2 when there is verify work; m3 when own-DB is engaged. */
+  availableDepth: OnboardingMilestoneId[];
+  /** The one recommended next action — reused from the spine's current-stage CTA where one exists. */
+  nextAction: OnboardingNextAction;
+};
+
+export type OnboardingMilestoneSignals = {
+  /** The same deriving-signals the Connect spine consumes (server-assembled, no client store). */
+  spine: ConnectSpineSignals;
+  /**
+   * M3 own-store depth (opt-in; REC-ADR-017 / REC-ADR-020). `engaged` = the user
+   * has chosen the bring-your-own-database path; `connected` = that store is
+   * read-only-verified and saved. Absent ⇒ the managed default, so M3 is never
+   * forced into the path.
+   */
+  ownStore?: { engaged: boolean; connected: boolean };
+  /**
+   * Count of live app connections / wired agents (M4 terminal — "live = connections>0",
+   * 05_STATE.md §5). Absent ⇒ published stage routes are the proxy for "ready to connect".
+   */
+  connections?: number;
+};
+
+function milestoneStageState(spine: ConnectSpine, id: ConnectSpineStageId) {
+  return spine.stages.find((s) => s.id === id)?.state ?? "unknown";
+}
+
+/**
+ * Pick the honest CTA for a milestone from the spine: prefer the highlighted
+ * current stage when it belongs to this milestone, else the first stage in the
+ * group with outstanding work, else the group's first stage. Reuses the spine's
+ * disabled-with-reason CTAs verbatim so the next action never drifts from it.
+ */
+function spineStageCta(spine: ConnectSpine, ...ids: ConnectSpineStageId[]): ConnectSpineCta | null {
+  if (spine.currentStageId && ids.includes(spine.currentStageId)) {
+    const current = spine.stages.find((s) => s.id === spine.currentStageId);
+    if (current) return current.cta;
+  }
+  for (const id of ids) {
+    const s = spine.stages.find((x) => x.id === id);
+    if (s && s.state !== "done") return s.cta;
+  }
+  const first = spine.stages.find((x) => x.id === ids[0]);
+  return first ? first.cta : null;
+}
+
+function nextActionFromSpine(
+  milestone: OnboardingMilestoneId,
+  cta: ConnectSpineCta | null,
+  fallback: { label: string; href: string },
+): OnboardingNextAction {
+  return {
+    milestone,
+    label: cta?.label ?? fallback.label,
+    href: cta?.href ?? fallback.href,
+    disabled: cta?.disabled ?? false,
+    disabledReason: cta?.disabledReason ?? null,
+  };
+}
+
+function resolveMilestoneNextAction(
+  milestone: OnboardingMilestoneId,
+  status: "current" | "complete",
+  spine: ConnectSpine,
+  ctx: { routesLive: boolean },
+): OnboardingNextAction {
+  switch (milestone) {
+    case "m0":
+      // Toward building the first graph — the spine's setup / ingest entry.
+      return nextActionFromSpine(milestone, spineStageCta(spine, "connect", "ingest"), {
+        label: "Build your graph",
+        href: pipelineWizardHref("store"),
+      });
+    case "m1":
+      return nextActionFromSpine(milestone, spineStageCta(spine, "ingest", "connect"), {
+        label: "Run ingest",
+        href: INGEST_FLOW_HREF,
+      });
+    case "m2":
+      return nextActionFromSpine(milestone, spineStageCta(spine, "make_ready", "review"), {
+        label: "Verify your graph",
+        href: CLAIMS_HREF + "?filter=review",
+      });
+    case "m3":
+      // Own-DB is an advanced affordance with no spine stage of its own.
+      return {
+        milestone,
+        label: "Connect your database",
+        href: pipelineWizardHref("store"),
+        disabled: false,
+        disabledReason: null,
+      };
+    case "m4":
+      if (status === "complete") {
+        return {
+          milestone,
+          label: "Manage connections",
+          href: AGENTS_HREF,
+          disabled: false,
+          disabledReason: null,
+        };
+      }
+      // Current: publish stage routes first; once live, wire the first connection.
+      if (!ctx.routesLive) {
+        return nextActionFromSpine(milestone, spineStageCta(spine, "go_live"), {
+          label: "Publish routes",
+          href: INGEST_ROUTES_HREF,
+        });
+      }
+      return {
+        milestone,
+        label: "Connect your app",
+        href: AGENTS_HREF,
+        disabled: false,
+        disabledReason: null,
+      };
+  }
+}
+
+/**
+ * Derive the M0–M4 milestone position + one next action from the server spine
+ * signals. Pure + deterministic; no persisted client state (REC-ADR-021 §5).
+ *
+ * The position is the FIRST incomplete milestone walking the adaptive path
+ * m0 → m1 → (m2 if verify work) → (m3 if own-DB engaged) → m4. Completion is
+ * read from the spine's own stage states (m2/m4) plus the raw build/own-store
+ * signals (m0/m1/m3), so the milestone never contradicts the spine ledger.
+ */
+export function deriveOnboardingMilestone(
+  signals: OnboardingMilestoneSignals,
+): OnboardingMilestonePosition {
+  const spine = buildConnectSpine(signals.spine);
+  const g = signals.spine.graph;
+  const ingest = signals.spine.ingest;
+  const readiness = signals.spine.readiness;
+
+  // m0 Explore completes once the user moves past pure exploration — a run has
+  // been started OR a graph exists (REC-ADR-021 M0: "M0 collapses into 'ask your
+  // graph' once ingested").
+  const hasRun = Boolean(ingest && (ingest.jobCount > 0 || ingest.latestJob !== null));
+  const graphBuilt = Boolean(g && g.units > 0);
+  const m0done = hasRun || graphBuilt;
+
+  // m1 Build completes when the graph actually exists.
+  const m1done = graphBuilt;
+
+  // m2 Verify: relevant (and outstanding) when make-ready / review still has work.
+  // Derived straight from the spine's stage states so embed + validate + triage
+  // all count — no parallel recomputation.
+  const makeReadyState = milestoneStageState(spine, "make_ready");
+  const reviewState = milestoneStageState(spine, "review");
+  const verifyOutstanding = graphBuilt && (makeReadyState === "current" || reviewState === "current");
+  const m2done = graphBuilt && !verifyOutstanding;
+
+  // m3 Store: opt-in advanced depth — only enters the path when the user has
+  // engaged the bring-your-own-DB flow; never forced.
+  const ownEngaged = signals.ownStore?.engaged ?? false;
+  const ownConnected = signals.ownStore?.connected ?? false;
+  const storeOutstanding = ownEngaged && !ownConnected;
+  const m3done = ownEngaged && ownConnected;
+
+  // m4 Connect: live when stage routes are published (and a graph exists) or,
+  // when a connection count is supplied, when at least one app is connected.
+  const routesLive = Boolean(readiness && readiness.models.modelsReady);
+  const connectionsSatisfied =
+    signals.connections === undefined ? routesLive && graphBuilt : signals.connections > 0;
+  const m4done = connectionsSatisfied;
+
+  const completed: OnboardingMilestoneId[] = [];
+  if (m0done) completed.push("m0");
+  if (m1done) completed.push("m1");
+  if (m2done) completed.push("m2");
+  if (m3done) completed.push("m3");
+  if (m4done) completed.push("m4");
+
+  const availableDepth: OnboardingMilestoneId[] = [];
+  if (verifyOutstanding) availableDepth.push("m2");
+  if (ownEngaged) availableDepth.push("m3");
+
+  let milestone: OnboardingMilestoneId;
+  if (!m0done) milestone = "m0";
+  else if (!m1done) milestone = "m1";
+  else if (verifyOutstanding) milestone = "m2";
+  else if (storeOutstanding) milestone = "m3";
+  else milestone = "m4";
+
+  const status: "current" | "complete" = milestone === "m4" && m4done ? "complete" : "current";
+  const nextAction = resolveMilestoneNextAction(milestone, status, spine, { routesLive });
+
+  return {
+    milestone,
+    label: MILESTONE_LABEL[milestone],
+    section: MILESTONE_SECTION[milestone],
+    status,
+    completed,
+    availableDepth,
+    nextAction,
+  };
 }
