@@ -863,3 +863,21 @@
       restormel-integration-train skill. [PLACEHOLDER — founder: confirm provisioning once the
       Wave-2 live ops above are applied (DB/role, /integration store, var, Argo apply, oauth2-proxy
       + DNS) and the first train run is green.]
+
+  - id: AST-032
+    asset: "Hetzner Load Balancer (restormel-ingress) — public ingress front-end"
+    type: infrastructure/load-balancer
+    owner: founder
+    product: shared
+    location: "Hetzner Cloud hel1 (EU), LB id 6962337, public 77.42.13.120 / private 172.16.0.3 on restormel-internal (AST-011)"
+    notes: >
+      Added 2026-07-01 (RES-124 / RES-134; infra-excellence review §Resilience P0). TCP-passthrough
+      LB (type lb11, ~£/€6/mo) fronting all 3 K3s nodes' Traefik hostPorts (:80→:80, :443→:443,
+      health-check tcp:80, targets via private IP). REMOVES the single-node ingress SPOF that had all
+      public DNS pointed at master1 135.181.25.76 (AST-022) — treats the ingress leg of RISK-001. All
+      public A-records for restormel.dev / allotmentology.tech (incl. git. + secrets., now on-cluster)
+      / usesophia.app / api.plotbudget.com flipped master1 → LB (TTL 300 preserved). TLS stays
+      end-to-end to Traefik (passthrough; cert-manager certs per node). SUB-PROCESSOR: none new — same
+      Hetzner (AST-011/AST-022), so suppliers.yaml UNCHANGED. Failover/rollback runbook:
+      deploy/k3s/runbooks/dns-ingress-failover.md. NOT fronted: coolify.allotmentology.tech (.150),
+      plotbudget.com apex (Vercel).
