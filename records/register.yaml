@@ -1094,6 +1094,18 @@ records:
     retention: review-only
     path: planning/email-system-plan.md
   - id: REC-PLAN-017
+    title: Forgejo-rooted SSO consolidation (estate-wide single sign-on)
+    class: planning
+    status: draft
+    classification: internal
+    control-tier: 1
+    owner: founder
+    last-reviewed: 2026-06-29
+    review-interval: P6M
+    next-review: 2026-12-29
+    retention: review-only
+    path: planning/forgejo-sso-consolidation-plan.md
+  - id: REC-PLAN-017
     title: "Verified Context — market positioning & backlog-prioritisation basis (mid-2026)"
     class: planning
     status: approved
