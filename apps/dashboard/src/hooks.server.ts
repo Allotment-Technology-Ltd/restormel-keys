@@ -108,6 +108,11 @@ export const handle: Handle = async ({ event, resolve }) => {
               authType: "gateway_key",
               projectIdForKey: gateway.projectId,
               keyId: gateway.keyId,
+              // RES-113 PR-L: carry the enforced connection scope so the Connect write path can
+              // gate read vs read+write (under the onboardingJourney flag). NULL on legacy keys.
+              keyAccess: gateway.access,
+              keyType: gateway.keyType,
+              keyStatus: gateway.status,
             };
           } else {
             const mgmt = await verifyManagementKey(bearer);

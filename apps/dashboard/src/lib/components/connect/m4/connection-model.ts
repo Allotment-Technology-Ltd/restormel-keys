@@ -140,6 +140,10 @@ export const TWO_CONNECTIONS_NOTE =
 export const MOCK_SCOPE_NOTE =
   "Access and type are shown as labels for now. Enforced read vs read+write scope arrives with typed connections — until then every key carries today's Gateway scope.";
 
+/** Surfaced when scope is ENFORCED (PR-L, onboardingJourney ON) — the badge means what it says. */
+export const ENFORCED_SCOPE_NOTE =
+  "Access is enforced: a read-only connection can look things up but cannot write to your graph; only a read+write connection can contribute back.";
+
 export function getMethod(id: ConnectionMethodId): ConnectionMethod {
   const m = CONNECTION_METHODS.find((x) => x.id === id);
   if (!m) throw new Error(`unknown connection method: ${id}`);
@@ -229,7 +233,7 @@ export function connectionEndpoint(params: {
   }
 }
 
-/** A connection as the manager renders it (presentational; backed by a real key). */
+/** A connection as the manager renders it (backed by a real key). */
 export type ConnectionView = {
   /** The backing Gateway key id (the connection identity). */
   keyId: string;
@@ -237,14 +241,17 @@ export type ConnectionView = {
   keyPrefix: string;
   /** Human name (the key label, or a derived fallback). */
   name: string;
-  /** Presentational method (mock — see deriveMockMethod). */
+  /** Connection method — the key's persisted `key_type` when enforced, else derived (mock). */
   method: ConnectionMethodId;
-  /** Presentational access (mock — see deriveMockAccess). */
+  /** Access — the key's persisted `access` scope when enforced, else derived (mock). */
   access: ConnectionAccessId;
   /** Owning project id (for delete routing). */
   projectId: string;
-  /** Mock scope is always true in PR-E. */
-  isMockScope: true;
+  /**
+   * PR-E: `true` — method/access are a presentational guess on a flat key (no enforcement).
+   * PR-L (onboardingJourney ON): `false` — the badge reflects the key's REAL enforced scope.
+   */
+  isMockScope: boolean;
 };
 
 /**
@@ -280,22 +287,35 @@ export function connectionName(
   return l || getMethod(method).namePlaceholder;
 }
 
-/** Build the manager's view of a stored Gateway key (presentational typing). */
+/**
+ * Build the manager's view of a stored Gateway key.
+ *
+ * PR-L: when the key carries an ENFORCED scope (`keyType` / `access` persisted on api_keys via
+ * migration 074 — present only with the onboardingJourney flag ON), the view reflects the REAL
+ * scope and `isMockScope` is false. Otherwise it falls back to the PR-E presentational guess from
+ * the label (`isMockScope: true`) — never a security decision, purely cosmetic.
+ */
 export function connectionFromKey(key: {
   id: string;
   keyPrefix: string;
   label?: string | null;
   projectId: string;
+  /** Persisted connection type from the key (PR-L). Null/absent = derive from label (mock). */
+  keyType?: ConnectionMethodId | null;
+  /** Persisted enforced access from the key (PR-L). Null/absent = derive from label (mock). */
+  access?: ConnectionAccessId | null;
 }): ConnectionView {
-  const method = deriveMockMethod(key.label);
+  const enforced = key.keyType != null || key.access != null;
+  const method = key.keyType ?? deriveMockMethod(key.label);
+  const access = key.access ?? deriveMockAccess(key.label);
   return {
     keyId: key.id,
     keyPrefix: key.keyPrefix,
     name: connectionName(key.label, method),
     method,
-    access: deriveMockAccess(key.label),
+    access,
     projectId: key.projectId,
-    isMockScope: true,
+    isMockScope: !enforced,
   };
 }
 

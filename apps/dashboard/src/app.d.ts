@@ -32,6 +32,15 @@ declare global {
         projectIdForKey?: string;
         /** Set when authType is gateway_key or management_key (key id, for audit). */
         keyId?: string;
+        /**
+         * RES-113 PR-L — enforced connection scope on a Gateway key (REC-ADR-018 addendum). Only
+         * set when authType === "gateway_key". NULL = legacy/flat key (grandfathered read+write).
+         * `keyAccess` gates connect.memory.write under the onboardingJourney flag; type/status are
+         * audit/display. See $lib/server/connect/key-scope.
+         */
+        keyAccess?: import("$lib/server/connect/key-scope").KeyAccess | null;
+        keyType?: import("$lib/server/connect/key-scope").KeyConnectionType | null;
+        keyStatus?: import("$lib/server/connect/key-scope").KeyConnectionStatus | null;
         /** Only set when authType === "management_key": workspace-scoped access. */
         workspaceId?: string;
       };

@@ -20,6 +20,14 @@ import {
   secretDisplaySuffix,
 } from "$lib/server/credential-crypto";
 import { resolveModuleFlagsSync } from "$lib/server/module-flags";
+import {
+  normalizeAccess,
+  normalizeConnectionType,
+  normalizeTarget,
+  type KeyAccess,
+  type KeyConnectionStatus,
+  type KeyConnectionType,
+} from "$lib/server/connect/key-scope";
 import { normalizeUpstreamPhysicalKey } from "$lib/server/upstream-physical-key";
 import { normalizeConnectIngestStages } from "@restormel/connect-core";
 import { reconcileConnectIngestJobStagesForApi } from "$lib/connect/ingest-progress-ui";
@@ -142,6 +150,16 @@ export type ApiKeyRecord = {
   label: string | null;
   /** Last time this key authenticated a request (already written on every use at neon.ts:877). */
   lastUsedAt: number | null;
+  /**
+   * RES-113 PR-L — "the key IS the connection" (REC-ADR-018 addendum). Connection type, enforced
+   * access scope, and the served target. NULL on legacy/flat keys (minted before scope existed).
+   * Surfaced so the M4 connections manager renders a stored key as a typed connection.
+   */
+  keyType: KeyConnectionType | null;
+  access: KeyAccess | null;
+  target: string | null;
+  /** Connection status (reuses api_keys.status from 004); null/'active' = live, 'revoked' = dead. */
+  status: KeyConnectionStatus | null;
 };
 
 export function getSql() {
@@ -872,29 +890,62 @@ export type GatewayKeyContext = {
   keyId: string;
   projectId: string;
   userId: string;
+  /**
+   * RES-113 PR-L — enforced connection scope carried on the key (REC-ADR-018 addendum). NULL on
+   * legacy/flat keys. `access` is the read-vs-read+write gate consumed by the Connect memory-write
+   * path; `keyType`/`status` are surfaced for audit/display. These are RETURNED unconditionally;
+   * whether they ENFORCE is decided by `decideMemoryWriteScope` under the onboardingJourney flag —
+   * so reading them here never changes flag-OFF behaviour.
+   */
+  access: KeyAccess | null;
+  keyType: KeyConnectionType | null;
+  status: KeyConnectionStatus | null;
 };
+
+/** Coerce a raw api_keys.status value to the connection status union (null/'active' = live). */
+function normalizeKeyStatus(raw: unknown): KeyConnectionStatus | null {
+  return raw === "revoked" ? "revoked" : raw === "active" ? "active" : null;
+}
 
 /**
  * Verify a raw Gateway key and record last-used. Returns key context or null.
  * Uses same hash as create (SHA-256). Never log or expose raw key.
+ * PR-L: also selects the connection scope (key_type/access/status — migration 074) so the caller
+ * can enforce read-vs-read+write. Selecting these never changes auth: a verified key still
+ * authenticates; the scope only gates the write path under the flag.
  */
 export async function verifyGatewayKey(rawKey: string): Promise<GatewayKeyContext | null> {
   const keyHash = hashKey(rawKey);
   const sql = getSql();
   const rows = await sql`
-    SELECT k.id AS "keyId", k.project_id AS "projectId", p.user_id AS "userId"
+    SELECT k.id AS "keyId", k.project_id AS "projectId", p.user_id AS "userId",
+           k.key_type AS "keyType", k.access AS "access", k.status AS "status"
     FROM api_keys k
     INNER JOIN projects p ON k.project_id = p.id
     WHERE k.key_hash = ${keyHash}
     LIMIT 1
   `;
   if (rows.length === 0) return null;
-  const r = rows[0] as { keyId: string; projectId: string; userId: string };
+  const r = rows[0] as {
+    keyId: string;
+    projectId: string;
+    userId: string;
+    keyType: unknown;
+    access: unknown;
+    status: unknown;
+  };
   const now = Date.now();
   await sql`
     UPDATE api_keys SET last_used_at = ${now} WHERE id = ${r.keyId}
   `;
-  return { keyId: r.keyId, projectId: r.projectId, userId: r.userId };
+  return {
+    keyId: r.keyId,
+    projectId: r.projectId,
+    userId: r.userId,
+    keyType: normalizeConnectionType(r.keyType),
+    access: normalizeAccess(r.access),
+    status: normalizeKeyStatus(r.status),
+  };
 }
 
 /** Result of verifying a Management key (Bearer). Workspace-scoped admin. */
@@ -932,7 +983,8 @@ export async function listApiKeys(projectId: string, userId: string): Promise<Ap
   const sql = getSql();
   const rows = await sql`
     SELECT id, key_prefix AS "keyPrefix", created_at AS "createdAt",
-           label, last_used_at AS "lastUsedAt"
+           label, last_used_at AS "lastUsedAt",
+           key_type AS "keyType", access AS "access", target AS "target", status AS "status"
     FROM api_keys
     WHERE project_id = ${projectId}
     ORDER BY created_at DESC
@@ -944,6 +996,10 @@ export async function listApiKeys(projectId: string, userId: string): Promise<Ap
     createdAt: Number(r.createdAt),
     label: typeof r.label === "string" ? r.label : null,
     lastUsedAt: r.lastUsedAt != null ? Number(r.lastUsedAt) : null,
+    keyType: normalizeConnectionType(r.keyType),
+    access: normalizeAccess(r.access),
+    target: normalizeTarget(r.target),
+    status: normalizeKeyStatus(r.status),
   })) as ApiKeyRecord[];
 }
 
@@ -964,6 +1020,7 @@ export async function listApiKeysByWorkspace(workspaceId: string): Promise<ApiKe
   const rows = await sql`
     SELECT k.id, k.key_prefix AS "keyPrefix",
            k.created_at AS "createdAt", k.label, k.last_used_at AS "lastUsedAt",
+           k.key_type AS "keyType", k.access AS "access", k.target AS "target", k.status AS "status",
            k.project_id AS "projectId", p.name AS "projectName"
     FROM api_keys k
     INNER JOIN projects p ON p.id = k.project_id
@@ -976,6 +1033,10 @@ export async function listApiKeysByWorkspace(workspaceId: string): Promise<ApiKe
     createdAt: Number(r.createdAt),
     label: typeof r.label === "string" ? r.label : null,
     lastUsedAt: r.lastUsedAt != null ? Number(r.lastUsedAt) : null,
+    keyType: normalizeConnectionType(r.keyType),
+    access: normalizeAccess(r.access),
+    target: normalizeTarget(r.target),
+    status: normalizeKeyStatus(r.status),
     projectId: r.projectId,
     projectName: r.projectName,
   })) as ApiKeyWithProject[];
@@ -1003,7 +1064,19 @@ export async function countApiKeysByWorkspace(workspaceId: string): Promise<numb
 export async function createApiKey(
   projectId: string,
   userId: string,
-  options?: { label?: string }
+  options?: {
+    label?: string;
+    /**
+     * RES-113 PR-L — purpose-bind the key as a connection (REC-ADR-018 addendum). When provided,
+     * the key is minted with an enforced scope (type + access + target). Invalid enum values are
+     * coerced to NULL (never throw) — a NULL field just means "unscoped" (legacy behaviour). The
+     * CALLER (keys route) only passes these when the onboardingJourney flag is ON, so a flag-OFF
+     * deployment keeps minting flat label-only keys exactly as before.
+     */
+    keyType?: KeyConnectionType | null;
+    access?: KeyAccess | null;
+    target?: string | null;
+  }
 ): Promise<{ rawKey: string; keyPrefix: string; keyId: string } | null> {
   const project = await getProject(projectId, userId);
   if (!project) return null;
@@ -1014,10 +1087,16 @@ export async function createApiKey(
   const createdAt = Date.now();
   // Trim and cap label; null if empty/absent.
   const label = options?.label ? options.label.trim().slice(0, 120) || null : null;
+  // Defence-in-depth: re-validate the scope at the data layer even though the route validates too.
+  // A bad value becomes NULL (unscoped) rather than persisting garbage; the migration's CHECK
+  // constraints are the final backstop.
+  const keyType = normalizeConnectionType(options?.keyType);
+  const access = normalizeAccess(options?.access);
+  const target = normalizeTarget(options?.target);
   const sql = getSql();
   await sql`
-    INSERT INTO api_keys (id, project_id, key_prefix, key_hash, created_at, label)
-    VALUES (${id}, ${projectId}, ${keyPrefix}, ${keyHash}, ${createdAt}, ${label})
+    INSERT INTO api_keys (id, project_id, key_prefix, key_hash, created_at, label, key_type, access, target)
+    VALUES (${id}, ${projectId}, ${keyPrefix}, ${keyHash}, ${createdAt}, ${label}, ${keyType}, ${access}, ${target})
   `;
   if (project.workspaceId) {
     try {
@@ -1028,7 +1107,11 @@ export async function createApiKey(
         eventType: "gateway_key_created",
         targetType: "gateway_key",
         targetId: id,
-        summary: "Gateway key created",
+        // Record the purpose-binding in the audit trail (no key material). Flat keys read "created".
+        summary:
+          keyType || access
+            ? `Gateway key created — ${keyType ?? "untyped"} connection, ${access ?? "unscoped"} access`
+            : "Gateway key created",
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";

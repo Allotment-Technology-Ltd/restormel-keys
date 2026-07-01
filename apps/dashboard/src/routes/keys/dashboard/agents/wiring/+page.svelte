@@ -57,7 +57,7 @@
         {/snippet}
       </BrutalErrorBanner>
     {:else if onboardingJourney}
-      <ConnectionsManager setup={agentSetup} />
+      <ConnectionsManager setup={agentSetup} enforceScope={onboardingJourney} />
     {:else}
       <ConnectAgentSetup setup={agentSetup} />
     {/if}

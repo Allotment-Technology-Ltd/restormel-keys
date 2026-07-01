@@ -23,16 +23,31 @@
     connectionFromKey,
     getMethod,
     MOCK_SCOPE_NOTE,
+    ENFORCED_SCOPE_NOTE,
     type ConnectionView,
     type ConnectionMethodId,
     type ConnectionAccessId,
   } from "./connection-model";
 
   export let setup: ConnectAgentSetupData;
+  /**
+   * RES-113 PR-L — when true (onboardingJourney flag ON), the key IS the connection: new keys are
+   * minted purpose-bound (type + access + target) and the access badge reflects a REAL enforced
+   * scope. When false, behaviour is the PR-E presentational shell (mock scope, flat keys).
+   */
+  export let enforceScope = false;
 
-  // Connections derived from the workspace's stored Gateway keys (the manager view).
+  // Connections derived from the workspace's stored Gateway keys (the manager view). When scope is
+  // enforced, the key's persisted key_type/access drive the view; otherwise they derive from label.
   let serverConnections: ConnectionView[] = setup.gatewayKeys.map((k) =>
-    connectionFromKey({ id: k.id, keyPrefix: k.keyPrefix, label: k.label, projectId: k.projectId }),
+    connectionFromKey({
+      id: k.id,
+      keyPrefix: k.keyPrefix,
+      label: k.label,
+      projectId: k.projectId,
+      keyType: k.keyType ?? null,
+      access: k.access ?? null,
+    }),
   );
   // Connections minted in this session (authoritative for the chosen method/access).
   let sessionConnections: ConnectionView[] = [];
@@ -89,17 +104,24 @@
     creating = true;
     createError = "";
     try {
+      // PR-L: mint the key purpose-bound. When enforceScope is OFF the server ignores keyType/access
+      // (flat key); when ON it persists + enforces them ("the key IS the connection"). The target is
+      // the graph/workspace this connection serves.
+      const payload: Record<string, unknown> = enforceScope
+        ? { label: name, keyType: method, access, target: setup.workspaceId }
+        : { label: name };
       const res = await fetch(`${DASHBOARD_BASE}/api/projects/${projectId}/keys`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ label: name }),
+        body: JSON.stringify(payload),
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.data?.rawKey) {
         const keyId = typeof body.data.keyId === "string" ? body.data.keyId : "";
         const keyPrefix = typeof body.data.keyPrefix === "string" ? body.data.keyPrefix : "rk_…";
-        // Session-authoritative view: show exactly the chosen method/access.
+        // Session-authoritative view: show exactly the chosen method/access. When scope is enforced
+        // the badge is real (isMockScope false); otherwise it is a presentational label.
         sessionConnections = [
           {
             keyId,
@@ -108,7 +130,7 @@
             method,
             access,
             projectId,
-            isMockScope: true,
+            isMockScope: !enforceScope,
           },
           ...sessionConnections,
         ];
@@ -257,7 +279,7 @@
         />
       {/each}
     </ul>
-    <p class="mock-note" role="note">{MOCK_SCOPE_NOTE}</p>
+    <p class="mock-note" role="note">{enforceScope ? ENFORCED_SCOPE_NOTE : MOCK_SCOPE_NOTE}</p>
     <p class="manage-link">
       <a href={DASHBOARD_BASE + "/access"}>Manage and revoke Gateway keys</a>
     </p>
