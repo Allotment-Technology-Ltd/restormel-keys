@@ -22,10 +22,20 @@
     return index === 0 || navigable;
   }
 
-  function connectorAfter(index: number): "solid" | "dashed" {
-    const next = PIPELINE_WIZARD_STEPS[index + 1];
-    if (!next) return "dashed";
-    if (stepState(PIPELINE_WIZARD_STEPS[index].id) === "completed" && stepState(next.id) === "completed") {
+  /**
+   * RES-122: the connector lives INSIDE the step `<li>` it leads INTO (not as a
+   * separate `<li>` sibling between two steps). `.wizard-steps` wraps at narrow
+   * widths (real dashboard content column is ~640-892px, well under this 4-step
+   * strip's natural width) — with the connector as its own flex sibling, wrapping
+   * could strand it at the end of one row while the step it pointed to landed on
+   * the next, an orphaned dash with no visible step on either side. Bundling
+   * connector+step as one flex item means a wrap can only ever fall BETWEEN
+   * complete units, so the connector always stays attached to its step.
+   */
+  function connectorBefore(index: number): "solid" | "dashed" {
+    const prev = PIPELINE_WIZARD_STEPS[index - 1];
+    if (!prev) return "dashed";
+    if (stepState(prev.id) === "completed" && stepState(PIPELINE_WIZARD_STEPS[index].id) === "completed") {
       return "solid";
     }
     return "dashed";
@@ -44,6 +54,14 @@
         class:wizard-step-active={active}
         class:wizard-step-upcoming={state === "upcoming"}
       >
+        {#if i > 0}
+          <span
+            class="wizard-connector"
+            class:wizard-connector-solid={connectorBefore(i) === "solid"}
+            class:wizard-connector-dashed={connectorBefore(i) === "dashed"}
+            aria-hidden="true"
+          ></span>
+        {/if}
         {#if stepClickable(s.id, i)}
           <button
             type="button"
@@ -61,14 +79,6 @@
           </span>
         {/if}
       </li>
-      {#if i < PIPELINE_WIZARD_STEPS.length - 1}
-        <li
-          class="wizard-connector"
-          class:wizard-connector-solid={connectorAfter(i) === "solid"}
-          class:wizard-connector-dashed={connectorAfter(i) === "dashed"}
-          aria-hidden="true"
-        ></li>
-      {/if}
     {/each}
   </ol>
 </nav>
