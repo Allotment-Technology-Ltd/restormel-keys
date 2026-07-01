@@ -90,8 +90,17 @@ backend is Huly, where statuses are first-class and automatable — the gap Forg
   <intent.yaml> --apply` (idempotent on the intent's match `id`/`query`) — or use the Huly MCP.
   **Batch-review** many tickets' status/priority + post audit notes from one JSON with
   `CHANGESET=<file.json> ./run.sh apply-review.mjs` (dry-run by default; add `--apply` to write; the
-  changeset is `[{id, status?, priority?, note?}]`, status matched by name, priority by enum). ⚠ Never
-  run two `run.sh` at once (fixed port-forward ports). See the `huly-ticket-cli` memory + `huly/README.md`.
+  changeset is `[{id, status?, priority?, note?}]`, status matched by name, priority by enum).
+  **Bulk-create/update many PBIs in one call — with REAL epic → sub-issue nesting** (native Huly
+  parent/child, not a text link — apply-intent.mjs always creates flat top-level issues) via
+  `./run.sh bulk-apply-intents.mjs <batch.json> [--apply]`: pass a JSON/YAML **array** of intents
+  (same shape as below), each optionally carrying a batch-only `tempId` (a local key) and
+  `parentTempId` (nests this ticket as a real sub-issue of the batch item with that `tempId` —
+  parents are always created before children, regardless of array order). Prefer this over looping
+  `apply-intent.mjs` once you have more than ~3 related tickets, or whenever the work genuinely
+  decomposes into an epic + steps. Always dry-run first; it prints a `tempId → identifier` map on
+  `--apply` for cross-linking afterward. ⚠ Never run two `run.sh` at once (fixed port-forward ports).
+  See the `huly-ticket-cli` memory + `huly/README.md`.
 - Use the **Huly MCP** for natural-language create/edit/comment/status, OR the **Huly REST API**
   (`connectRest`, token auth) directly.
 - Set/transition `status/*` via the repointed bridge `product-ops/forgejo-pack/lifecycle/set-status.sh
