@@ -34,8 +34,12 @@ import {
   VERIFY_HREF,
   CONNECT_HUB_HREF,
   AGENTS_WIRING_HREF,
+  resolveJourneyNav,
+  shouldShowVerifyTab,
+  resolveJourneyTopbarTitle,
   type NavItem,
   type NavGroup,
+  type JourneyNavSignals,
 } from "./nav-config";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
@@ -519,5 +523,121 @@ describe("RES-113 journey IA re-spine (onboardingJourney flag-gated)", () => {
 
   it("the Connect nav lands on the M4 wiring surface (catch-all alias target)", () => {
     expect(AGENTS_WIRING_HREF).toBe(DASHBOARD_BASE + "/agents/wiring");
+  });
+});
+
+/**
+ * RES-113 PR-2 — `resolveJourneyNav` (plan §3.5 AFTER-state + founder §4 decisions:
+ * STRIPPED nav, monotonic Verify, Settings from S1, switcher on projectCount > 1).
+ * Flag-ON only; the flag-OFF assertions above are untouched.
+ */
+describe("RES-113 PR-2 — resolveJourneyNav (state-derived journey nav)", () => {
+  const ON = { ...MVP_MODULE_DEFAULTS, onboardingJourney: true, connect: true };
+
+  function sig(over: Partial<JourneyNavSignals> = {}): JourneyNavSignals {
+    return {
+      completedRunCount: 0,
+      units: 0,
+      connectionCount: 0,
+      flaggedClaimCount: 0,
+      everHadVerifyActivity: false,
+      projectCount: 1,
+      ...over,
+    };
+  }
+
+  it("S1 empty — spine is Home · Build · Connect; Connect dimmed with a click-through reason; no Verify", () => {
+    const nav = resolveJourneyNav(sig(), ON);
+    expect(nav.items.map((i) => i.label)).toEqual(["Home", "Build", "Connect"]);
+    const connect = nav.items.find((i) => i.label === "Connect")!;
+    expect(connect.reachable).toBe(false);
+    // STRIPPED nav: the reason travels for the click-through, NOT rendered inline.
+    expect(connect.lockReason).toMatch(/build your graph first/i);
+    expect(nav.showVerify).toBe(false);
+    expect(nav.items.some((i) => i.label === "Verify")).toBe(false);
+  });
+
+  it("Home and Build are always reachable (no lock reason)", () => {
+    const nav = resolveJourneyNav(sig(), ON);
+    for (const label of ["Home", "Build"]) {
+      const item = nav.items.find((i) => i.label === label)!;
+      expect(item.reachable).toBe(true);
+      expect(item.lockReason).toBeNull();
+    }
+  });
+
+  it("S2 — a completed run unlocks Connect (reachable, no reason)", () => {
+    const nav = resolveJourneyNav(sig({ completedRunCount: 1 }), ON);
+    const connect = nav.items.find((i) => i.label === "Connect")!;
+    expect(connect.reachable).toBe(true);
+    expect(connect.lockReason).toBeNull();
+  });
+
+  it("a built graph (units > 0) also unlocks Connect even before a run count is known", () => {
+    expect(resolveJourneyNav(sig({ units: 42 }), ON).items.find((i) => i.label === "Connect")!.reachable).toBe(true);
+  });
+
+  it("S3 — flagged claims now: Verify enters between Build and Connect", () => {
+    const nav = resolveJourneyNav(sig({ completedRunCount: 1, flaggedClaimCount: 6 }), ON);
+    expect(nav.items.map((i) => i.label)).toEqual(["Home", "Build", "Verify", "Connect"]);
+    expect(nav.showVerify).toBe(true);
+  });
+
+  it("Verify is MONOTONIC — stays once ever warranted, even when flagged drops to 0", () => {
+    // No flagged claims NOW, but the server says verify activity has ever happened.
+    const nav = resolveJourneyNav(sig({ completedRunCount: 1, flaggedClaimCount: 0, everHadVerifyActivity: true }), ON);
+    expect(nav.showVerify).toBe(true);
+    expect(nav.items.some((i) => i.label === "Verify")).toBe(true);
+  });
+
+  it("Verify absent when neither flagged-now NOR ever-had-activity (forward-only degraded case)", () => {
+    expect(resolveJourneyNav(sig({ flaggedClaimCount: 0, everHadVerifyActivity: false }), ON).showVerify).toBe(false);
+  });
+
+  it("shouldShowVerifyTab: flagged-now OR ever-had-activity", () => {
+    expect(shouldShowVerifyTab(sig({ flaggedClaimCount: 1 }))).toBe(true);
+    expect(shouldShowVerifyTab(sig({ everHadVerifyActivity: true }))).toBe(true);
+    expect(shouldShowVerifyTab(sig())).toBe(false);
+  });
+
+  it("Settings group (incl. Store) is present from S1, collapsed", () => {
+    const nav = resolveJourneyNav(sig(), ON);
+    expect(nav.groups.map((g) => g.label)).toEqual(["Settings"]);
+    expect(nav.groups[0].defaultOpen).toBe(false);
+    expect(nav.groups[0].items.map((i) => i.label)).toContain("Store");
+  });
+
+  it("project switcher shows only when projectCount > 1", () => {
+    expect(resolveJourneyNav(sig({ projectCount: 1 }), ON).showProjectSwitcher).toBe(false);
+    expect(resolveJourneyNav(sig({ projectCount: 2 }), ON).showProjectSwitcher).toBe(true);
+    expect(resolveJourneyNav(sig({ projectCount: 0 }), ON).showProjectSwitcher).toBe(false);
+  });
+
+  it("full spine at S4 (connected): Home · Build · (Verify?) · Connect all reachable", () => {
+    const nav = resolveJourneyNav(sig({ completedRunCount: 2, units: 100, connectionCount: 3 }), ON);
+    for (const item of nav.items) expect(item.reachable).toBe(true);
+    expect(nav.items.find((i) => i.label === "Connect")!.reachable).toBe(true);
+  });
+});
+
+describe("RES-113 PR-2 — resolveJourneyTopbarTitle (journey verb titles, flag-gated)", () => {
+  const OFF = { ...MVP_MODULE_DEFAULTS, onboardingJourney: false };
+  const ON = { ...MVP_MODULE_DEFAULTS, onboardingJourney: true, connect: true };
+
+  it("flag OFF — delegates to topbarTitle byte-for-byte (Home stays 'Operator home')", () => {
+    expect(resolveJourneyTopbarTitle(HOME_HREF, OFF)).toBe(topbarTitle(HOME_HREF));
+    expect(resolveJourneyTopbarTitle(HOME_HREF, OFF)).toBe("Operator home");
+  });
+
+  it("flag ON — spine paths get verb titles; Home is 'Home'", () => {
+    expect(resolveJourneyTopbarTitle(HOME_HREF, ON)).toBe("Home");
+    expect(resolveJourneyTopbarTitle(BUILD_HREF, ON)).toBe("Build");
+    expect(resolveJourneyTopbarTitle(VERIFY_HREF, ON)).toBe("Verify");
+    expect(resolveJourneyTopbarTitle(CONNECT_HUB_HREF, ON)).toBe("Connect");
+  });
+
+  it("flag ON — non-spine paths fall back to topbarTitle (Settings/advanced unchanged)", () => {
+    expect(resolveJourneyTopbarTitle(INGEST_ROUTES_HREF, ON)).toBe(topbarTitle(INGEST_ROUTES_HREF));
+    expect(resolveJourneyTopbarTitle(RUNS_HREF, ON)).toBe(topbarTitle(RUNS_HREF));
   });
 });

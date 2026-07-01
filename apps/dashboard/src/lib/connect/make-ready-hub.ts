@@ -126,18 +126,29 @@ function gate(id: MakeReadyGateId, state: MakeReadyGateState, pct: number | null
   return { id, ...GATE_COPY[id], state, chipState: chip.chipState, chipLabel: chip.chipLabel, pct, detail, needsYou };
 }
 
-/** Sources gate — every idea bound to a source (scorecard EBV Layer-1 binding). */
+/**
+ * Sources gate — every idea bound to a source (scorecard EBV Layer-1 binding).
+ *
+ * The `units <= 0` "no ideas yet" fabricated branch is DELETED (REC-ADR-016): the
+ * gates never render on an empty workspace (Home mounts M2 content only for the
+ * `triage`/`ready` surface — see `resolveM2Surface`), so a fake "running" state for
+ * `units === 0` was unreachable-in-truth and dishonest. The genuine "signal
+ * unavailable" case (`evidence === null` — the scorecard could not be read) stays:
+ * that is an honest "computing", not a fabricated empty state.
+ */
 export function buildSourcesGate(s: MakeReadySignals): MakeReadyGate {
-  if (s.units <= 0) return gate("sources", "running", null, "no ideas yet", false);
   if (!s.evidence) return gate("sources", "running", null, "reading source links…", false);
   const needLink = s.evidence.unbound + s.evidence.noEvidence;
   if (needLink <= 0) return gate("sources", "done_auto", 100, `all ${num(s.evidence.bound)} grounded`, false);
   return gate("sources", "needs_you", s.evidence.boundPct, `${num(needLink)} need a link`, true);
 }
 
-/** Embed gate — vectorised for retrieval. Runs itself; never blocks the user. */
+/**
+ * Embed gate — vectorised for retrieval. Runs itself; never blocks the user.
+ * (`units <= 0` fabricated branch deleted — REC-ADR-016; the gate never renders
+ * pre-graph.)
+ */
 export function buildEmbedGate(s: MakeReadySignals): MakeReadyGate {
-  if (s.units <= 0) return gate("embed", "running", null, "no ideas yet", false);
   const pct = pctOf(s.embedded, s.units);
   if (s.embedded >= s.units) return gate("embed", "done_auto", 100, `${num(s.embedded)} vectors`, false);
   return gate("embed", "running", pct, `${num(s.embedded)} of ${num(s.units)} vectorised`, false);
@@ -147,10 +158,10 @@ export function buildEmbedGate(s: MakeReadySignals): MakeReadyGate {
  * Validate gate — the trust gate. DONE means every flagged claim carries a
  * verdict (`awaitingTriage === 0`), NOT that weak/unsupported reached zero
  * (accept-guard: a triaged-weak claim is finished, not a failure).
+ * (`units <= 0` fabricated branch deleted — REC-ADR-016.)
  */
 export function buildValidateGate(s: MakeReadySignals): MakeReadyGate {
   const v = s.validation;
-  if (s.units <= 0) return gate("validate", "running", null, "no ideas yet", false);
   const triaged = v.ok + v.weak + v.unsupported;
   const considered = triaged + v.awaitingTriage;
   const pct = pctOf(triaged, considered);
@@ -185,7 +196,11 @@ export type MakeReadyTrustMeter = {
  * is no live-climbing number (REC-ADR-016 / SESSION_TRUST_DELTA_DEFERRED).
  */
 export function buildTrustMeter(s: MakeReadySignals): MakeReadyTrustMeter {
-  if (s.units <= 0 || s.trustScore === null) {
+  // Honest absent: a null score has nothing to show. The `units <= 0` half of this
+  // guard is DELETED (REC-ADR-016) — the meter never renders pre-graph (Home gates
+  // M2 on `resolveM2Surface`), and a graph with units but a genuinely-null score is
+  // still "no score yet", driven by the score itself, not a fabricated unit check.
+  if (s.trustScore === null) {
     return { score: s.trustScore, recomputeState: "idle", recomputeLabel: "No graph yet", lastVerifiedAt: s.lastVerifiedAt };
   }
   if (s.validation.awaitingTriage > 0) {
@@ -218,14 +233,10 @@ export type MakeReadyVerdict = {
  */
 export function resolveMarkReady(s: MakeReadySignals): MakeReadyVerdict {
   const gatesNeedingYou = buildMakeReadyGates(s).filter((g) => g.needsYou).length;
-  if (s.units <= 0) {
-    return {
-      ready: false,
-      reason: "No graph yet — run an ingest first.",
-      outstandingTriage: 0,
-      gatesNeedingYou,
-    };
-  }
+  // The `units <= 0` "No graph yet" branch is DELETED (REC-ADR-016): the mark-ready
+  // guard only ever runs inside the `ready`/`triage` M2 surface (a built graph), so
+  // the pre-graph case is handled upstream by `resolveM2Surface` returning "hidden"
+  // — this function no longer fabricates a no-graph verdict of its own.
   const outstanding = s.validation.awaitingTriage;
   if (outstanding > 0) {
     return {
@@ -247,4 +258,68 @@ export function makeReadySummary(s: MakeReadySignals): { gatesNeedingYou: number
   const need = gates.filter((g) => g.needsYou).length;
   const line = need === 0 ? "all gates clear" : need === 1 ? "1 of 3 needs you" : `${need} of 3 need you`;
   return { gatesNeedingYou: need, total: gates.length, line };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// M2 surface resolution (RES-113 PR-2 / plan §3.3)
+//
+// ONE pure predicate for "does the Verify (M2) surface show, and in what mode".
+// Both `deriveOnboardingMilestone` (connect-journey.ts) and the Home/`/verify`
+// shells consume this so the make-ready gates and the milestone position can never
+// disagree about whether M2 is outstanding.
+//
+// The "outstanding verify work" signal is DERIVED FROM THE SPINE stage states
+// (make_ready / review) — exactly the logic previously private inside
+// `deriveOnboardingMilestone` as `verifyOutstanding`, promoted here so it has one
+// home. connect-journey.ts calls `isVerifyOutstanding` with the spine's own stage
+// states; there is no parallel recomputation.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The M2 surface mode (plan §3.3). */
+export type M2Surface =
+  /** No built graph — the Verify surface renders zero pixels on Home (the nav tab is the only wayfinding). */
+  | "hidden"
+  /** Built graph with outstanding verify work — the triage-led hub. */
+  | "triage"
+  /** Built graph, verify work cleared — the confirmation / "mark ready" surface. */
+  | "ready";
+
+/**
+ * The spine-derived signals `resolveM2Surface` needs. `graphBuilt` gates the whole
+ * surface (`!graphBuilt` ⇒ hidden). The two spine stage states are passed verbatim
+ * from `buildConnectSpine(...).stages` so this is the SAME truth the milestone uses
+ * — no re-derivation. A stage is "outstanding" exactly when it is `current` (the
+ * spine's own definition of "act on this now").
+ */
+export type M2SurfaceSignals = {
+  graphBuilt: boolean;
+  /** The spine `make_ready` stage state (embed/link/validate work). */
+  makeReadyState: string;
+  /** The spine `review` stage state (flagged-claim triage work). */
+  reviewState: string;
+};
+
+/**
+ * True when the graph is built AND the spine still has make-ready or review work
+ * outstanding (either stage is `current`). This is the single definition of
+ * "verify work remains" — promoted out of `deriveOnboardingMilestone`'s private
+ * scope so `connect-journey.ts` and the M2 surface can never drift apart.
+ */
+export function isVerifyOutstanding(signals: M2SurfaceSignals): boolean {
+  return (
+    signals.graphBuilt &&
+    (signals.makeReadyState === "current" || signals.reviewState === "current")
+  );
+}
+
+/**
+ * Resolve the M2 Verify surface mode (plan §3.3):
+ *   • `hidden` when there is no built graph — the spine's nav tab is the only
+ *     wayfinding; Home mounts zero M2 pixels (REC-ADR-020: never forced/default).
+ *   • `triage` when the graph is built and verify work is outstanding.
+ *   • `ready`  when the graph is built and verify work is cleared.
+ */
+export function resolveM2Surface(signals: M2SurfaceSignals): M2Surface {
+  if (!signals.graphBuilt) return "hidden";
+  return isVerifyOutstanding(signals) ? "triage" : "ready";
 }

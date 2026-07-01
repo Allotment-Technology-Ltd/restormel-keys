@@ -395,3 +395,154 @@ export function resolveTestingNavForModuleFlags(flags: ModuleFlags): NavItem | n
 export function resolveWorkspaceHomeHref(flags: ModuleFlags): string {
   return flags.onboardingJourney ? JOURNEY_WORKSPACE_HOME_HREF : WORKSPACE_HOME_HREF;
 }
+
+// ── RES-113 PR-2 — state-derived journey nav (`resolveJourneyNav`) ────────────
+//
+// Plan §3.5 AFTER-state, implementing the founder's decisions (plan §4):
+//   • STRIPPED / MINIMAL nav (§4.2): the mandatory spine (Home · Build · Connect)
+//     is ALWAYS rendered; unreachable items render DIMMED with NO dots, NO inline
+//     lock-reason text, NO Verify count badge. The reason string still travels on
+//     each item (`lockReason`) for the click-through explanation — the reason lives
+//     BEHIND the click, not in the chrome. This function returns the reason; the
+//     shell decides to reveal it only on interaction.
+//   • Verify (§4.4) enters per the ADR-020 trigger (flagged/low-trust claims) and is
+//     MONOTONIC once shown — derived from a SERVER-derived "has ever shown" signal,
+//     never client persistence (see `everHadVerifyActivity` below).
+//   • Settings group incl. Store (§4.3) present FROM S1 (empty workspace) onward,
+//     collapsed — reuses `JOURNEY_NAV_GROUPS` (the layout's monitor filter still
+//     applies on top).
+//   • Project switcher (§3.5 Mechanics) shown ONLY when `projectCount > 1`.
+//
+// This is used ONLY by the flag-ON branch. `resolveWorkNavForModuleFlags` and every
+// flag-OFF path are untouched — flag-OFF byte-identity is preserved by construction.
+
+/** A journey nav item with its reachability + the (chrome-free) click-through reason. */
+export type JourneyNavItem = NavItem & {
+  /**
+   * False ⇒ render DIMMED (stripped-nav §4.2 — no inline reason, no dot). The shell
+   * dims it and reveals `lockReason` only on click. True ⇒ normal reachable item.
+   */
+  reachable: boolean;
+  /**
+   * Why the item is unreachable — surfaced ONLY via the click-through explanation,
+   * NEVER inline in the nav chrome (founder §4.2). Null when `reachable`.
+   */
+  lockReason: string | null;
+};
+
+/** The server-derived signals `resolveJourneyNav` needs (plan §3.5 Mechanics). */
+export type JourneyNavSignals = {
+  /** ≥1 completed ingest run (S2 gate — unlocks Connect). */
+  completedRunCount: number;
+  /** Idea/unit count (`> 0` ⇒ a graph is built — a second, robust "past empty" cue). */
+  units: number;
+  /** Live app connections (S4 — full spine, CTA becomes ask/prove). */
+  connectionCount: number;
+  /** Flagged claims awaiting triage RIGHT NOW (the ADR-020 forward Verify trigger). */
+  flaggedClaimCount: number;
+  /**
+   * SERVER-derived "Verify has ever been warranted" — the monotonic anchor (§4.4).
+   * True when any historical verify activity exists (e.g. a claim was ever flagged /
+   * triaged / a make-ready pass ever ran), independent of whether anything is flagged
+   * NOW. This is what makes the Verify tab persist once shown WITHOUT client
+   * persistence. See the caller (`+layout.server.ts`) for how it is computed; when the
+   * server cannot supply it, it falls back to `flaggedClaimCount > 0` (forward-only —
+   * safe: the tab simply is not monotonic in that degraded case, never wrongly shown).
+   */
+  everHadVerifyActivity: boolean;
+  /** Number of projects (switcher shows only when > 1). */
+  projectCount: number;
+};
+
+export type JourneyNav = {
+  /** The always-rendered spine + Verify (when shown), in order, with reachability. */
+  items: JourneyNavItem[];
+  /** The collapsed Settings group (present from S1) — reuses JOURNEY_NAV_GROUPS. */
+  groups: NavGroup[];
+  /** Whether the project switcher renders (projectCount > 1). */
+  showProjectSwitcher: boolean;
+  /** Whether the Verify item is present (monotonic — flagged now OR ever had activity). */
+  showVerify: boolean;
+};
+
+/**
+ * Journey-branch topbar titles (plan §3.5 Mechanics: `PATH_TO_TITLE` → "Home" +
+ * verb titles). Overrides ONLY the spine paths for the flag-ON branch; every other
+ * path falls back to the north-star `topbarTitle`. This is a separate map so the
+ * flag-OFF `PATH_TO_TITLE` / `topbarTitle` stay byte-identical (Home is "Operator
+ * home" on the flag-OFF path; "Home" only under the journey IA).
+ */
+const JOURNEY_PATH_TO_TITLE: Record<string, string> = {
+  [HOME_HREF]: "Home",
+  [BUILD_HREF]: "Build",
+  [VERIFY_HREF]: "Verify",
+  [CONNECT_HUB_HREF]: "Connect",
+};
+
+/**
+ * Topbar title, flag-resolved. OFF ⇒ the north-star `topbarTitle` (byte-identical).
+ * ON ⇒ the journey verb titles for the spine paths, falling back to `topbarTitle`
+ * for everything else (Settings/advanced surfaces keep their existing titles).
+ */
+export function resolveJourneyTopbarTitle(pathname: string, flags: ModuleFlags): string {
+  if (!flags.onboardingJourney) return topbarTitle(pathname);
+  return JOURNEY_PATH_TO_TITLE[pathname] ?? topbarTitle(pathname);
+}
+
+/**
+ * Whether the Verify tab shows — the MONOTONIC trigger (§4.4). Shown when Verify is
+ * warranted NOW (`flaggedClaimCount > 0`) OR has EVER been warranted
+ * (`everHadVerifyActivity`, server-derived). Monotonic without client persistence:
+ * once any historical activity exists, the server signal stays true, so the tab does
+ * not flicker as `flaggedClaimCount` oscillates.
+ */
+export function shouldShowVerifyTab(signals: JourneyNavSignals): boolean {
+  return signals.flaggedClaimCount > 0 || signals.everHadVerifyActivity;
+}
+
+/**
+ * Resolve the state-derived journey nav (flag-ON only). The mandatory spine is
+ * ALWAYS present (never hidden); Build/Connect dim with a click-through reason when
+ * unreachable; Verify enters monotonically. Pure + deterministic.
+ *
+ * Reachability (plan §3.5 States):
+ *   • Home    — always reachable (the landing).
+ *   • Build   — always reachable (M1 ingest is available from S1).
+ *   • Verify  — present per `shouldShowVerifyTab`; reachable when present.
+ *   • Connect — reachable once a graph exists (≥1 completed run OR units > 0);
+ *               otherwise dimmed with "Build your graph first" behind the click.
+ */
+export function resolveJourneyNav(signals: JourneyNavSignals, flags: ModuleFlags): JourneyNav {
+  const graphExists = signals.completedRunCount > 0 || signals.units > 0;
+  const showVerify = shouldShowVerifyTab(signals);
+
+  const items: JourneyNavItem[] = [
+    { href: HOME_HREF, label: "Home", reachable: true, lockReason: null },
+    { href: BUILD_HREF, label: "Build", reachable: true, lockReason: null },
+  ];
+
+  // Verify enters monotonically, between Build and Connect (verb-spine order).
+  if (showVerify) {
+    items.push({ href: VERIFY_HREF, label: "Verify", reachable: true, lockReason: null });
+  }
+
+  // Connect is ALWAYS rendered (never hidden — §3.5 "Explicitly rejected: hiding
+  // Connect pre-ingest"); dimmed with a click-through reason until a graph exists.
+  items.push({
+    href: CONNECT_HUB_HREF,
+    label: "Connect",
+    reachable: graphExists,
+    lockReason: graphExists ? null : "Build your graph first — there is nothing to connect yet.",
+  });
+
+  // Settings (incl. Store) present from S1, collapsed — reuse the flag-ON groups.
+  // The layout's dashboard-ui/monitor filter still applies on top (Audit log / Metrics).
+  const groups = resolveNavGroupsForModuleFlags(flags);
+
+  return {
+    items,
+    groups,
+    showProjectSwitcher: signals.projectCount > 1,
+    showVerify,
+  };
+}

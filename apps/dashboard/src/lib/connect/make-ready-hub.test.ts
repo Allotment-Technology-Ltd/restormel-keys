@@ -15,7 +15,10 @@ import {
   buildTrustMeter,
   resolveMarkReady,
   makeReadySummary,
+  resolveM2Surface,
+  isVerifyOutstanding,
   type MakeReadySignals,
+  type M2SurfaceSignals,
 } from "./make-ready-hub";
 
 function signals(over: Partial<MakeReadySignals> = {}): MakeReadySignals {
@@ -95,10 +98,15 @@ describe("mark-ready guard (accept-guard honesty)", () => {
     expect(v.outstandingTriage).toBe(47);
   });
 
-  it("blocks (with a run-ingest reason) when there is no graph yet", () => {
+  // NOTE (RES-113 PR-2 / REC-ADR-016): the fabricated `units <= 0` "No graph yet"
+  // branch was deleted from resolveMarkReady. The pre-graph case is now owned upstream
+  // by resolveM2Surface returning "hidden" — the mark-ready guard only ever runs inside
+  // a built-graph (triage/ready) surface, so it no longer invents a no-graph verdict.
+  // The guard now decides purely on outstanding triage: nothing awaiting ⇒ ready.
+  it("no longer fabricates a no-graph verdict — clears when nothing awaits triage", () => {
     const v = resolveMarkReady(signals({ units: 0, trustScore: null }));
-    expect(v.ready).toBe(false);
-    expect(v.reason).toContain("run an ingest");
+    expect(v.ready).toBe(true);
+    expect(v.reason).toBeNull();
   });
 });
 
@@ -137,5 +145,47 @@ describe("make-ready summary tally", () => {
 
   it("reads 'all gates clear' when nothing needs the user", () => {
     expect(makeReadySummary(signals()).line).toBe("all gates clear");
+  });
+});
+
+describe("resolveM2Surface (plan §3.3 — the single M2 gate)", () => {
+  function m2(over: Partial<M2SurfaceSignals> = {}): M2SurfaceSignals {
+    return { graphBuilt: true, makeReadyState: "done", reviewState: "done", ...over };
+  }
+
+  it("hidden when no graph is built (zero M2 pixels on Home — the nav tab is wayfinding)", () => {
+    expect(resolveM2Surface(m2({ graphBuilt: false }))).toBe("hidden");
+    // hidden regardless of any leaked stage state — the graph gate wins.
+    expect(resolveM2Surface(m2({ graphBuilt: false, makeReadyState: "current" }))).toBe("hidden");
+  });
+
+  it("triage when built with make-ready work outstanding (make_ready is current)", () => {
+    expect(resolveM2Surface(m2({ makeReadyState: "current" }))).toBe("triage");
+  });
+
+  it("triage when built with review work outstanding (review is current)", () => {
+    expect(resolveM2Surface(m2({ reviewState: "current" }))).toBe("triage");
+  });
+
+  it("ready when built and all verify work is cleared", () => {
+    expect(resolveM2Surface(m2())).toBe("ready");
+  });
+
+  it("non-'current' spine states (todo/blocked/done/unknown) are NOT outstanding", () => {
+    for (const state of ["todo", "blocked", "done", "unknown"]) {
+      expect(resolveM2Surface(m2({ makeReadyState: state, reviewState: state }))).toBe("ready");
+    }
+  });
+
+  it("isVerifyOutstanding matches resolveM2Surface's triage branch exactly", () => {
+    const cases: M2SurfaceSignals[] = [
+      m2({ graphBuilt: false, makeReadyState: "current" }),
+      m2({ makeReadyState: "current" }),
+      m2({ reviewState: "current" }),
+      m2(),
+    ];
+    for (const c of cases) {
+      expect(isVerifyOutstanding(c)).toBe(resolveM2Surface(c) === "triage");
+    }
   });
 });
