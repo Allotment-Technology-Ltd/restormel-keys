@@ -10,10 +10,15 @@
 import {
   CONNECT_API_CONTRACT_VERSION,
   type ConnectGraphOpRequest,
+  type ConnectReadTimeRecheckMetadata,
   type ConnectRetrieveRequest,
   type ConnectRetrieveResponse,
 } from "@restormel/contracts/connect";
 import { getConnectGraphTargetForWorkspace } from "$lib/server/neon";
+import {
+  applyReadTimeRecheckToEnvelopes,
+  type ResolveClaimRecheck,
+} from "$lib/server/connect/read-time-recheck-retrieval";
 import type { ConnectV1AuthScope } from "./auth.js";
 import { executeConnectGraphOp } from "./graph-orchestrator-service.js";
 import {
@@ -56,6 +61,13 @@ export async function executeConnectRetrieve(args: {
   auth: ConnectV1AuthScope;
   request: ConnectRetrieveRequest;
   requestId: string;
+  /**
+   * EBV read-time freshness enforcement (docs/decisions/evidence-bound-verification.md §2).
+   * Injected by the route so this service stays pure/unit-testable. ABSENT or
+   * `enforce: false` ⇒ retrieval is byte-for-byte unchanged (the strict no-op guarantee /
+   * flag-OFF path). Only `require_verified` requests are gated.
+   */
+  readTimeRecheck?: { enforce: boolean; resolve: ResolveClaimRecheck };
 }): Promise<ConnectRetrieveServiceOutcome> {
   const { auth, request, requestId } = args;
   const seed = request.seed_claim_id?.trim();
@@ -118,6 +130,39 @@ export async function executeConnectRetrieve(args: {
     degradedReason = byoDegradedMessage(degradedCode);
   }
 
+  // EBV read-time freshness enforcement (ADR §2): for a require_verified retrieval, re-run
+  // a fresh deterministic Layer-1 pass over the served supported/inferred claims and demote
+  // any whose source version has rotted. Off by default (flag-OFF / no injection) ⇒ the
+  // stored verified_claims/summary are used unchanged.
+  let verifiedClaims = body.verified_claims;
+  let verificationSummary = body.metadata.verification_summary;
+  let readTimeRecheck: ConnectReadTimeRecheckMetadata | undefined;
+  if (
+    args.readTimeRecheck?.enforce &&
+    request.require_verified &&
+    verifiedClaims &&
+    verifiedClaims.length > 0
+  ) {
+    const applied = await applyReadTimeRecheckToEnvelopes({
+      verifiedClaims,
+      resolve: args.readTimeRecheck.resolve,
+    });
+    verifiedClaims = applied.verifiedClaims;
+    verificationSummary = applied.verificationSummary;
+    readTimeRecheck = {
+      applied: applied.summary.applied,
+      rechecked: applied.summary.rechecked,
+      fresh: applied.summary.fresh,
+      demoted: applied.summary.demoted,
+      ...(Object.keys(applied.summary.demoted_by_reason).length > 0
+        ? { demoted_by_reason: applied.summary.demoted_by_reason }
+        : {}),
+      // The rendered context_block predates the recheck — flag when it may carry a demoted
+      // claim (purging it pre-assembly is the orchestrator's env-pending job).
+      ...(applied.demotedIds.length > 0 ? { context_block_stale: true } : {}),
+    };
+  }
+
   const response: ConnectRetrieveResponse = {
     contract_version: CONNECT_API_CONTRACT_VERSION,
     request_id: requestId,
@@ -127,13 +172,12 @@ export async function executeConnectRetrieve(args: {
     graph: degraded || !subgraph ? undefined : connectGraphSubgraphToGraph(subgraph),
     // Stage 1.1: verified-claim envelope per returned unit (state, evidence, judge,
     // citation, trace link) — see @restormel/contracts/verified-claim and the EBV ADR.
-    ...(body.verified_claims ? { verified_claims: body.verified_claims } : {}),
+    ...(verifiedClaims ? { verified_claims: verifiedClaims } : {}),
     metadata: {
       claims_retrieved: claimsCount,
       arguments_retrieved: subgraph?.arguments.length ?? 0,
-      ...(body.metadata.verification_summary
-        ? { verification_summary: body.metadata.verification_summary }
-        : {}),
+      ...(verificationSummary ? { verification_summary: verificationSummary } : {}),
+      ...(readTimeRecheck ? { read_time_recheck: readTimeRecheck } : {}),
       // Stage 3.3: temporal-filtering report (as_of/audit), incl. explicit degrades.
       ...(temporal ? { temporal } : {}),
       retrieval_degraded: degraded,

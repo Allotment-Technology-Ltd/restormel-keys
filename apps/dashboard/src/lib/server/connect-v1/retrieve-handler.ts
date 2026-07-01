@@ -2,6 +2,10 @@
  * POST /connect/v1/retrieve — Knowledge Retrieve (BYO graph store).
  */
 import { ConnectRetrieveRequestSchema } from "@restormel/contracts/connect";
+import {
+  isReadTimeRecheckEnforced,
+  makeUnitRecheckResolver,
+} from "$lib/server/connect/read-time-recheck-retrieval";
 import { authorizeKnowledgeWorkspaceRequest } from "./auth.js";
 import { executeConnectRetrieve } from "./retrieve-service.js";
 
@@ -35,10 +39,22 @@ export async function handleKnowledgeRetrieve(args: {
     return { ok: false, status: auth.status, body: { error: auth.error, message: auth.message } };
   }
 
+  // EBV read-time freshness enforcement is gated by the RES-113 cut (CONNECT_READ_TIME_RECHECK,
+  // flipped with the onboardingJourney rollout). When off, no capability is injected and
+  // retrieval behaves exactly as before. The store-backed resolver is request-scoped.
+  const enforce = isReadTimeRecheckEnforced();
   const outcome = await executeConnectRetrieve({
     auth,
     request: parsed.data,
     requestId: args.requestId,
+    ...(enforce
+      ? {
+          readTimeRecheck: {
+            enforce: true,
+            resolve: makeUnitRecheckResolver({ workspaceId: auth.workspaceId }),
+          },
+        }
+      : {}),
   });
   if (!outcome.ok) {
     return { ok: false, status: outcome.status, body: outcome.body };

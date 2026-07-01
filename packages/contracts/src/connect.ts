@@ -190,6 +190,39 @@ export const ConnectTemporalMetadataSchema = z.object({
 });
 export type ConnectTemporalMetadata = z.infer<typeof ConnectTemporalMetadataSchema>;
 
+/**
+ * EBV read-time freshness report (docs/decisions/evidence-bound-verification.md §2). When
+ * a `require_verified` retrieval runs, a fresh deterministic Layer-1 pass is re-run over
+ * each served `supported`/`inferred` claim against its CURRENT source version; a claim
+ * whose source content hash changed, whose quote moved off its offsets, or whose source
+ * text could not be resolved is DEMOTED to `unverified` and never served as verified. This
+ * block reports that recompute — the served truth at query time, not a stored snapshot.
+ *
+ * Additive: present only when the recheck actually ran (require_verified + the enforcement
+ * cut is on). Absent ⇒ no read-time recheck was performed (verification states are the
+ * stored ingest-time values).
+ */
+export const ConnectReadTimeRecheckMetadataSchema = z.object({
+  /** True only when a fresh Layer-1 pass was attempted for at least one served claim. */
+  applied: z.boolean(),
+  /** Claims a fresh Layer-1 pass was attempted for. */
+  rechecked: z.number().int().nonnegative(),
+  /** Rechecked claims that passed and kept their stored support state. */
+  fresh: z.number().int().nonnegative(),
+  /** Claims demoted to `unverified` because their verification had rotted. */
+  demoted: z.number().int().nonnegative(),
+  /** Demotion reason → count (stale_source | span_lost | offsets_out_of_range | source_unavailable | no_bound_span). */
+  demoted_by_reason: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  /**
+   * True when a demotion occurred but the rendered `context_block` predates the recheck
+   * (it may still contain a since-demoted claim). Purging demoted claims from the rendered
+   * context is the orchestrator's pre-assembly job — see the read-time-recheck-retrieval
+   * module. The structured `verified_claims` + `verification_summary` are always corrected.
+   */
+  context_block_stale: z.boolean().optional()
+});
+export type ConnectReadTimeRecheckMetadata = z.infer<typeof ConnectReadTimeRecheckMetadataSchema>;
+
 export const ConnectRetrieveResponseSchema = z.object({
   contract_version: ConnectApiContractVersionSchema,
   request_id: z.string().min(1),
@@ -210,6 +243,8 @@ export const ConnectRetrieveResponseSchema = z.object({
     arguments_retrieved: z.number().int().nonnegative(),
     /** Per-state counts over `verified_claims` (quick non-supported gate). */
     verification_summary: VerifiedClaimSummarySchema.optional(),
+    /** EBV read-time freshness recompute; present only when require_verified recheck ran. */
+    read_time_recheck: ConnectReadTimeRecheckMetadataSchema.optional(),
     /** Temporal-filtering report; present when the request asked for as-of/audit data. */
     temporal: ConnectTemporalMetadataSchema.optional(),
     retrieval_degraded: z.boolean().optional(),
