@@ -8,8 +8,10 @@ import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 import { decryptProviderSecret } from "$lib/server/credential-crypto";
 import {
   getProviderIntegrationSecretRow,
+  getProjectById,
   getProjectModelBindingByLogicalRef,
   listProviderBindingsByProject,
+  listProviderIntegrations,
 } from "$lib/server/db";
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -57,14 +59,38 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const bindings = await listProviderBindingsByProject(projectId);
   const match = bindings.find((b) => b.integration?.providerType === pmb.providerType);
-  if (!match?.integration?.id || !match.integration.workspaceId) {
+
+  // RES-154: a key is workspace-available by default — fall back to any active,
+  // decryptable workspace integration for this provider when the project has no
+  // explicit binding, mirroring findDecryptedApiKeyForResolvedProvider in
+  // runtime-invoke.ts.
+  let integrationId = match?.integration?.id ?? null;
+  let workspaceId = match?.integration?.workspaceId ?? null;
+  if (!integrationId) {
+    const project = await getProjectById(projectId);
+    if (project?.workspaceId) {
+      const integrations = await listProviderIntegrations(project.workspaceId);
+      const fallback = integrations.find(
+        (i) =>
+          i.providerType === pmb.providerType && i.hasEncryptedCredential === true && i.status === "active",
+      );
+      if (fallback) {
+        integrationId = fallback.id;
+        workspaceId = project.workspaceId;
+      }
+    }
+  }
+  if (!integrationId || !workspaceId) {
     return json(
-      { error: "no_provider_binding", message: "Link the provider to this project under Connections" },
+      {
+        error: "no_provider_binding",
+        message: `No active ${pmb.providerType} key in this workspace. Add one under Connections.`,
+      },
       { status: 422 }
     );
   }
 
-  const row = await getProviderIntegrationSecretRow(match.integration.id, match.integration.workspaceId);
+  const row = await getProviderIntegrationSecretRow(integrationId, workspaceId);
   if (!row) {
     return json({ error: "integration_not_found" }, { status: 404 });
   }

@@ -6,6 +6,7 @@ import {
   listPolicies,
   listPolicyBindings,
   listProviderBindingsByProject,
+  listProviderIntegrations,
   listRoutes,
   listRouteSteps,
 } from "$lib/server/db";
@@ -40,7 +41,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
     if (!locals.user) return json({ error: "Unauthorized" }, { status: 401 });
     if (!scope) return json({ error: "Not found" }, { status: 404 });
 
-    const [bindings, routes, policies, connectRunPreflight] = await Promise.all([
+    const [bindings, routes, policies, connectRunPreflight, integrations] = await Promise.all([
       listProviderBindingsByProject(scope.projectId),
       listRoutes(scope.projectId, scope.userId),
       listPolicies(scope.workspaceId),
@@ -54,22 +55,32 @@ export const GET: RequestHandler = async ({ params, locals }) => {
             projectId: scope.projectId,
           }).catch(() => null)
         : Promise.resolve(null),
+      scope.workspaceId
+        ? listProviderIntegrations(scope.workspaceId).catch(() => [])
+        : Promise.resolve([]),
     ]);
     const stepsPerRoute = await Promise.all(routes.map((r) => listRouteSteps(r.id, scope.projectId, scope.userId)));
     const issues: Array<{ severity: Severity; code: string; message: string; resource: string }> = [];
     const recommendations: Array<{ priority: Severity; action: string; reason: string }> = [];
 
-    if (bindings.length === 0) {
+    // RES-154: a workspace key is usable by every project by default — routes fall
+    // back to any active, decryptable workspace integration for the provider when
+    // this project has no explicit binding (runtime-invoke.ts). So this is only a
+    // real readiness gap when the workspace has no usable integration at all.
+    const hasUsableWorkspaceIntegration = integrations.some(
+      (i) => i.hasEncryptedCredential === true && i.status === "active",
+    );
+    if (bindings.length === 0 && !hasUsableWorkspaceIntegration) {
       issues.push({
         severity: "high",
         code: "no_provider_bindings",
-        message: "No provider bindings configured for this project.",
+        message: "No usable provider keys in this workspace yet.",
         resource: "provider_bindings",
       });
       recommendations.push({
         priority: "high",
-        action: "Bind at least one verified provider integration to this project.",
-        reason: "Runtime resolution requires reachable providers.",
+        action: "Add a provider API key under Connections.",
+        reason: "Runtime resolution requires at least one decryptable workspace key.",
       });
     }
 

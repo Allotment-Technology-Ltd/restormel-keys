@@ -243,18 +243,26 @@ export async function computeConnectRunPreflight(args: {
       bindings.find(
         (b) => normalizeProviderToCanonicalApi(b.integration?.providerType) === provider,
       ) ?? null;
-    const candidates: PreflightBindCandidate[] = integrations
-      .filter(
-        (i) =>
-          normalizeProviderToCanonicalApi(i.providerType) === provider &&
-          i.hasEncryptedCredential === true &&
-          i.status === "active",
-      )
-      .map((i) => ({ id: i.id, label: i.displayName ?? i.providerType }));
+    const matchingIntegrations = integrations.filter(
+      (i) =>
+        normalizeProviderToCanonicalApi(i.providerType) === provider &&
+        i.hasEncryptedCredential === true &&
+        i.status === "active",
+    );
+    const candidates: PreflightBindCandidate[] = matchingIntegrations.map((i) => ({
+      id: i.id,
+      label: i.displayName ?? i.providerType,
+    }));
+    // RES-154: runtime-invoke's findDecryptedApiKeyForResolvedProvider now falls back
+    // to any matching workspace integration when the project has no explicit binding
+    // — mirror that same selection here (bound integration, else the same fallback
+    // candidate the resolver would have used) so verification-status gating below
+    // still looks at the integration actually used, not just an explicit binding.
+    const effectiveIntegration = bound?.integration ?? matchingIntegrations[0] ?? null;
 
     // K2 layer: decryptable but provider-rejected keys block with a re-verify path.
     const rowOutcome: PreflightCredentialOutcome = outcome.ok
-      ? bound?.integration?.verificationStatus === "failed"
+      ? effectiveIntegration?.verificationStatus === "failed"
         ? "verification_failed"
         : "ok"
       : outcome.code;
@@ -264,7 +272,7 @@ export async function computeConnectRunPreflight(args: {
         provider,
         stages,
         outcome: rowOutcome,
-        boundIntegrationId: bound?.integration?.id ?? null,
+        boundIntegrationId: effectiveIntegration?.id ?? null,
         candidates,
         base,
       }),

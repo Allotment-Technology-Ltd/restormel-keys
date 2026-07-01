@@ -2,7 +2,11 @@
  * Hosted runtime invoke (Phase 1): credential lookup for resolved provider + message validation.
  */
 import { decryptProviderSecret } from "$lib/server/credential-crypto";
-import { getProviderIntegrationSecretRow, listProviderBindingsByProject } from "$lib/server/db";
+import {
+  getProviderIntegrationSecretRow,
+  listProviderBindingsByProject,
+  listProviderIntegrations,
+} from "$lib/server/db";
 import { normalizeProviderToCanonicalApi } from "$lib/server/canonical-provider";
 import type { ChatMessage } from "$lib/server/runtime-openai-chat";
 
@@ -43,10 +47,28 @@ export async function findDecryptedApiKeyForResolvedProvider(args: {
     const pt = normalizeProviderToCanonicalApi(b.integration.providerType);
     return pt === target;
   });
-  if (!match?.integration?.id) {
+
+  // RES-154: a key is workspace-available by default. An explicit provider_bindings
+  // row is only needed to *override* which key a project uses when the workspace
+  // holds more than one integration for the same provider family — it is no longer
+  // required just to make a newly-added key usable. When no binding matches, fall
+  // back to any active, decryptable workspace integration for this provider (most
+  // recently created first, per listProviderIntegrations' ORDER BY created_at DESC).
+  let integrationId = match?.integration?.id ?? null;
+  if (!integrationId) {
+    const integrations = await listProviderIntegrations(args.workspaceId).catch(() => []);
+    const fallback = integrations.find(
+      (i) =>
+        normalizeProviderToCanonicalApi(i.providerType) === target &&
+        i.hasEncryptedCredential === true &&
+        i.status === "active",
+    );
+    integrationId = fallback?.id ?? null;
+  }
+  if (!integrationId) {
     return { ok: false, code: "no_provider_binding" };
   }
-  const row = await getProviderIntegrationSecretRow(match.integration.id, args.workspaceId);
+  const row = await getProviderIntegrationSecretRow(integrationId, args.workspaceId);
   if (!row) {
     return { ok: false, code: "integration_not_found" };
   }
