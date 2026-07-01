@@ -318,7 +318,16 @@ risks:
       policy and close this risk once all Priority 1 and Priority 2 systems
       are confirmed. When any new service is onboarded, MFA must be enabled
       within 24 hours per access-control-policy.md §2.
-    treatment_status: "Open — URGENT. Remediation task scheduled."
+    treatment_status: >
+      Open — URGENT. Remediation task scheduled. UPDATE 2026-07-01: Infisical admin MFA specifically
+      is now tracked as Huly RES-151 (sub-issue of the EPIC: Security hardening, RES-130), filed as
+      part of the infra-excellence-review remediation (RES-123,
+      deploy/k3s/INFRA-EXCELLENCE-REVIEW-2026-06-30.md). NOTE: this risk entry's asset description
+      predates the K3s migration (Coolify/Hetzner-box era) — the infrastructure it describes has
+      moved on-cluster (Infisical now runs in K3s ns `external-secrets`/its own release, serving
+      secrets.restormel.dev; see the Stage A cutover in restormel-keys memory + gitops history). A
+      full reconciliation of this register against the current K3s topology is a needed follow-up,
+      not done as part of this update — scoped narrowly to linking the MFA action to RES-151.
     owner: founder
     status: open
     review: 2026-07-15

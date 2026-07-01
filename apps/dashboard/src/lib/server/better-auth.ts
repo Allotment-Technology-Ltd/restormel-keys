@@ -35,20 +35,43 @@ export const BETTER_AUTH_BASE_PATH = `${DASHBOARD_BASE}/api/auth`;
 export const PROD_ORIGIN = "https://restormel.dev";
 const LOCAL_ORIGIN = "http://localhost:5173";
 
+/** The minimal slice of env this module reads to resolve the origin. */
+type OriginEnv = { NODE_ENV?: string; BETTER_AUTH_URL?: string; ORIGIN?: string };
+
 /**
- * Resolve the public origin Better Auth should advertise. Prod is the canonical
- * `restormel.dev`; otherwise prefer `ORIGIN` (set by the Node adapter), then a
- * `BETTER_AUTH_URL` override, then localhost. `baseURL` for Better Auth is the
- * ORIGIN ONLY — `basePath` is appended by Better Auth, so do NOT include the path.
+ * Resolve the public origin Better Auth should advertise. Prefer an explicit
+ * operator-set origin — `BETTER_AUTH_URL`, then `ORIGIN` (set by the Node
+ * adapter) — so a NON-prod PRODUCTION build (e.g. the `integration.restormel.dev`
+ * pre-merge env, which runs `NODE_ENV=production` on its own host) advertises and
+ * trusts ITS OWN origin rather than prod's. Fall back to the canonical
+ * `restormel.dev` in production, then localhost for local dev.
+ *
+ * Hardening: in production an explicit origin is only honoured when it is `https://`
+ * (operator typo / accidental `http://ORIGIN` falls back to the canonical prod
+ * origin, never a downgraded scheme). `baseURL` for Better Auth is the ORIGIN ONLY
+ * — `basePath` is appended by Better Auth, so do NOT include the path.
  */
-export function resolveBaseOrigin(): string {
-  if (env.NODE_ENV === "production") return PROD_ORIGIN;
-  const explicit = (env.BETTER_AUTH_URL ?? env.ORIGIN ?? "").trim().replace(/\/$/, "");
-  return explicit || LOCAL_ORIGIN;
+export function resolveBaseOrigin(e: OriginEnv = env): string {
+  const explicit = (e.BETTER_AUTH_URL ?? e.ORIGIN ?? "").trim().replace(/\/$/, "");
+  const isProd = e.NODE_ENV === "production";
+  if (explicit) {
+    // In prod, refuse a non-https explicit origin and use the canonical one instead.
+    if (!isProd || explicit.startsWith("https://")) return explicit;
+  }
+  return isProd ? PROD_ORIGIN : LOCAL_ORIGIN;
+}
+
+/**
+ * Origins allowed to drive auth (CSRF / redirect allow-list). Always includes the
+ * resolved base origin (so the integration env trusts its own host), plus the
+ * canonical prod + localhost origins.
+ */
+export function resolveTrustedOrigins(e: OriginEnv = env): string[] {
+  return Array.from(new Set([resolveBaseOrigin(e), PROD_ORIGIN, LOCAL_ORIGIN]));
 }
 
 /** Origins allowed to drive auth (CSRF / redirect allow-list). */
-export const TRUSTED_ORIGINS = [PROD_ORIGIN, LOCAL_ORIGIN];
+export const TRUSTED_ORIGINS = resolveTrustedOrigins();
 
 /**
  * The Better Auth options object. Exported (separately from the instance) so it

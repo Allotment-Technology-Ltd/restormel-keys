@@ -23,6 +23,11 @@ skill**. **Filing an incident record after any incident is mandatory** (REC-TPL-
   **`restormel-high-risk-security`** review before opening the PR.
 - The local main checkout **auto-resets to `origin/main`** — do isolated work in a `git worktree`,
   never edit the live main checkout while a run is in flight.
+- **Model tiering for parallel swarms (2026-06-30):** default swarm/fan-out workers to **Fable 5**
+  (`claude-fable-5`) at task-appropriate complexity; use **Haiku** (`claude-haiku-4-5`) for rapid,
+  clearly-defined iteration loops; reserve **Opus 4.8** (`claude-opus-4-8`) for the hardest reasoning
+  (architecture/ADRs, adversarial verify, synthesis). Encode via the Workflow `agent()` / Agent
+  `model` + `effort` overrides. See the `multi-agent-orchestration-preference` memory.
 - **Prod Argo CD app auto-syncs** the reviewed artefact — the deploy gate is **upstream**
   (PR review + CI: security scan / full build / bundled-asset guard + the `deploy-k3s` pipeline
   gate), not an operator hand-sync. Rollback = **revert the gitops image-bump commit** (Argo
