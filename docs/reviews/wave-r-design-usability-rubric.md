@@ -37,6 +37,7 @@ Standards cited: `docs/design/keys-northstar-redesign-2026-06.md` (NS), `docs/de
 - **R3-U2 — Every cell is a link (NS §2.4).** Factor rail → filtered Claims queue; inbox rows → desk / memory inbox / regression diff; runs rail → `/runs/[id]`; changed-sources chip → re-ingest; agent traffic → `/logs?source=agent`; readiness rows → `fixHref`. Any dead number = fail.
 - **R3-U3 — Grammar affordances distinct.** Prove-it links (dotted underline + ↗) visually distinct from fix-forward rows ({status, evidence, fixHref} + "fix →") and from nav links.
 - **R3-U4 — First-run = unlit ledger.** Cold workspace renders the same masthead with unlit (□) rows + one primary CTA into `/sources/ingest`. Any separate onboarding widget/wizard card/"getting started" block = fail.
+  > **Scoped supersession (2026-07-01):** for the **`onboardingJourney`-flag-ON** Home, R3-U4's first-run-unlit-ledger instruction is **superseded by [REC-ADR-022](../decisions/onboarding-first-run-home-minimal.md)** — an empty/early workspace renders a minimal state-derived M0/M1 invitation, not the full masthead unlit. R3-U4's anti-pattern clause (no separate onboarding widget) is preserved there. For the **flag-OFF** legacy masthead this rule is unchanged and fully in force.
 - **R3-U5 — No dead ends.** Every empty/error panel offers a next action (UXC §3). Check the trust-cap error path — the shipped page swallows it (`{:catch}` renders nothing); silent omission of the masthead number = fail.
 
 ### State honesty

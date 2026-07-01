@@ -204,5 +204,40 @@ updated to mark them resolved and to carry the same answers.
 
 ---
 
+## Addendum — M4 wizard collapse: 3-step wizard → state-derived S0/S1/S2 (founder, 2026-07-01)
+
+Recorded under **REC-ADR-020's supersession authority** (Home/journey surfaces are state-derived,
+depth never forced) and founder-authorized 2026-07-01 via the RES-113 MVP refinement plan (§3.4).
+This is a real deviation from the captured design above — the literal **3-step wizard
+(Type → Access → Name)** with step strip and live-preview panel is **collapsed** into a
+state-derived surface. The intent (job-led, one area, per-connection purpose-bound keys,
+plain-language access) is unchanged; the mechanic adapts:
+
+1. **The wizard is replaced by three states derived from real workspace state:**
+   - **S0 — no completed ingest:** locked state ("nothing to connect yet — build your graph
+     first") with a single CTA to Build. Nothing else renders.
+   - **S1 — ingest done, zero connections:** one screen — the two MVP **method cards**
+     (MCP first, REST second, per addendum §1 above) plus **one name field, prefilled**
+     (`agent`/`backend`), visible but non-blocking; Create accepts the default with zero typing.
+     No step strip, no live-preview aside.
+   - **S2 — one or more connections:** the manager list, as designed above.
+2. **The Access step is dropped in favour of enforced read-only-first.** Every first key is
+   minted read-only; the guarantee moves from a wizard step to **enforcement** (addendum §2's
+   real scope, not a cosmetic label). Read+write arrives later via the manager's state-gated
+   suggestion, not a first-run choice.
+3. **The Project step is resolved silently:** `setup.defaultProjectId ?? projects[0]`; only when
+   genuinely ambiguous (2+ projects, no default) does a compact inline project chip appear —
+   never a blocking step or page.
+
+The wizard's job (hand-hold the first connection to a single decision) survives; the three-step
+ceremony does not. Applies to the `onboardingJourney`-flag-ON path only; flag-OFF surfaces are
+untouched.
+
+> Recorded as an append-only addendum under REC-ADR-020's authority, founder-authorized
+> 2026-07-01 (RES-113 PR-0). The record's id and status are unchanged; supersede with a new ADR
+> if this changes.
+
+---
+
 **Append-only.** This record is append-only. If this decision changes, **supersede it with a new
 ADR** that references this id — do not rewrite this file in place.
