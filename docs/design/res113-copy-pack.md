@@ -39,6 +39,8 @@ REC-ADR-022 approved; nav STRIPPED; Settings/Store from S1; Verify tab monotonic
   may render uppercase via `.btn` chrome, never via the authored string.
 - The `→` glyph appears on **at most one element per state: the yellow primary CTA**.
   Secondary links and muted lines never carry an arrow (Build visual-lens fix, generalised).
+- The `↗` glyph marks a link that opens something outside the current screen — a source
+  passage, a help article. Its accessible name says where it leads.
 - Placeholders never carry instructions (§6.4); labels are visible noun phrases above the
   field; helper text is a visible sentence outside the field.
 - A missing measurement renders its stat **absent** — never `0`, never `—` (§2.3; plan §3.1).
@@ -54,7 +56,7 @@ REC-ADR-022 approved; nav STRIPPED; Settings/Store from S1; Verify tab monotonic
 | claims | Introduced only on the Verify surface, defined inline at first contact; used operationally there. | ux-contracts §2 [R1] Claims (D2); ux-craft §5 |
 | Ingest / Run ingest | Canonical CTA noun kept; first contact pairs it with the outcome line "Turn your documents into cited answers." | ux-contracts §2 "Ingest run"; ux-craft §5 + precedence table |
 | Provider key | Field label for the provider API key; the stored object is the registry's **Provider credential** ("Your OpenAI, Anthropic, Google, or other provider API key" — the registry itself says "key"). | ux-contracts §2 "Provider credential" |
-| MCP | Expanded at first use: "MCP (the connector most AI assistants use)". The user-goal card is "Connect an AI assistant". | ux-craft §5 |
+| MCP | Expanded at first use: "MCP (the connector most AI agents use)". The user-goal card is "Connect an agent". | ux-craft §5 |
 | Trust score | Always quoted from the Trust scorecard, never recomputed; first contact per surface carries the gloss "how strongly your answers are backed by your documents". | ux-contracts §2 "Trust scorecard" (W2.3) |
 | Supported / Weak / Unsupported | Operator-verdict display labels, verbatim. "Rejected" retired. | ux-contracts §2 "Operator verdict" (W4.5) |
 | embedding, vector, index, triple, entity, corpus, RAG | Never user-visible. Surface as "Making it searchable" / "Getting ready". | ux-craft §5 |
@@ -132,21 +134,21 @@ Hero + one honest run-status block. One yellow primary. Status text lives in a
 ### 1.3 HOME · BUILT, NOT CONNECTED
 
 Hero (real counts) + next-step block + ask box (secondary styling — see Appendix A-6) +
-Verify tile only when `awaitingTriage > 0` (§3 tile strings, always ghost). One yellow
+Verify tile only when `flagged > 0` (§3 tile strings, always ghost). One yellow
 primary: Connect.
 
 | Element | Literal string |
 |---|---|
 | Headline | Try a question, then connect your app |
-| Supporting sentence | Ask below to see your graph answer from your documents — then connect your app or AI assistant so it can do the same. |
-| Primary CTA (yellow) | Connect your app → |
+| Supporting sentence | Ask below to see your graph answer from your documents — then connect your app or AI agent so it can do the same. |
+| Primary CTA (yellow) | Connect your app or agent → |
 | CTA sub-line (muted) | Takes about two minutes — you get a key your app can use. |
 
 **Ask box** (mounts from BUILT onward; submit is secondary-styled in BUILT, primary in LIVE):
 
 | Element | Literal string |
 |---|---|
-| Field label (visible, above field) | Ask a question about your documents |
+| Field label (visible, above field) | Your question |
 | Helper text (visible, below field) | Every answer comes with citations — links to the exact passages it came from. |
 | Placeholder | *(empty — placeholders carry no instructions)* |
 | Submit button | Ask |
@@ -172,7 +174,7 @@ Verify tile only while `flagged > 0` (ghost) + Connect tile (ghost) + activity p
 | Activity panel heading | `RECENT ACTIVITY` |
 | Activity row | {connection name} asked · {relative time} ago |
 | Activity empty | No requests yet. When your app asks a question, it shows up here. |
-| Activity loading | Loading activity… |
+| Activity loading | Loading activity… usually a few seconds. |
 | Activity error | We couldn't load recent activity. Try again. |
 | Activity error action (secondary) | Try again |
 
@@ -205,8 +207,8 @@ primary, disabled until keyed, with a plain visible hint — no Skip.
 | Headline | Add an AI provider key |
 | Supporting sentence | Restormel uses an AI model to read your documents, and the model needs a key — a password-like code from a provider such as OpenAI or Anthropic. |
 | Field label | Provider key |
-| Helper text (below field) | Stored encrypted, shown masked, never logged. We only use it to build and answer from your graph. |
-| Where-to-get link (secondary) | Where do I get a key? |
+| Helper text (below field) | Stored encrypted, shown masked, never logged. We only use it to build and answer from your graph — your documents, connected. |
+| Where-to-get link (secondary) | Where do I get a key? ↗ *(opens a short help article; aria: "Where do I get a key — opens a help article")* |
 | Models line (muted) | Recommended models are pre-chosen. Change them under Advanced. |
 | Advanced disclosure label | Advanced — choose a model per stage |
 | Primary CTA (yellow) | Save key → |
@@ -310,7 +312,7 @@ dashed empty card:
 | Element | Literal string |
 |---|---|
 | Headline | Nothing to check yet |
-| Body | Once your graph is built, anything we couldn't fully match to your documents appears here for a quick review. |
+| Body | Once your graph — your documents, connected — is built, anything we couldn't fully match to your documents appears here for a quick review. |
 | CTA (yellow primary) | Go to Build → |
 
 ### 3.2 Triage (built + verify work outstanding)
@@ -324,7 +326,7 @@ Queue-led. Gates that don't need the user collapse to **one combined receipt lin
 | Headline | {n} facts need your review ("1 fact needs your review" singular) |
 | Definition sentence (first contact for "claim") | Each one is a claim — a fact we found in your documents — that we couldn't fully match to its source. |
 | How-it-works sentence | Check each claim against the passage shown. It usually takes under a minute each. |
-| Priority lead-in (only when 2+ gates need attention) | Start with {gate name} — the later checks depend on it. A fact can't be reviewed against a source it doesn't have. |
+| Priority lead-in (only when 2+ gates need attention) | Start with {gate name} — each check depends on the one before it, so this one comes first. |
 | Combined receipt line (auto-cleared gates) | Sources and searchability checked automatically — nothing needed from you. |
 | Combined receipt line (one gate cleared) | {Gate name} checked automatically — nothing needed from you. |
 | Queue row source line | From {source name} |
@@ -371,7 +373,7 @@ Connect nav item (§5). One yellow primary, pointing at the spine.
 | Element | Literal string |
 |---|---|
 | Headline | Nothing to connect yet |
-| Body | Connect is where your app or AI assistant gets access to your answers. First, add some documents so there's something to answer from. |
+| Body | Connect is where your app or AI agent gets access to your answers. First, add some documents so there's something to answer from. |
 | Primary CTA (yellow) | Add your documents → |
 
 ### 4.2 S1 — first connection (ingest done, `connections = 0`)
@@ -384,16 +386,16 @@ Create connection. Method cards are user goals, not protocols — the protocol i
 |---|---|
 | Headline | What do you want to connect? |
 | Supporting sentence | Both get a secure key that can read your answers. You can add more connections later. |
-| Card 1 title (MCP, listed first) | Connect an AI assistant |
-| Card 1 description | For Claude, ChatGPT, or any agent that supports MCP (the connector most AI assistants use). |
+| Card 1 title (MCP, listed first) | Connect an agent |
+| Card 1 description | For Claude, ChatGPT, or any agent that supports MCP (the connector most AI agents use). |
 | Card 1 chip | `MCP` |
 | Card 2 title (REST) | Connect your own code |
 | Card 2 description | For your app or backend — a simple web API your code can call. |
 | Card 2 chip | `REST API` |
 | Name field label | Connection name |
-| Name field prefill | agent *(assistant card)* / backend *(code card)* |
+| Name field prefill | agent *(agent card)* / backend *(code card)* |
 | Name helper text (below field) | Anything that helps you recognise it later — the suggestion works fine. |
-| Read-only line (muted) | Your first connection is read-only — it can look things up but never change anything. |
+| Read-only line (muted) | Your first connection is read-only — it can look things up but can't add, change, or delete anything in your graph. |
 | Project chip (only when 2+ projects and no default) | `PROJECT` {project name} · Change |
 | Primary CTA (yellow) | Create connection → |
 
@@ -406,7 +408,7 @@ Create connection. Method cards are user goals, not protocols — the protocol i
 | Display-once warning | This is the only time the full key is shown. Copy it now and store it somewhere safe. |
 | Copy actions | Copy key · Copy (endpoint) — announce "Copied." |
 | Endpoint label | Endpoint |
-| Setup hint (MCP) | Paste the endpoint and key into your assistant's MCP settings. |
+| Setup hint (MCP) | Paste the endpoint and key into your agent's MCP settings. |
 | Setup hint (REST) | Call the endpoint with your key in the Authorization header. |
 | Primary CTA (yellow) | Ask a question → *(lands on Home's ask box)* |
 | CTA sub-line (muted) | See what your app sees — every answer with its citations. |
@@ -420,7 +422,7 @@ List-plus-nudge. No yellow primary in the steady state — nothing demands actio
 |---|---|
 | Row anatomy | {type icon} {name} · `READ` or `READ + WRITE` · {endpoint} · Copy |
 | Live chip (only with real observed traffic) | `LIVE` (aria: "This connection has served requests recently") |
-| Suggestion row (only when exactly one read-only connection exists) | Need your app to write back too? [Add a read + write connection]. |
+| Suggestion row (only when exactly one read-only connection exists) | Need your app to add or update facts in your graph too? [Add a read + write connection]. |
 | Add action (secondary) | + Add connection |
 | Page load error | We couldn't load your connections. Try again. |
 | Error action (secondary) | Try again |
@@ -468,7 +470,7 @@ the explanation — one mechanism, no popover chrome. Today exactly one item can
 
 | Item | When dimmed | Click-through destination + strings |
 |---|---|---|
-| Connect | No completed ingest | Connect S0 (§4.1): "Nothing to connect yet" / "Connect is where your app or AI assistant gets access to your answers. First, add some documents so there's something to answer from." / "Add your documents →" |
+| Connect | No completed ingest | Connect S0 (§4.1): "Nothing to connect yet" / "Connect is where your app or AI agent gets access to your answers. First, add some documents so there's something to answer from." / "Add your documents →" |
 
 If an implementation ever needs an in-place explanation instead of navigation (e.g. a
 future locked item with no page), the template is one sentence + one link, no heading:
@@ -519,7 +521,7 @@ Copy-adjacent NEEDS-REVISION findings from plan §3, resolved here as PR-1 was d
    subordinate to the primary CTA.
 4. **Verify priority rule (novice, §3.3).** Pipeline order — Sources, then Searchable,
    then Review; lead with the earliest gate needing the user, expand only that one, and
-   say why on screen ("the later checks depend on it").
+   say why on screen ("each check depends on the one before it").
 5. **Connect framing (visual, §3.4).** S1 is acknowledged as a **guided fork** (two goal
    cards + name field) with one yellow primary (Create connection); S2 is a
    **list-plus-nudge** manager with no yellow primary — a steady state demands nothing.
