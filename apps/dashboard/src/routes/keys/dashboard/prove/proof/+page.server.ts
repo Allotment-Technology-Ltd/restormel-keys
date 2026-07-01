@@ -42,6 +42,11 @@ type ProofData = {
   keyPrefixHint: string | null;
   /** Public Connect API origin for the "Get Code" snippet. */
   connectApiBase: string;
+  /**
+   * RES-113 onboardingJourney flag (REC-ADR-021). Gates the M0 "Explore" hero reskin
+   * of the Answer Console. Default off ⇒ the shipped console is unchanged.
+   */
+  onboardingJourney: boolean;
 };
 
 type ProofDataWithState = ProofData & { signedIn: boolean; loadError: boolean };
@@ -58,6 +63,7 @@ const SIGNED_OUT: ProofDataWithState = {
   projectId: null,
   keyPrefixHint: null,
   connectApiBase: DEFAULT_CONNECT_API_BASE,
+  onboardingJourney: false,
   signedIn: false,
   loadError: false,
 };
@@ -74,6 +80,7 @@ const LOAD_ERROR: ProofDataWithState = {
   projectId: null,
   keyPrefixHint: null,
   connectApiBase: DEFAULT_CONNECT_API_BASE,
+  onboardingJourney: false,
   signedIn: true,
   loadError: true,
 };
@@ -150,6 +157,7 @@ export const load: PageServerLoad = async (event): Promise<ProofDataWithState> =
       projectId: chat.projectId,
       keyPrefixHint,
       connectApiBase: resolveConnectApiBase(event.url.origin),
+      onboardingJourney: event.locals.moduleFlags?.onboardingJourney ?? false,
       signedIn: true,
       loadError: false,
     };

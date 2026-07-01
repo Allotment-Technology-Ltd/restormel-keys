@@ -10,6 +10,8 @@
   export let suggestionsFailed = false;
   export let onCompare: (question: string) => void;
   export let onSelectSuggestion: (question: SuggestedQuestion) => void;
+  /** RES-113 PR-B (flag-gated): forwards the M0 "Explore" reskin to SuggestedQuestions. */
+  export let onboarding = false;
 
   let textarea: HTMLTextAreaElement | undefined;
 
@@ -69,6 +71,7 @@
     failed={suggestionsFailed}
     disabled={running || graphEmpty}
     onSelect={onSelectSuggestion}
+    {onboarding}
   />
 </div>
 

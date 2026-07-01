@@ -6,12 +6,17 @@
   export let failed = false;
   export let disabled = false;
   export let onSelect: (question: SuggestedQuestion) => void;
+  /**
+   * RES-113 PR-B (flag-gated: onboardingJourney). M0 "Explore" reskin of the label +
+   * empty-state copy. Default false keeps the shipped suggestions byte-for-byte unchanged.
+   */
+  export let onboarding = false;
 
   const SKELETON_WIDTHS = ["62%", "44%", "78%"];
 </script>
 
 <div class="suggested">
-  <p class="suggested-label">SUGGESTED QUESTIONS</p>
+  <p class="suggested-label">{onboarding ? "OR TRY ONE OF THESE" : "SUGGESTED QUESTIONS"}</p>
 
   {#if loading}
     <div class="chips" aria-hidden="true">
@@ -21,7 +26,12 @@
     </div>
   {:else if failed || questions.length === 0}
     <p class="suggested-fallback">
-      Type a question your sources would know the answer to and ask away.
+      {#if onboarding}
+        Type anything the graph would know — or just ask in your own words and watch the citations
+        come back.
+      {:else}
+        Type a question your sources would know the answer to and ask away.
+      {/if}
     </p>
   {:else}
     <div class="chips">
