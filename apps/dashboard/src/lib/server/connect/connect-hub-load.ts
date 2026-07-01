@@ -23,7 +23,7 @@ import { isCredentialEncryptionConfigured } from "$lib/server/credential-crypto"
 import { computeConnectModelsReady } from "$lib/server/connect/stage-routing";
 import { computeConnectVerifiedReadiness } from "$lib/server/connect/verified-readiness";
 import { readinessStepDetail, type ConnectVerifiedReadiness } from "$lib/connect/verified-readiness";
-import { buildConnectSpine, type ConnectSpine } from "$lib/connect/connect-spine";
+import { buildConnectSpine, type ConnectSpine, type SpineVocabulary } from "$lib/connect/connect-spine";
 import {
   graphStatsToSpineSignal,
   readinessToSpineSignal,
@@ -236,17 +236,25 @@ export async function loadConnectHubPage(
 
     // Phase 2 spine: assembled from data already loaded above (readiness ledger,
     // graph stats, run history, store/docs prereqs) — no additional queries.
+    // RES-113 PR-H: M0–M4 stage labels only when the onboarding cut is on
+    // (flag OFF ⇒ legacy labels, byte-for-byte the current product).
+    const spineVocabulary: SpineVocabulary = event.locals.moduleFlags?.onboardingJourney
+      ? "journey"
+      : "legacy";
     const spine: ConnectSpine | null = readiness
-      ? buildConnectSpine({
-          readiness: readinessToSpineSignal(readiness),
-          ingest: {
-            jobCount: jobs.length,
-            latestJob: latestJob ? { id: latestJob.id, status: latestJob.status } : null,
-            storeReady: Boolean(target && target.status === "ok"),
-            documentsReady: parsedDocs.length > 0,
+      ? buildConnectSpine(
+          {
+            readiness: readinessToSpineSignal(readiness),
+            ingest: {
+              jobCount: jobs.length,
+              latestJob: latestJob ? { id: latestJob.id, status: latestJob.status } : null,
+              storeReady: Boolean(target && target.status === "ok"),
+              documentsReady: parsedDocs.length > 0,
+            },
+            graph: graphStatsToSpineSignal(stats),
           },
-          graph: graphStatsToSpineSignal(stats),
-        })
+          { vocabulary: spineVocabulary },
+        )
       : null;
 
     const payload = {
@@ -324,16 +332,23 @@ export async function loadConnectSpine(
     const latestJob = jobs[0] ?? null;
     const parsedCount = documents.filter((d) => d.status === "parsed").length;
 
-    return buildConnectSpine({
-      readiness: readinessToSpineSignal(readiness),
-      ingest: {
-        jobCount: jobs.length,
-        latestJob: latestJob ? { id: latestJob.id, status: latestJob.status } : null,
-        storeReady: Boolean(target && target.status === "ok"),
-        documentsReady: parsedCount > 0,
+    // RES-113 PR-H: flag-gated M0–M4 labels (OFF ⇒ legacy, unchanged).
+    const spineVocabulary: SpineVocabulary = event.locals.moduleFlags?.onboardingJourney
+      ? "journey"
+      : "legacy";
+    return buildConnectSpine(
+      {
+        readiness: readinessToSpineSignal(readiness),
+        ingest: {
+          jobCount: jobs.length,
+          latestJob: latestJob ? { id: latestJob.id, status: latestJob.status } : null,
+          storeReady: Boolean(target && target.status === "ok"),
+          documentsReady: parsedCount > 0,
+        },
+        graph: graphStatsToSpineSignal(stats),
       },
-      graph: graphStatsToSpineSignal(stats),
-    });
+      { vocabulary: spineVocabulary },
+    );
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[connect-hub] loadConnectSpine failed:", msg.slice(0, 300));

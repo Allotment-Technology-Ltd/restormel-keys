@@ -14,6 +14,7 @@
    */
   import {
     spineNumeral,
+    spineStageAdvanceEvents,
     type ConnectSpine,
     type ConnectSpineStage,
     type ConnectSpineStageState,
@@ -36,6 +37,12 @@
    * funnel measures the journey the UI actually presents. No remapping/collapse:
    * a `review → make_ready` move is a real transition, not a no-op. Keep these
    * names STABLE — they are the spine stage ids in connect-spine.ts.
+   *
+   * RES-113 PR-H: during the M0–M4 vocabulary migration we DUAL-EMIT — the old
+   * `connect_stage_advance` (continuity) AND the new `journey_stage_advance`
+   * (M0–M4 tokens) — via `spineStageAdvanceEvents`. Additive analytics, no
+   * user-facing change, so emitted unconditionally (NOT flag-gated; only the
+   * stage LABELS are flag-gated, upstream at build time).
    */
 
   /**
@@ -63,7 +70,11 @@
     const to = stage.id;
     const from = activeStageId ?? "hub";
     if (from !== to) {
-      track("connect_stage_advance", { from, to });
+      // Dual-emit: old `connect_stage_advance` + new `journey_stage_advance`.
+      for (const ev of spineStageAdvanceEvents(from, to)) {
+        if (ev.name === "connect_stage_advance") track(ev.name, ev.props);
+        else track(ev.name, ev.props);
+      }
     }
   }
 
