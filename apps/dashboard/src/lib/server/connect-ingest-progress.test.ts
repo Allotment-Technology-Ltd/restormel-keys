@@ -244,3 +244,74 @@ describe("ConnectIngestProgressReporter run attribution (Stage K5)", () => {
     );
   });
 });
+
+describe("ConnectIngestProgressReporter backoff signal (RES-113 PR-I)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("signalBackoff sets an amber backoff on the running stage row and persists it", async () => {
+    const reporter = new ConnectIngestProgressReporter(mockJob());
+    await reporter.beginStage("extracting", "Extracting", 3);
+    await reporter.signalBackoff("extraction", {
+      reasonCode: "rate_limit",
+      attempt: 2,
+      delayMs: 2000,
+      at: "2026-06-28T10:00:00.000Z",
+    });
+
+    const { updateConnectIngestJobById } = await import("$lib/server/connect-ingest-jobs");
+    const lastCall = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
+    const extracting = (lastCall?.stages as { stage: string; backoff?: unknown }[]).find(
+      (s) => s.stage === "extracting",
+    );
+    expect(extracting?.backoff).toEqual({
+      reason_code: "rate_limit",
+      attempt: 2,
+      delay_ms: 2000,
+      at: "2026-06-28T10:00:00.000Z",
+    });
+    expect(lastCall?.status).toBe("running");
+  });
+
+  it("ignores an unknown reason code (never persists junk)", async () => {
+    const reporter = new ConnectIngestProgressReporter(mockJob());
+    await reporter.beginStage("extracting", "Extracting", 3);
+    const { updateConnectIngestJobById } = await import("$lib/server/connect-ingest-jobs");
+    vi.mocked(updateConnectIngestJobById).mockClear();
+
+    await reporter.signalBackoff("extraction", { reasonCode: "bogus", attempt: 1, delayMs: 0 });
+    // No-op: no extra persist.
+    expect(updateConnectIngestJobById).not.toHaveBeenCalled();
+  });
+
+  it("clearBackoff removes the overlay; completeStage also clears it", async () => {
+    const reporter = new ConnectIngestProgressReporter(mockJob());
+    await reporter.beginStage("extracting", "Extracting", 3);
+    await reporter.signalBackoff("extraction", { reasonCode: "overloaded", attempt: 2, delayMs: 1000 });
+
+    await reporter.completeStage("extracting", "done");
+    const { updateConnectIngestJobById } = await import("$lib/server/connect-ingest-jobs");
+    const afterComplete = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
+    const extracting = (afterComplete?.stages as { stage: string; backoff?: unknown }[]).find(
+      (s) => s.stage === "extracting",
+    );
+    expect(extracting?.backoff).toBeUndefined();
+  });
+
+  it("falls back to the active stage when the model stage has no running row", async () => {
+    const reporter = new ConnectIngestProgressReporter(mockJob());
+    await reporter.beginStage("storing", "Storing", 1);
+    // 'embedding' model stage maps to the 'embedding' pipeline row (which is pending),
+    // so the backoff attributes to the currently-active 'storing' stage instead.
+    await reporter.signalBackoff("embedding", { reasonCode: "rate_limit", attempt: 2, delayMs: 500 });
+
+    const { updateConnectIngestJobById } = await import("$lib/server/connect-ingest-jobs");
+    const lastCall = vi.mocked(updateConnectIngestJobById).mock.calls.at(-1)?.[0];
+    const stages = lastCall?.stages as { stage: string; backoff?: unknown }[];
+    expect(stages.find((s) => s.stage === "storing")?.backoff).toMatchObject({
+      reason_code: "rate_limit",
+    });
+    expect(stages.find((s) => s.stage === "embedding")?.backoff).toBeUndefined();
+  });
+});

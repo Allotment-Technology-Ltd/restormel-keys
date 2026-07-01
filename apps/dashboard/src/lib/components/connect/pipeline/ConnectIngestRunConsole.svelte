@@ -21,7 +21,7 @@
     pipelineWizardHref,
     m1RunConsoleRungs,
     m1RungVisualState,
-    isM1RateLimitedStatus,
+    isM1StageRateLimited,
     M1_BUILD_RUNGS,
     M1_RATE_LIMIT_BANNER,
   } from "$lib/connect/pipeline-config";
@@ -234,13 +234,16 @@
   // derived from the REAL run state (REC-ADR-016) — Running until the job completes,
   // then Done. Renders alongside, never replacing, the honest stage timeline/ledger.
   $: m1Rungs = m1RunConsoleRungs({ isCompleted });
-  // Amber rate-limit state: presentational, but only lit when a stage actually
-  // reports a transient backoff status. The real backoff signal is wired in PR-I;
-  // until then this is structurally ready and stays dark (never a fabricated state).
+  // Amber rate-limit state: lit ONLY from a REAL signal (RES-113 PR-I). The engine
+  // threads a structured backoff onto the running stage (`stage.backoff`) while it is
+  // genuinely throttling and clears it on success — so this never fabricates a state
+  // (REC-ADR-016). The legacy `status` string path is honoured too for back-compat.
   $: m1RateLimited =
     onboardingJourney &&
     isInProgress &&
-    (job?.stages ?? []).some((s) => isM1RateLimitedStatus((s as { status?: string }).status));
+    (job?.stages ?? []).some((s) =>
+      isM1StageRateLimited(s as { status?: string; backoff?: { reason_code?: string } | null }),
+    );
   // Map an M1 rung's visual state → the StateChip honest-state vocabulary.
   function m1ChipState(rung: (typeof M1_BUILD_RUNGS)[number]["id"]): StateChipState {
     const v = m1RungVisualState(rung, m1Rungs);

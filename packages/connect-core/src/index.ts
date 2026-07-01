@@ -61,6 +61,19 @@ export {
 } from "./stages/model-call.js";
 
 export {
+  classifyBackoffReason,
+  isRateLimitBackoffReason,
+  isIngestBackoffReasonCode,
+  computeBackoffDelayMs,
+  backoffSignalToStageState,
+  parseStageBackoff,
+  type IngestBackoffReasonCode,
+  type IngestBackoffSignal,
+  type ConnectIngestStageBackoff,
+  type IngestBackoffEmitter,
+} from "./stages/backoff-signal.js";
+
+export {
   CONNECT_INGEST_PIPELINE_STAGES,
   buildInitialConnectIngestJob,
 } from "./ingest/job-record.js";

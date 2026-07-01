@@ -11,7 +11,15 @@ import {
 import type {
   ConnectIngestStageProgress,
   ConnectIngestStageProgressMetrics,
+  ConnectIngestStageBackoff,
 } from "@restormel/connect-core";
+import {
+  modelStageToPipelineStage,
+  buildStageBackoffState,
+  setStageBackoff,
+  clearStageBackoff,
+  type ConnectIngestBackoffInput,
+} from "$lib/connect/ingest-backoff";
 import { formatBracketLogLine } from "$lib/connect/bracket-log-timeline";
 import {
   appendConnectIngestJobLog,
@@ -196,6 +204,45 @@ export class ConnectIngestProgressReporter {
   setAttribution(attribution: ConnectRunAttribution | null): void {
     if (attribution && Object.keys(attribution).length > 0) {
       this.attribution = attribution;
+    }
+  }
+
+  /**
+   * RES-113 PR-I — record a transient backoff/rate-limit for a stage and persist it so
+   * the run console lights its amber "provider rate-limited" state from a REAL signal
+   * (REC-ADR-016). Attributes the backoff to the model stage's pipeline row when that row
+   * is still running, else to the currently-active stage; if neither resolves it is a
+   * no-op (never invents a state). Best-effort persistence — a backoff write that fails
+   * must not break the run, so the reporter swallows the error.
+   */
+  async signalBackoff(
+    stage: ConnectModelStage,
+    input: ConnectIngestBackoffInput,
+  ): Promise<void> {
+    const backoff = buildStageBackoffState(input);
+    if (!backoff) return;
+    const mapped = modelStageToPipelineStage(stage);
+    const candidate =
+      mapped && this.stages.some((row) => row.stage === mapped && row.status === "running")
+        ? mapped
+        : this.activeStage;
+    if (!candidate) return;
+    this.stages = setStageBackoff(this.stages, candidate, backoff);
+    try {
+      await this.persist("running");
+    } catch {
+      /* backoff telemetry is best-effort */
+    }
+  }
+
+  /** Clear the amber backoff overlay — one stage, or all when `stage` is omitted. */
+  async clearBackoff(stage?: ConnectIngestStage): Promise<void> {
+    if (!this.stages.some((row) => row.backoff != null)) return;
+    this.stages = clearStageBackoff(this.stages, stage);
+    try {
+      await this.persist("running");
+    } catch {
+      /* best-effort */
     }
   }
 
@@ -461,6 +508,8 @@ export class ConnectIngestProgressReporter {
     const nowIso = new Date().toISOString();
     this.stageProcessed = this.stageTotal;
     const summaryLine = summary ?? `${stageHumanLabel(stage)} complete`;
+    // A completed stage must not carry a stale amber backoff overlay into the console.
+    this.stages = clearStageBackoff(this.stages, stage);
     this.stages = mergeStageProgress(this.stages, stage, {
       status: "completed",
       completed_at: nowIso,
@@ -500,6 +549,8 @@ export class ConnectIngestProgressReporter {
 
   async fail(stage: ConnectIngestStage | null, error: string): Promise<void> {
     const nowIso = new Date().toISOString();
+    // A failing run shows the failure, never a leftover amber backoff.
+    this.stages = clearStageBackoff(this.stages);
     if (stage) {
       this.stages = mergeStageProgress(this.stages, stage, {
         status: "failed",
@@ -520,6 +571,8 @@ export class ConnectIngestProgressReporter {
     extraProgress?: Record<string, unknown>,
   ): Promise<void> {
     const nowIso = new Date().toISOString();
+    // A settled run carries no live backoff — drop every amber overlay before finalising.
+    this.stages = clearStageBackoff(this.stages);
     this.stages = this.stages.map((row) =>
       row.status === "completed" || row.status === "skipped" || row.status === "failed"
         ? row

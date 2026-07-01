@@ -496,18 +496,47 @@ export const M1_RUN_BACK_STAGES = ["validating", "remediating", "storing"] as co
 
 /**
  * Presentational rate-limit banner copy (03_SCREENS §M1 edge states). Shown as an
- * AMBER, no-action-needed state — the run keeps itself moving. The real backoff
- * signal is wired in PR-I; until then this banner only renders if a stage reports
- * a rate-limited status, so it never fabricates a state that isn't happening.
+ * AMBER, no-action-needed state — the run keeps itself moving. As of PR-I this lights
+ * from a REAL structured backoff signal threaded engine→job-record→SSE (REC-ADR-016) —
+ * it never fabricates a state that isn't happening.
  */
 export const M1_RATE_LIMIT_BANNER = {
   title: "Provider rate-limited",
   body: "Backing off and retrying automatically — no action needed. Your run resumes on its own.",
 } as const;
 
-/** Stage statuses an ingest engine may emit to signal a transient rate-limit / backoff. */
+/**
+ * Stage statuses an ingest engine may emit to signal a transient rate-limit / backoff.
+ * Back-compat alternate signal: the canonical real wire is the structured `stage.backoff`
+ * field (see {@link isM1StageBackingOff}); this status-string path is kept so an engine
+ * that overloads `status` still lights the amber state.
+ */
 const M1_RATE_LIMITED_STAGE_STATUSES = new Set(["rate_limited", "rate-limited", "backoff", "throttled"]);
 
 export function isM1RateLimitedStatus(status: string | null | undefined): boolean {
   return status != null && M1_RATE_LIMITED_STAGE_STATUSES.has(status);
+}
+
+/** Reason codes that earn the amber "Provider rate-limited" banner (genuine throttling). */
+const M1_RATE_LIMIT_REASON_CODES = new Set(["rate_limit", "overloaded"]);
+
+/** Minimal shape of a stage row the M1 rate-limit derivation reads (status + backoff). */
+export type M1RateLimitStageRow = {
+  status?: string;
+  backoff?: { reason_code?: string } | null;
+};
+
+/**
+ * RES-113 PR-I — true when a stage row carries a REAL structured backoff of a rate-limit
+ * class (the canonical engine→SSE signal). This is what the amber banner lights from;
+ * the engine only sets `backoff` while genuinely throttling and clears it on success.
+ */
+export function isM1StageBackingOff(row: M1RateLimitStageRow | null | undefined): boolean {
+  const code = row?.backoff?.reason_code;
+  return typeof code === "string" && M1_RATE_LIMIT_REASON_CODES.has(code);
+}
+
+/** True when a stage row signals a rate-limit by EITHER the structured field or a status string. */
+export function isM1StageRateLimited(row: M1RateLimitStageRow | null | undefined): boolean {
+  return isM1StageBackingOff(row) || isM1RateLimitedStatus(row?.status);
 }

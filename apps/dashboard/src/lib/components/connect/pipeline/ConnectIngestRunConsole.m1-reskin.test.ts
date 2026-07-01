@@ -132,6 +132,28 @@ describe("Run console — friendly M1 reskin (flag ON)", () => {
     );
   });
 
+  it("running: amber banner lights from the REAL structured backoff field (PR-I)", async () => {
+    const job = runningJob("running");
+    // The engine's structured signal — a rate-limit backoff on the running stage row.
+    (job.stages[0] as Record<string, unknown>).backoff = {
+      reason_code: "rate_limit",
+      attempt: 2,
+      delay_ms: 2000,
+      at: "2026-06-28T10:00:00.000Z",
+    };
+    const { container } = await renderConsole(job, { onboardingJourney: true });
+    await vi.waitFor(() => expect(container.querySelector(".m1-rate-limit")).not.toBeNull());
+    expect(container.querySelector(".m1-rate-limit")?.textContent ?? "").toMatch(/no action needed/i);
+  });
+
+  it("running: a non-throttle backoff (timeout) does NOT light amber (honest labelling)", async () => {
+    const job = runningJob("running");
+    (job.stages[0] as Record<string, unknown>).backoff = { reason_code: "timeout", attempt: 2, delay_ms: 0, at: "t" };
+    const { container } = await renderConsole(job, { onboardingJourney: true });
+    await vi.waitFor(() => expect(container.querySelector(".m1-build-frame")).not.toBeNull());
+    expect(container.querySelector(".m1-rate-limit")).toBeNull();
+  });
+
   it("completed: 'ask your own data' Done card renders with the ledger", async () => {
     const { container } = await renderConsole(completedJob(), { onboardingJourney: true });
     await vi.waitFor(() => expect(container.querySelector(".m1-done-ask")).not.toBeNull());
