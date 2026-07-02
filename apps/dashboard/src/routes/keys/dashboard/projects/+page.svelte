@@ -106,7 +106,7 @@
 </script>
 
 <h1 class="page-title">Projects</h1>
-<p class="page-desc">Create and manage projects. Each project has its own Gateway keys.</p>
+<p class="page-desc">A project is one setup — its graph, its keys, how it's wired. Add as many as you need.</p>
 
 {#if data.projectsError}
   <p class="error-msg" role="alert">{data.projectsError}. <a href="/keys/dashboard/projects" data-sveltekit-reload>Try again</a>, or contact support if it keeps happening.</p>

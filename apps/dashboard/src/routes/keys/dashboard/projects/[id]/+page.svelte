@@ -32,6 +32,11 @@
 
   $: editingName = data.project?.name ?? "";
 
+  // Environments module flag (default OFF per MVP_MODULE_DEFAULTS). Flag-OFF renders the
+  // simple projects CRUD page; flag-ON restores the full dev/prod environment UI. Non-destructive:
+  // env rows still load server-side; this only gates their visual surface + the CI env lines.
+  $: environmentsOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).environments;
+
   $: {
     const envs = data.environments ?? [];
     if (envs.length === 0) {
@@ -52,7 +57,6 @@
   function buildCiSnippet(): string {
     if (!data.project) return "";
     const env = data.environments.find((e) => e.id === selectedCiEnvId);
-    const environmentsOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).environments;
     return ciStagingSecretsSnippet({
       gatewayKey: effectiveGatewayKeyForSnippet(),
       projectId: data.project.id,
@@ -193,26 +197,28 @@
     </div>
   </section>
 
-  <section class="section">
-    <h2 class="section-title">Environments</h2>
-    <p class="section-desc">
-      Development and Production are separate <strong>slots</strong> for routes and policy. Your Gateway key is <strong>project-wide</strong> — it
-      does not change per environment. For CI, pick <strong>one</strong> environment ID (usually Development) in the Copy for CI section below.
-    </p>
-    {#if data.environments?.length > 0}
-      <ul class="env-list">
-        {#each data.environments as env}
-          <li class="env-row">
-            <span class="env-name">{env.name}</span>
-            <span class="env-type">{env.type}</span>
-            <code class="env-id">{env.id}</code>
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <p class="env-empty">No environments on this project yet. You can still copy project ID and create a key; add environments when you split dev/prod routing.</p>
-    {/if}
-  </section>
+  {#if environmentsOn}
+    <section class="section">
+      <h2 class="section-title">Environments</h2>
+      <p class="section-desc">
+        Development and Production are separate <strong>slots</strong> for routes and policy. Your Gateway key is <strong>project-wide</strong> — it
+        does not change per environment. For CI, pick <strong>one</strong> environment ID (usually Development) in the Copy for CI section below.
+      </p>
+      {#if data.environments?.length > 0}
+        <ul class="env-list">
+          {#each data.environments as env}
+            <li class="env-row">
+              <span class="env-name">{env.name}</span>
+              <span class="env-type">{env.type}</span>
+              <code class="env-id">{env.id}</code>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="env-empty">No environments on this project yet. You can still copy project ID and create a key; add environments when you split dev/prod routing.</p>
+      {/if}
+    </section>
+  {/if}
 
   <section class="section section-gateway" aria-labelledby="gateway-project-heading">
     <h2 id="gateway-project-heading" class="section-title">Gateway keys (this project)</h2>
@@ -264,11 +270,11 @@
       Includes <strong>policy evaluate</strong> (<code class="inline-code">RESTORMEL_EVALUATE_URL</code>), <strong>control-plane base</strong>
       (<code class="inline-code">RESTORMEL_CONTROL_PLANE_URL</code>), and <strong>server token</strong> (<code class="inline-code">RESTORMEL_SERVER_TOKEN</code>
       — same value as the Gateway key for MCP / Plot-style admin wizards). The full snippet also repeats <strong>unprefixed</strong> names for setup
-      wizards that expect <code class="inline-code">RESTORMEL_PROJECT_ID</code> / <code class="inline-code">RESTORMEL_ENVIRONMENT_ID</code> without
+      wizards that expect <code class="inline-code">RESTORMEL_PROJECT_ID</code>{#if environmentsOn} / <code class="inline-code">RESTORMEL_ENVIRONMENT_ID</code>{/if} without
       <code class="inline-code">_STAGING</code>.
     </p>
 
-    {#if data.environments?.length > 0}
+    {#if environmentsOn && data.environments?.length > 0}
       <div class="ci-env-pick">
         <label for="ci-env-select" class="ci-env-label">Environment ID for this snippet (CI usually targets Development)</label>
         <select id="ci-env-select" bind:value={selectedCiEnvId} class="ci-env-select">
@@ -360,26 +366,28 @@
           </button>
         </div>
       </li>
-      <li class="ci-secret-row">
-        <div class="ci-secret-meta">
-          <code class="ci-secret-name">RESTORMEL_ENVIRONMENT_ID_STAGING</code>
-          <span class="ci-secret-desc">One environment per CI pipeline — choose Development or Production above, then copy that ID here</span>
-        </div>
-        <div class="ci-secret-value">
-          {#if data.environments?.length > 0}
-            {#each data.environments as env}
-              <span class="ci-secret-env">
-                <code class="ci-secret-display">{env.id}</code>
-                <button type="button" class="btn btn-secondary btn-sm" onclick={() => copyToClipboard(env.id, "env-" + env.id)}>
-                  {copiedId === "env-" + env.id ? "Copied" : "Copy"} ({env.name})
-                </button>
-              </span>
-            {/each}
-          {:else}
-            <span class="ci-secret-muted">No environments yet.</span>
-          {/if}
-        </div>
-      </li>
+      {#if environmentsOn}
+        <li class="ci-secret-row">
+          <div class="ci-secret-meta">
+            <code class="ci-secret-name">RESTORMEL_ENVIRONMENT_ID_STAGING</code>
+            <span class="ci-secret-desc">One environment per CI pipeline — choose Development or Production above, then copy that ID here</span>
+          </div>
+          <div class="ci-secret-value">
+            {#if data.environments?.length > 0}
+              {#each data.environments as env}
+                <span class="ci-secret-env">
+                  <code class="ci-secret-display">{env.id}</code>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick={() => copyToClipboard(env.id, "env-" + env.id)}>
+                    {copiedId === "env-" + env.id ? "Copied" : "Copy"} ({env.name})
+                  </button>
+                </span>
+              {/each}
+            {:else}
+              <span class="ci-secret-muted">No environments yet.</span>
+            {/if}
+          </div>
+        </li>
+      {/if}
       <li class="ci-secret-row ci-secret-optional">
         <div class="ci-secret-meta">
           <code class="ci-secret-name">RESTORMEL_KEYS_BASE_STAGING</code>

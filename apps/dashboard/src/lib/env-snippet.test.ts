@@ -75,4 +75,31 @@ describe("ciStagingSecretsSnippet", () => {
     expect(s).not.toContain("RESTORMEL_ENVIRONMENT_ID");
     expect(s).toContain("RESTORMEL_PROJECT_ID=p1");
   });
+
+  // ux-projects-crud (spec §3/§8-B3): the environments-flag-OFF CI snippet keeps project id,
+  // gateway key + server token, keys base, evaluate + control-plane URLs, and drops every
+  // RESTORMEL_ENVIRONMENT_ID line. This is what the projects/[id] page copies when the flag is off.
+  it("flag-OFF snippet carries project id + gateway key + URLs and NO environment id", () => {
+    const s = ciStagingSecretsSnippet({
+      gatewayKey: "gk_flagoff",
+      projectId: "proj-42",
+      environmentId: "env-should-be-dropped",
+      environmentLabel: "Production",
+      keysBaseUrl: "https://keys.example",
+      includeEnvironmentId: false,
+    });
+    expect(s).toContain("RESTORMEL_GATEWAY_KEY_STAGING=gk_flagoff");
+    expect(s).toContain("RESTORMEL_SERVER_TOKEN_STAGING=gk_flagoff");
+    expect(s).toContain("RESTORMEL_PROJECT_ID_STAGING=proj-42");
+    expect(s).toContain("RESTORMEL_KEYS_BASE_STAGING=https://keys.example");
+    expect(s).toContain(
+      "RESTORMEL_EVALUATE_URL_STAGING=https://keys.example/keys/dashboard/api/policies/evaluate",
+    );
+    expect(s).toContain("RESTORMEL_CONTROL_PLANE_URL_STAGING=https://keys.example/keys/dashboard");
+    expect(s).toContain("RESTORMEL_PROJECT_ID=proj-42");
+    // The env id and its comment/label must be fully absent — not just blank.
+    expect(s).not.toContain("RESTORMEL_ENVIRONMENT_ID");
+    expect(s).not.toContain("env-should-be-dropped");
+    expect(s).not.toContain("Environment: Production");
+  });
 });
