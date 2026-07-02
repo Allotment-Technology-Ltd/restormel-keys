@@ -1,5 +1,5 @@
 -- Transactional email SEND LOG — durable observability for every send the dashboard
--- performs (REC-PLAN-017 / founders-approval no-send incident).
+-- performs (REC-PLAN-028 / founders-approval no-send incident).
 --
 -- WHY: before this, a send failure was caught fail-open and logged as an opaque error
 -- name only ("ReferenceError"), with NO durable record and NO way for an operator to tell

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// REC-PLAN-017 Phase 3 — consent ledger.
+// REC-PLAN-028 Phase 3 — consent ledger.
 //
 // We test:
 //   (1) the signed unsubscribe token mint/verify — PURE, with an explicit secret so no

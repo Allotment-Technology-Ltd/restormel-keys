@@ -1,5 +1,5 @@
 ---
-id: REC-PLAN-017
+id: REC-PLAN-027
 title: Forgejo-rooted SSO consolidation (estate-wide single sign-on)
 class: planning
 owner: founder

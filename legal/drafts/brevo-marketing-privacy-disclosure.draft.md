@@ -13,7 +13,7 @@ retention: review-only
 
 # DRAFT — Marketing-email privacy disclosure (Brevo) — DO NOT PUBLISH YET
 
-> **GATED — publish-when-live (REC-PLAN-017 D9).** This text is prepared in advance but MUST NOT be
+> **GATED — publish-when-live (REC-PLAN-028 D9).** This text is prepared in advance but MUST NOT be
 > added to the public privacy notice (`legal/privacy-policy.md` / restormel.dev/keys/privacy) until the
 > **first marketing send** goes out. `classification: internal` keeps it off the public site (only
 > `public` renders). When the marketing stream goes live: move the relevant section into the public

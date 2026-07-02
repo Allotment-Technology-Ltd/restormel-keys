@@ -1,4 +1,4 @@
--- Email preferences — the AUTHORITATIVE, sovereign marketing-consent ledger (REC-PLAN-017 Phase 3).
+-- Email preferences — the AUTHORITATIVE, sovereign marketing-consent ledger (REC-PLAN-028 Phase 3).
 --
 -- This table — NOT Brevo or any downstream send list — is the system of record for
 -- whether a person has consented to each category of marketing email. Brevo (Phase 4)

@@ -1,5 +1,5 @@
 /**
- * Transactional email SEND OBSERVABILITY (REC-PLAN-017 / founders-approval no-send incident).
+ * Transactional email SEND OBSERVABILITY (REC-PLAN-028 / founders-approval no-send incident).
  *
  * Records every transactional send — category, MASKED recipient, success/failure + a short
  * error reason, timestamp, provider message-id — to the durable `email_send_log` table, and

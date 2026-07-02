@@ -1,6 +1,6 @@
 /**
  * Email preferences — the sovereign, authoritative marketing-consent ledger
- * (REC-PLAN-017 Phase 3).
+ * (REC-PLAN-028 Phase 3).
  *
  * This module is the ONLY writer/reader of the `email_preferences` table — the
  * system of record for marketing-email consent. Brevo (Phase 4) is a downstream

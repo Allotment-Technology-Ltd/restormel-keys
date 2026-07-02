@@ -1,5 +1,5 @@
 /**
- * Security / ops alert — HTML email (REC-PLAN-017 Phase 2).
+ * Security / ops alert — HTML email (REC-PLAN-028 Phase 2).
  * Routed to the "security" category: From = admin@restormel.dev, Reply-To = admin@restormel.dev.
  * No unsubscribe block — this is an operational / security notice.
  *

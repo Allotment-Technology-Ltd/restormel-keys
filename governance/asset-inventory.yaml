@@ -130,7 +130,7 @@
 #   Forgejo) → suppliers.yaml UNCHANGED; only empty/synthetic data ever → ropa.yaml/data-inventory.yaml
 #   UNCHANGED. Plan of record REC-PLAN-022. last-reviewed UNCHANGED (founder re-approval on merge);
 #   the asset history above is append-only.
-# 2026-06-30 (records/infra-alert-storm-node-rescale — REC-INC-026 / RES-123): NODE SWAP.
+# 2026-06-30 (records/infra-alert-storm-node-rescale — REC-INC-028 / RES-123): NODE SWAP.
 #   AST-022 cluster: node3 (.167, the cx33 "surreal-forgejo" 8GiB box) was RETIRED and its Hetzner
 #   server DELETED, replaced by node4 — a cx43 (8c/16GiB, k8s name restormel-node4, public
 #   157.180.79.201, private 172.16.0.2, Hetzner id 146553066) — via a blue-green etcd swap (join a 4th

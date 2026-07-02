@@ -1,5 +1,5 @@
 /**
- * Email-address verification — HTML transactional email (REC-PLAN-017 Phase 2).
+ * Email-address verification — HTML transactional email (REC-PLAN-028 Phase 2).
  * Sent by the Better Auth `emailVerification.sendVerificationEmail` hook on the
  * `AUTH_PROVIDER === "self"` path.
  *

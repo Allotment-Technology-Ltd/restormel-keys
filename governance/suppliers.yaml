@@ -295,7 +295,7 @@ suppliers:
       Google Workspace dependency. NOW IN PRODUCTION for both Restormel and allotmentology.tech:
       auth transactional emails (magic-link, reset, verification, security alerts, welcome-on-approval)
       and allotmentology.tech enquiry notifications (third-party enquirer PII).
-      Scope expanded 2026-06-18 (REC-PLAN-017): Migadu is the TRANSACTIONAL stream for the
+      Scope expanded 2026-06-18 (REC-PLAN-028): Migadu is the TRANSACTIONAL stream for the
       Restormel product (restormel.dev mailboxes admin@/notify@/contact@, moving to a
       dedicated send.restormel.dev sending subdomain). Transactional ONLY — marketing/bulk
       email goes via Brevo (separate entry, separate subdomain) so the two reputations stay
@@ -323,7 +323,7 @@ suppliers:
     sovereignty: ok
     products: [restormel]
     notes: >
-      Added 2026-06-18 for the two-stream email split (REC-PLAN-017). Supersedes the earlier
+      Added 2026-06-18 for the two-stream email split (REC-PLAN-028). Supersedes the earlier
       'planned / not-yet-engaged' Brevo entry — Brevo is now LIVE. Sending domain
       news.restormel.dev authenticated 2026-06-18 (Brevo code + DKIM CNAMEs brevo1/brevo2);
       org DMARC covers it via sp=none, so no Brevo DMARC was added. Brevo ISO 27001:2022

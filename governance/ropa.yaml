@@ -72,7 +72,7 @@ processing_activities:
     transfers: >
       Core service: no transfer (self-hosted EU, Hetzner Helsinki).
       Zuplo (US): API request metadata; Zuplo DPA + SCCs apply.
-      Transactional email: none — Migadu EU mail servers (REC-PLAN-017).
+      Transactional email: none — Migadu EU mail servers (REC-PLAN-028).
     retention: >
       Account and workspace data: retained while account is active; deleted
       within 30 days of account closure on request.
@@ -257,7 +257,7 @@ processing_activities:
   - id: PROC-009
     purpose: >
       Marketing communications (Restormel) — product newsletters, release notes, and product
-      updates to subscribers who have opted in. PLANNED (REC-PLAN-017) — not yet operating;
+      updates to subscribers who have opted in. PLANNED (REC-PLAN-028) — not yet operating;
       this sets the target. Strictly separate from transactional/auth email (PROC-001).
     lawful_basis: >
       CONSENT — Art 6(1)(a) for net-new newsletter sign-ups (double opt-in);
@@ -286,7 +286,7 @@ processing_activities:
       preference centre; transactional/security email never gated by marketing preferences;
       separate sending subdomain (news.restormel.dev) with its own SPF/DKIM/DMARC.
     privacy_notice_ref: >
-      [PLACEHOLDER — gated to Phase 2 launch (REC-PLAN-017 §8, publish-when-live)]. The public
+      [PLACEHOLDER — gated to Phase 2 launch (REC-PLAN-028 §8, publish-when-live)]. The public
       privacy notice (https://restormel.dev/keys/privacy) MUST carry a marketing-communications
       section (lawful basis, categories, retention, right to object/withdraw) BEFORE the first
       marketing send.

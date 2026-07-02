@@ -1,5 +1,5 @@
 /**
- * "Founders access approved" — the first design-system email (REC-PLAN-017 pilot).
+ * "Founders access approved" — the first design-system email (REC-PLAN-028 pilot).
  * Transactional stream (no unsubscribe): notifies an applicant that their Founders Circle
  * access is approved. Authored as a Svelte template (FoundersApproved.svelte) rendered to
  * email-safe HTML, with a plain-text alternative.

@@ -1,5 +1,5 @@
 /**
- * Public, no-login unsubscribe (REC-PLAN-017 Phase 3).
+ * Public, no-login unsubscribe (REC-PLAN-028 Phase 3).
  *
  * GET  → renders a neo-brutalist confirmation page. The token rides in the query
  *        string (`?t=<linkToken>`). The GET is deliberately side-effect-free: a

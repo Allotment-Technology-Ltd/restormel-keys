@@ -841,18 +841,6 @@ records:
     next-review: 2027-06-29
     retention: P6Y
     path: evidence/incidents/2026-06-29-forgejo-runner-oom-portal-ci-build.md
-  - id: REC-INC-026
-    title: "Infra alert storm — multi-day automation + observability degradations triaged & remediated (node3 cx33→cx43 rescale, webhook/alloy/cert/netpol/alert fixes)"
-    class: evidence
-    status: closed
-    classification: internal
-    control-tier: 3
-    owner: founder
-    last-reviewed: 2026-06-30
-    review-interval: P12M
-    next-review: 2027-06-30
-    retention: P6Y
-    path: evidence/incidents/2026-06-30-infra-alert-storm.md
   - id: REC-INC-027
     title: "Planned node3 drain for cx33→cx43 rescale — ~3min Huly blip + CNPG failovers (rescale aborted on capacity, no data loss)"
     class: evidence
@@ -865,6 +853,18 @@ records:
     next-review: 2027-06-29
     retention: P6Y
     path: evidence/incidents/2026-06-29-node3-drain-huly-blip-rescale-aborted.md
+  - id: REC-INC-028
+    title: "Infra alert storm — multi-day automation + observability degradations triaged & remediated (node3 cx33→cx43 rescale, webhook/alloy/cert/netpol/alert fixes)"
+    class: evidence
+    status: closed
+    classification: internal
+    control-tier: 3
+    owner: founder
+    last-reviewed: 2026-06-30
+    review-interval: P12M
+    next-review: 2027-06-30
+    retention: P6Y
+    path: evidence/incidents/2026-06-30-infra-alert-storm.md
   - id: REC-LEG-001
     title: Terms of Service
     class: legal
@@ -1178,30 +1178,6 @@ records:
     retention: review-only
     path: planning/isms-expansion-context.md
   - id: REC-PLAN-017
-    title: "Product email system — transactional + marketing streams, neo-brutalist Svelte templates, consent & preferences"
-    class: planning
-    status: draft
-    classification: internal
-    control-tier: 1
-    owner: founder
-    last-reviewed: 2026-06-18
-    review-interval: P6M
-    next-review: 2026-12-18
-    retention: review-only
-    path: planning/email-system-plan.md
-  - id: REC-PLAN-017
-    title: Forgejo-rooted SSO consolidation (estate-wide single sign-on)
-    class: planning
-    status: draft
-    classification: internal
-    control-tier: 1
-    owner: founder
-    last-reviewed: 2026-06-29
-    review-interval: P6M
-    next-review: 2026-12-29
-    retention: review-only
-    path: planning/forgejo-sso-consolidation-plan.md
-  - id: REC-PLAN-017
     title: "Verified Context — market positioning & backlog-prioritisation basis (mid-2026)"
     class: planning
     status: approved
@@ -1321,6 +1297,30 @@ records:
     next-review: 2027-01-01
     retention: review-only
     path: planning/verified-context-synthesis-2026.md
+  - id: REC-PLAN-027
+    title: Forgejo-rooted SSO consolidation (estate-wide single sign-on)
+    class: planning
+    status: draft
+    classification: internal
+    control-tier: 1
+    owner: founder
+    last-reviewed: 2026-06-29
+    review-interval: P6M
+    next-review: 2026-12-29
+    retention: review-only
+    path: planning/forgejo-sso-consolidation-plan.md
+  - id: REC-PLAN-028
+    title: "Product email system — transactional + marketing streams, neo-brutalist Svelte templates, consent & preferences"
+    class: planning
+    status: draft
+    classification: internal
+    control-tier: 1
+    owner: founder
+    last-reviewed: 2026-06-18
+    review-interval: P6M
+    next-review: 2026-12-18
+    retention: review-only
+    path: planning/email-system-plan.md
   - id: REC-POL-001
     title: Information Security Policy
     class: governance
