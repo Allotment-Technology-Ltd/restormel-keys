@@ -139,6 +139,7 @@ export const load: PageServerLoad = async (event) => {
       // RES-113 PR-3 (flag-ON only; inert null on flag-OFF / signed-out).
       graphName: null as string | null,
       homeActivity: Promise.resolve(null) as Promise<HomeActivityRow[] | null>,
+      hasAppTraffic24h: false,
       ...signedOutHubDefaults(),
     };
   }
@@ -332,12 +333,15 @@ export const load: PageServerLoad = async (event) => {
     // RES-113 PR-3 (flag-ON only): the LIVE-state activity rows — the most recent
     // gateway requests attributed to their connection (gateway key) names. Streamed;
     // resolves to null on failure (the shell renders its error state with a retry).
-    // Ingest traffic is excluded — the panel shows the app ASKING, never the
-    // pipeline writing. Flag-OFF: no queries issued, resolves null (inert).
+    // Ingest traffic is excluded AT THE QUERY (`excludeSource`) — the panel shows
+    // the app ASKING, never the pipeline writing, and a big ingest run (one log per
+    // resolve) can never evict genuine app asks from the LIMIT window (5-lens
+    // review fix). The in-JS filter stays as defense in depth for any legacy row
+    // the SQL predicate cannot see. Flag-OFF: no queries issued, resolves null.
     const homeActivityPromise: Promise<HomeActivityRow[] | null> = journeyOn
       ? (async () => {
           const [logs, keys] = await Promise.all([
-            listRequestLogs(wsId, { limit: 25 }),
+            listRequestLogs(wsId, { limit: 25, excludeSource: "connect_ingest" }),
             listApiKeysByWorkspace(wsId).catch(() => []),
           ]);
           const nameByKeyId = new Map(keys.map((k) => [k.id, k.label ?? k.keyPrefix]));
@@ -352,6 +356,23 @@ export const load: PageServerLoad = async (event) => {
             }));
         })().catch(() => null)
       : Promise.resolve(null);
+
+    // RES-113 PR-3 (flag-ON only): the hero chip's traffic signal. `LIVE` renders
+    // only from real APP traffic — the pipeline's own `connect_ingest` request
+    // logs are excluded, so a rebuild can never fabricate "Live — serving answers
+    // to your app" (copy pack §1 honesty rule / REC-ADR-016; 5-lens review fix).
+    // An existence probe (limit 1), not a count — the chip only needs "any".
+    // Flag-OFF: no query issued, false (inert — never read).
+    const hasAppTraffic24hPromise: Promise<boolean> = journeyOn
+      ? listRequestLogs(wsId, {
+          since: last24hSince,
+          until: now,
+          limit: 1,
+          excludeSource: "connect_ingest",
+        })
+          .then((logs) => logs.some((l) => l.source !== "connect_ingest"))
+          .catch(() => false)
+      : Promise.resolve(false);
 
     // Trust strip: peek only — never blocks the page shell (statsMode: "peek").
     // The Overview QUOTES the scorecard service score; it never recomputes.
@@ -377,6 +398,8 @@ export const load: PageServerLoad = async (event) => {
       console.error("[overview] livePulse failed:", String(err).slice(0, 120));
       return null;
     });
+    // Already .catch-guarded to false; started in parallel with livePulse above.
+    const hasAppTraffic24h = await hasAppTraffic24hPromise;
 
     const noRouteCount24h = livePulse?.noRouteCount24h ?? 0;
     const usedThisMonth = livePulse?.usedThisMonth ?? null;
@@ -437,6 +460,10 @@ export const load: PageServerLoad = async (event) => {
       // null (⇒ the shell renders "Your graph") when absent — never fabricated.
       graphName: journeyOn ? (target?.label ?? null) : null,
       homeActivity: homeActivityPromise,
+      // RES-113 PR-3 (flag-ON only): ingest-excluded 24h traffic signal for the
+      // hero chip — the SAME filtered source the activity rows use, so the chip
+      // and the panel below it can never contradict each other.
+      hasAppTraffic24h,
       ...hubPanels,
     };
   } catch (e) {
@@ -465,6 +492,7 @@ export const load: PageServerLoad = async (event) => {
       connectReadiness: Promise.resolve(null) as Promise<ConnectReadinessSummary | null>,
       graphName: null as string | null,
       homeActivity: Promise.resolve(null) as Promise<HomeActivityRow[] | null>,
+      hasAppTraffic24h: false,
       ...hubPanels,
     };
   }

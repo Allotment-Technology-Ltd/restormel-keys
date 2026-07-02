@@ -29,7 +29,11 @@
   import EmptyState from "$lib/components/EmptyState.svelte";
   import TrustSparkline from "./TrustSparkline.svelte";
   import { isActiveIngestJobStatus } from "$lib/connect/connect-journey";
-  import { deriveHomeState, type HomeStateSignals } from "$lib/connect/home-state";
+  import {
+    deriveHomeState,
+    type HomeStateKind,
+    type HomeStateSignals,
+  } from "$lib/connect/home-state";
   import { journeyStageName } from "$lib/connect/stage-vocabulary";
   import { invalidateAll, goto } from "$app/navigation";
   import {
@@ -134,6 +138,12 @@
     graphName: string | null;
     /** RES-113 PR-3 (flag-ON only; resolves null flag-OFF): LIVE-state activity rows. */
     homeActivity: Promise<HomeActivityRow[] | null>;
+    /**
+     * RES-113 PR-3 (flag-ON only; false flag-OFF): real APP traffic observed in the
+     * last 24h, with the pipeline's own `connect_ingest` request logs excluded —
+     * the hero chip's `LIVE` signal (copy pack §1 honesty rule / REC-ADR-016).
+     */
+    hasAppTraffic24h: boolean;
   };
 
   const isFree = data.entitlements?.plan === "free";
@@ -177,14 +187,17 @@
 
   /**
    * Hero connection chip (copy pack §1 Hero). `LIVE` renders ONLY from real
-   * observed traffic (REC-ADR-016 honesty rule — same as Connect S2); a mere
-   * existing connection reads `CONNECTED`.
+   * observed APP traffic (REC-ADR-016 honesty rule — same as Connect S2): the
+   * signal is the server's ingest-EXCLUDED 24h probe (`hasAppTraffic24h`), so a
+   * rebuild's own `connect_ingest` request logs can never light the chip while
+   * the activity panel below honestly says "No requests yet" (5-lens review
+   * fix). A mere existing connection reads `CONNECTED`.
    */
   function connectionChip(
     connectionCount: number,
-    requestCount24h: number,
+    hasAppTraffic: boolean,
   ): { label: string; aria: string; live: boolean } {
-    if (connectionCount > 0 && requestCount24h > 0) {
+    if (connectionCount > 0 && hasAppTraffic) {
       return { label: "LIVE", aria: "Live — serving answers to your app", live: true };
     }
     if (connectionCount > 0) {
@@ -201,32 +214,142 @@
     void goto(`${ANSWER_CONSOLE_HREF}?q=${encodeURIComponent(q)}`);
   }
 
-  // Focus relocation targets: the {#await}/{#if} swaps below destroy the retry
-  // buttons mid-action, so each retry explicitly relocates focus (a11y skill —
-  // never let focus drop to <body> on a conditional swap).
-  let heroHeadingEl: HTMLHeadingElement | null = null;
-  let journeyErrorEl: HTMLDivElement | null = null;
-  let activityHeadingEl: HTMLHeadingElement | null = null;
+  // Focus relocation on retry-driven swaps (a11y skill — never let focus drop to
+  // <body> on a conditional swap): `invalidateAll()` hands the {#await} blocks NEW
+  // promises, so everything inside them (including the old focus targets) unmounts
+  // and remounts AFTER the retry handler returns. A post-hoc `.focus()` on a stale
+  // bind would fire against a destroyed node (5-lens review fix). Instead the retry
+  // CLAIMS a focus group, and whichever matching region next MOUNTS consumes the
+  // claim and focuses itself — focus lands on the remounted content, whenever it
+  // arrives. Programmatic-only targets (`tabindex="-1"`, no visible ring).
+  let pendingFocus: "journey" | "activity" | null = null;
+  function claimFocus(node: HTMLElement, group: "journey" | "activity") {
+    if (pendingFocus === group) {
+      pendingFocus = null;
+      node.focus();
+    }
+  }
 
   let retryingJourney = false;
   async function retryJourney() {
     retryingJourney = true;
+    pendingFocus = "journey";
     try {
       await invalidateAll();
     } finally {
       retryingJourney = false;
-      requestAnimationFrame(() => (journeyErrorEl ?? heroHeadingEl)?.focus());
     }
   }
 
   let retryingActivity = false;
   async function retryActivity() {
     retryingActivity = true;
+    pendingFocus = "activity";
     try {
       await invalidateAll();
     } finally {
       retryingActivity = false;
-      requestAnimationFrame(() => activityHeadingEl?.focus());
+    }
+  }
+
+  // ── RES-113 PR-3: persistent journey status region (flag-ON only) ─────────
+  // The a11y skill requires live regions to be persistent — a `role="status"`
+  // born inside an {#await}/{#if} branch is recreated with its content and never
+  // announces (5-lens review fix). One region mounts empty at boot (top of the
+  // flag-ON branch, OUTSIDE every swap) and this script feeds it: the run-stage
+  // line while a build is running, and the activity panel's async outcomes.
+  let journeyAnnounce = "";
+  /** What the status region currently carries, so the two async feeders only
+   *  ever clear their OWN message — the state sync must not wipe an activity
+   *  outcome announced a beat earlier (and vice versa). */
+  let journeyAnnounceKind: "stage" | "activity" | null = null;
+  /** The derived state kind, mirrored into script so async announcements can be
+   *  scoped to the state whose panel is actually mounted (never announce the
+   *  activity outcome from EMPTY, where no panel exists). */
+  let journeyHomeKind: HomeStateKind | null = null;
+  let journeyStateToken = 0;
+  $: if (onboardingJourney) {
+    syncJourneyStatus(data.scorecard, data.hub, journeyConnectionCount);
+  }
+  function syncJourneyStatus(
+    scorecardP: Promise<ConnectTrustScorecardData | null>,
+    hubP: Promise<ConnectHubPayload | null>,
+    connectionCount: number,
+  ) {
+    const token = ++journeyStateToken;
+    void Promise.all([scorecardP, hubP])
+      .then(([card, hub]) => {
+        if (token !== journeyStateToken) return;
+        if (!hub?.journey) {
+          journeyHomeKind = null;
+          clearStageAnnouncement();
+          return;
+        }
+        const home = deriveHomeState(homeSignals(card, hub, connectionCount));
+        journeyHomeKind = home.kind;
+        if (home.kind === "ingest_running") {
+          // Copy pack §1.2: the stage line lives in a status region.
+          journeyAnnounce = `${journeyStageName(home.runStage)}… usually 1–3 minutes.`;
+          journeyAnnounceKind = "stage";
+        } else {
+          clearStageAnnouncement();
+        }
+      })
+      .catch(() => {
+        if (token !== journeyStateToken) return;
+        journeyHomeKind = null;
+        clearStageAnnouncement();
+      });
+  }
+  /** Clear only a stale stage line — never an activity outcome announced a beat earlier. */
+  function clearStageAnnouncement() {
+    if (journeyAnnounceKind === "stage") {
+      journeyAnnounce = "";
+      journeyAnnounceKind = null;
+    }
+  }
+
+  // ── RES-113 PR-3: activity panel async state (flag-ON only) ───────────────
+  // Script-tracked (not an {#await}) so the panel can carry `aria-busy` on the
+  // ONE container being swapped and announce its outcomes through the persistent
+  // status region above — a plain-text swap is invisible to AT (a11y skill
+  // loading-semantics row; 5-lens review fix). Token-guarded against a stale
+  // promise resolving after invalidateAll handed us a new one.
+  type ActivityView =
+    | { kind: "loading" }
+    | { kind: "error" }
+    | { kind: "rows"; rows: HomeActivityRow[] };
+  let activityView: ActivityView = { kind: "loading" };
+  let activityToken = 0;
+  $: if (onboardingJourney) trackActivity(data.homeActivity);
+  function trackActivity(activityP: Promise<HomeActivityRow[] | null>) {
+    const token = ++activityToken;
+    activityView = { kind: "loading" };
+    void activityP
+      .then((rows) => {
+        if (token !== activityToken) return;
+        activityView = rows === null ? { kind: "error" } : { kind: "rows", rows };
+        announceActivity();
+      })
+      .catch(() => {
+        if (token !== activityToken) return;
+        activityView = { kind: "error" };
+        announceActivity();
+      });
+  }
+  /** Announce the activity outcome — only while the LIVE panel is the mounted
+   *  surface (copy pack §1.4 strings; "Recent activity loaded." also §1.4). */
+  function announceActivity() {
+    if (journeyHomeKind !== "live") return;
+    if (activityView.kind === "error") {
+      journeyAnnounce = "We couldn't load recent activity. Try again.";
+      journeyAnnounceKind = "activity";
+    } else if (activityView.kind === "rows") {
+      journeyAnnounce =
+        activityView.rows.length === 0
+          ? "No requests yet. When your app asks a question, it shows up here."
+          : "Recent activity loaded.";
+      journeyAnnounceKind = "activity";
     }
   }
 
@@ -330,6 +453,11 @@
   <!-- RES-113 PR-3: state-derived copy lives in the states below — the legacy
        operator-loop description is jargon-first for a novice (copy pack §1). -->
   <BrutalPageHeader title="Home" />
+  <!-- The ONE persistent polite live region for the journey shell: rendered empty
+       at boot, OUTSIDE every {#await}/{#if} swap below (a11y skill — a region born
+       inside a conditional is recreated with its content and never announces).
+       Fed from script: the §1.2 run-stage line + the §1.4 activity outcomes. -->
+  <p class="sr-only" role="status">{journeyAnnounce}</p>
 {:else}
   <BrutalPageHeader
     title="Home"
@@ -407,7 +535,7 @@
       <ConnectPageSkeleton variant="hub" />
     {:then [card, hub]}
       {#if !hub?.journey}
-        <div class="journey-error" tabindex="-1" bind:this={journeyErrorEl}>
+        <div class="journey-error" tabindex="-1" use:claimFocus={"journey"}>
           <BrutalErrorBanner
             title="Workspace unavailable"
             message="Could not load your workspace. Your data is unaffected — this is a load failure."
@@ -426,13 +554,13 @@
         </div>
       {:else}
         {@const home = deriveHomeState(homeSignals(card, hub, journeyConnectionCount))}
-        {@const chip = connectionChip(home.connectionCount, data.livePulse?.requestCount24h ?? 0)}
+        {@const chip = connectionChip(home.connectionCount, data.hasAppTraffic24h)}
 
         <!-- Persistent graph hero (copy pack §1 Hero): name + real counts + chip.
              EMPTY renders no metric row — nothing is fabricated (§2.3). -->
         <section class="graph-hero" aria-labelledby="graph-hero-h">
           <div class="hero-row">
-            <h2 id="graph-hero-h" class="hero-title" tabindex="-1" bind:this={heroHeadingEl}>
+            <h2 id="graph-hero-h" class="hero-title" tabindex="-1" use:claimFocus={"journey"}>
               {home.kind === "empty" ? "Your graph" : (data.graphName ?? "Your graph")}
             </h2>
             <span class="hero-chip" class:hero-chip--live={chip.live} role="img" aria-label={chip.aria}>
@@ -481,7 +609,10 @@
                naming the real stage (shared stage table §0 — never a raw stage key). -->
           <section class="home-state" aria-labelledby="home-run-h">
             <h3 id="home-run-h" class="state-headline">Building your graph</h3>
-            <p class="state-body" role="status">
+            <!-- Visible stage line; the ANNOUNCED copy of this exact string lives in
+                 the persistent status region above (copy pack §1.2 + a11y skill —
+                 a role="status" born inside this {#if} branch would never announce). -->
+            <p class="state-body">
               {journeyStageName(home.runStage)}… usually 1–3 minutes.
             </p>
             <a
@@ -530,40 +661,71 @@
             </p>
             <a class="tile-link brut-focus" href={CONNECT_HUB_HREF}>Manage connections</a>
           </div>
-          <section class="panel activity-panel" aria-labelledby="home-activity-h">
-            <h3 id="home-activity-h" class="cell-h" tabindex="-1" bind:this={activityHeadingEl}>
-              Recent activity
+          <!-- aria-busy on the ONE container being swapped (a11y skill loading
+               semantics); outcomes are announced via the persistent status region
+               at the top of the flag-ON branch, fed by trackActivity() in script. -->
+          <section
+            class="panel activity-panel"
+            aria-labelledby="home-activity-h"
+            aria-busy={activityView.kind === "loading"}
+          >
+            <!-- Heading authored uppercase — the pack's §1.4 literal is
+                 `RECENT ACTIVITY`, a short operational label (§0 / X12). -->
+            <h3 id="home-activity-h" class="cell-h" tabindex="-1" use:claimFocus={"activity"}>
+              RECENT ACTIVITY
             </h3>
-            {#await data.homeActivity}
-              <p class="state-muted">Loading activity… usually a few seconds.</p>
-            {:then rows}
-              {#if rows === null}
-                <p class="state-muted">We couldn't load recent activity. Try again.</p>
-                <button
-                  type="button"
-                  class="btn btn-outline btn-sm"
-                  disabled={retryingActivity}
-                  on:click={retryActivity}
-                >
-                  {retryingActivity ? "Retrying…" : "Try again"}
-                </button>
-              {:else if rows.length === 0}
-                <p class="state-muted">
-                  No requests yet. When your app asks a question, it shows up here.
-                </p>
-              {:else}
-                <ul class="activity-list">
-                  {#each rows as row (row.id)}
-                    <li class="activity-row">
-                      {row.connectionName} asked · {fmtAgoFromMs(row.createdAt)} ago
-                    </li>
-                  {/each}
-                </ul>
-              {/if}
-            {/await}
+            {#if activityView.kind === "loading"}
+              <p class="state-muted" aria-hidden="true">
+                Loading activity… usually a few seconds.
+              </p>
+            {:else if activityView.kind === "error"}
+              <p class="state-muted">We couldn't load recent activity. Try again.</p>
+              <button
+                type="button"
+                class="btn btn-outline btn-sm"
+                disabled={retryingActivity}
+                on:click={retryActivity}
+              >
+                {retryingActivity ? "Retrying…" : "Try again"}
+              </button>
+            {:else if activityView.rows.length === 0}
+              <p class="state-muted">
+                No requests yet. When your app asks a question, it shows up here.
+              </p>
+            {:else}
+              <ul class="activity-list">
+                {#each activityView.rows as row (row.id)}
+                  <li class="activity-row">
+                    {row.connectionName} asked · {fmtAgoFromMs(row.createdAt)} ago
+                  </li>
+                {/each}
+              </ul>
+            {/if}
           </section>
         {/if}
       {/if}
+    {:catch}
+      <!-- ux-contracts §3 floor: `data.hub` resolves null on failure, but the
+           scorecard load can REJECT — without this branch the shell would die in
+           its skeleton with no recovery action (5-lens review fix). Same error
+           strings + retry as the null-hub branch above (copy pack §1.5). -->
+      <div class="journey-error" tabindex="-1" use:claimFocus={"journey"}>
+        <BrutalErrorBanner
+          title="Workspace unavailable"
+          message="Could not load your workspace. Your data is unaffected — this is a load failure."
+        >
+          {#snippet actions()}
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              disabled={retryingJourney}
+              on:click={retryJourney}
+            >
+              {retryingJourney ? "Retrying…" : "Try again"}
+            </button>
+          {/snippet}
+        </BrutalErrorBanner>
+      </div>
     {/await}
   {:else}
   <!-- ── 1. Trust cap — the masthead numeral (NS §3.3 / rubric R3-V1, R3-V2) ──
@@ -998,6 +1160,16 @@
     min-height: 44px;
     display: inline-flex;
     align-items: center;
+  }
+  .tile-link:focus-visible {
+    /* Ink-paired focus (a11y skill §Focus / WCAG 1.4.11): these text links have
+       no hard border of their own, so the shared bare-yellow brut-focus ring
+       would float invisibly (~1.3:1) on the cream panel. Pair it: yellow ring
+       (brand focus signal) + a 2px ink band outside it so the focus boundary
+       itself meets 3:1. Tokens only — no new colours. */
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px var(--color-ink);
   }
   .activity-panel .cell-h:focus {
     /* Programmatic-only focus target (retry relocation) — no visible ring. */

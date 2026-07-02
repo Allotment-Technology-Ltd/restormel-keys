@@ -87,6 +87,7 @@ function pageProps(over: Record<string, unknown> = {}) {
       qualityHistory: Promise.resolve([]),
       graphName: null,
       homeActivity: Promise.resolve([]),
+      hasAppTraffic24h: false,
       ...over,
       // Cast: the fixture carries only the fields the flag-ON branch reads —
       // the full ConnectHubPayload shape is irrelevant to these render tests.
@@ -288,6 +289,9 @@ describe("HOME · LIVE (flag ON)", () => {
       graphName: "acme-graph",
       scorecard: Promise.resolve(scorecard({ units: 1204 })),
       hub: Promise.resolve(hubPayload({ stats: { units: 1204, validation: { awaiting_triage: 0 } } })),
+      // The chip's traffic signal is the server's ingest-EXCLUDED 24h probe —
+      // NOT livePulse.requestCount24h (which counts the pipeline's own writes).
+      hasAppTraffic24h: true,
       livePulse: {
         requestCount24h: 9,
         errorRate: 0,
@@ -336,8 +340,9 @@ describe("HOME · LIVE (flag ON)", () => {
     expect(getByText("Connected · 2 connections")).toBeTruthy();
     expect(getByRole("link", { name: "Manage connections" })).toBeTruthy();
 
-    // Activity panel INSIDE the state with attributed rows.
-    expect(getByRole("heading", { name: "Recent activity" })).toBeTruthy();
+    // Activity panel INSIDE the state with attributed rows. Heading authored
+    // uppercase — the copy pack §1.4 literal is `RECENT ACTIVITY` (X12 label).
+    expect(getByRole("heading", { name: "RECENT ACTIVITY" })).toBeTruthy();
     await waitFor(() => expect(getByText(/support-agent asked · 9m ago/)).toBeTruthy());
     expect(getByText(/backend asked · 2h ago/)).toBeTruthy();
   });
@@ -393,9 +398,131 @@ describe("HOME · LIVE (flag ON)", () => {
         connectionCount: 1,
       },
     });
-    const { getByRole } = render(HomePage, livePageProps({ livePulse: null }));
+    const { getByRole } = render(
+      HomePage,
+      livePageProps({ hasAppTraffic24h: false, livePulse: null }),
+    );
     await settle();
     expect(getByRole("img", { name: /connected — no requests served yet/i })).toBeTruthy();
+  });
+
+  it("chip stays CONNECTED when 24h traffic is ingest-only — livePulse counts it, the chip must not", async () => {
+    // 5-lens review fix (honesty rule): the pipeline writes a request log per
+    // ingest resolve, so livePulse.requestCount24h > 0 after a mere rebuild.
+    // The chip's signal is the ingest-EXCLUDED probe — with it false, the chip
+    // and the activity panel below agree ("no requests yet"), never contradict.
+    setJourneyPageData({
+      journeySignals: {
+        integrationCount: 0,
+        gatewayKeyCount: 1,
+        sourceCount: 12,
+        completedRunCount: 1,
+        flaggedClaimCount: 0,
+        connectionCount: 1,
+      },
+    });
+    const { getByRole, getByText, queryByRole } = render(
+      HomePage,
+      livePageProps({ hasAppTraffic24h: false, homeActivity: Promise.resolve([]) }),
+    );
+    await settle();
+    expect(getByRole("img", { name: /connected — no requests served yet/i })).toBeTruthy();
+    expect(queryByRole("img", { name: /live — serving answers to your app/i })).toBeNull();
+    await waitFor(() =>
+      expect(getByText("No requests yet. When your app asks a question, it shows up here.")).toBeTruthy(),
+    );
+  });
+
+  it("activity swap carries aria-busy on the panel and announces the outcome via the persistent status region", async () => {
+    // a11y skill loading-semantics row (5-lens review fix): aria-busy on the ONE
+    // container being replaced, outcome announced through the persistent
+    // role="status" region (a region born inside the swap would never announce).
+    setJourneyPageData({
+      journeySignals: {
+        integrationCount: 0,
+        gatewayKeyCount: 1,
+        sourceCount: 12,
+        completedRunCount: 1,
+        flaggedClaimCount: 0,
+        connectionCount: 1,
+      },
+    });
+    let resolveActivity!: (rows: unknown) => void;
+    const deferred = new Promise((r) => (resolveActivity = r));
+    const { container, getByRole } = render(
+      HomePage,
+      livePageProps({ homeActivity: deferred }),
+    );
+    await settle();
+
+    const panel = container.querySelector(".activity-panel")!;
+    expect(panel.getAttribute("aria-busy")).toBe("true");
+
+    resolveActivity([]);
+    await settle();
+    expect(panel.getAttribute("aria-busy")).toBe("false");
+    expect(getByRole("status").textContent).toContain(
+      "No requests yet. When your app asks a question, it shows up here.",
+    );
+  });
+
+  it("activity failure arriving after mount is announced via the persistent status region", async () => {
+    setJourneyPageData({
+      journeySignals: {
+        integrationCount: 0,
+        gatewayKeyCount: 1,
+        sourceCount: 12,
+        completedRunCount: 1,
+        flaggedClaimCount: 0,
+        connectionCount: 1,
+      },
+    });
+    let resolveActivity!: (rows: unknown) => void;
+    const deferred = new Promise((r) => (resolveActivity = r));
+    const { getByRole } = render(HomePage, livePageProps({ homeActivity: deferred }));
+    await settle();
+    resolveActivity(null); // the load's failure contract: resolves null, never rejects
+    await settle();
+    expect(getByRole("status").textContent).toContain(
+      "We couldn't load recent activity. Try again.",
+    );
+  });
+
+  it("activity retry relocates focus to the remounted panel heading (never <body>)", async () => {
+    // a11y skill "no focus loss" (5-lens review fix): invalidateAll unmounts the
+    // retry button with everything else; focus must land on the REMOUNTED
+    // content, not drop to <body>.
+    setJourneyPageData({
+      journeySignals: {
+        integrationCount: 0,
+        gatewayKeyCount: 1,
+        sourceCount: 12,
+        completedRunCount: 1,
+        flaggedClaimCount: 0,
+        connectionCount: 1,
+      },
+    });
+    const { getByRole, rerender } = render(
+      HomePage,
+      livePageProps({ homeActivity: Promise.resolve(null) }),
+    );
+    await settle();
+    await waitFor(() => expect(getByRole("button", { name: "Try again" })).toBeTruthy());
+
+    getByRole("button", { name: "Try again" }).click();
+    await settle();
+    // invalidateAll (mocked) hands the page NEW promises — simulate the data swap.
+    await rerender(
+      livePageProps({
+        homeActivity: Promise.resolve([
+          { id: "r1", connectionName: "support-agent", createdAt: Date.now() - 60000 },
+        ]),
+      }),
+    );
+    await settle();
+
+    const heading = getByRole("heading", { name: "RECENT ACTIVITY" });
+    expect(document.activeElement).toBe(heading);
   });
 
   it("submitting a question hands off to the Answer Console with ?q=", async () => {
@@ -420,6 +547,70 @@ describe("HOME · LIVE (flag ON)", () => {
     const target = String(gotoSpy.mock.calls[0][0]);
     expect(target).toContain("/prove/proof?q=");
     expect(target).toContain(encodeURIComponent("What does the contract say about renewals?"));
+  });
+});
+
+describe("HOME · journey shell load failure (flag ON)", () => {
+  it("a REJECTED workspace load renders the recovery banner — never a dead skeleton", async () => {
+    // ux-contracts §3 floor (5-lens review fix): data.hub resolves null on
+    // failure, but the scorecard load can reject — the {:catch} branch must
+    // offer the same error + retry as the null-hub branch.
+    setJourneyPageData();
+    const rejected = Promise.reject(new Error("scorecard store unavailable"));
+    rejected.catch(() => {}); // pre-observed: the test owns this rejection
+    const { getByText, getByRole } = render(HomePage, pageProps({ scorecard: rejected }));
+    await settle();
+
+    expect(getByText("Workspace unavailable")).toBeTruthy();
+    expect(
+      getByText("Could not load your workspace. Your data is unaffected — this is a load failure."),
+    ).toBeTruthy();
+    expect(getByRole("button", { name: "Try again" })).toBeTruthy();
+  });
+
+  it("journey retry relocates focus to the remounted content (never <body>)", async () => {
+    // a11y skill "no focus loss" (5-lens review fix): after retry, the new data
+    // remounts the whole journey branch — focus lands on the remounted hero
+    // heading (recovery succeeded), not on <body>.
+    setJourneyPageData();
+    const { getByText, getByRole, rerender } = render(
+      HomePage,
+      pageProps({ scorecard: Promise.resolve(null), hub: Promise.resolve(null) }),
+    );
+    await settle();
+    expect(getByText("Workspace unavailable")).toBeTruthy();
+
+    getByRole("button", { name: "Try again" }).click();
+    await settle();
+    // invalidateAll (mocked) hands the page NEW promises — simulate the data swap.
+    await rerender(
+      pageProps({
+        scorecard: Promise.resolve(null),
+        hub: Promise.resolve(
+          hubPayload({ stats: { units: 0, validation: { awaiting_triage: 0 } } }),
+        ),
+      }),
+    );
+    await settle();
+
+    const hero = getByRole("heading", { name: "Your graph" });
+    expect(document.activeElement).toBe(hero);
+  });
+
+  it("journey retry lands on the remounted error region when the failure persists", async () => {
+    setJourneyPageData();
+    const { getByText, getByRole, rerender, container } = render(
+      HomePage,
+      pageProps({ scorecard: Promise.resolve(null), hub: Promise.resolve(null) }),
+    );
+    await settle();
+    getByRole("button", { name: "Try again" }).click();
+    await settle();
+    await rerender(pageProps({ scorecard: Promise.resolve(null), hub: Promise.resolve(null) }));
+    await settle();
+
+    expect(getByText("Workspace unavailable")).toBeTruthy();
+    expect(document.activeElement).toBe(container.querySelector(".journey-error"));
   });
 });
 

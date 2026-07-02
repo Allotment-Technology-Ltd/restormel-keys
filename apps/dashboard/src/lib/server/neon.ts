@@ -4808,6 +4808,14 @@ export type ListRequestLogsFilters = {
   until?: number;
   projectId?: string;
   routeId?: string;
+  /**
+   * Exclude rows whose K5 traffic-source tag (`metadata.source`, JSONB — migration
+   * 004) equals this value, e.g. "connect_ingest" so app-facing surfaces never
+   * count the pipeline's own writes as app traffic (RES-113 PR-3 honesty rule).
+   * SQL-level so LIMIT applies to the rows the caller actually wants — a big
+   * ingest run must never evict genuine app requests from the window.
+   */
+  excludeSource?: string;
 };
 
 /** List request logs for a workspace (or project). For frontend consumption. */
@@ -4815,7 +4823,7 @@ export async function listRequestLogs(
   workspaceId: string,
   options: ListRequestLogsFilters = {}
 ): Promise<RequestLogRecord[]> {
-  const { limit = 50, since, until, projectId, routeId } = options;
+  const { limit = 50, since, until, projectId, routeId, excludeSource } = options;
   const sql = getSql();
   const safeLimit = Math.min(Math.max(1, limit), 500);
   const rows = await sql`
@@ -4832,6 +4840,7 @@ export async function listRequestLogs(
       ${until != null ? sql`AND created_at <= ${until}` : sql``}
       ${projectId != null ? sql`AND project_id = ${projectId}` : sql``}
       ${routeId != null ? sql`AND route_id = ${routeId}` : sql``}
+      ${excludeSource != null ? sql`AND (metadata->>'source' IS DISTINCT FROM ${excludeSource})` : sql``}
     ORDER BY created_at DESC
     LIMIT ${safeLimit}
   `;
