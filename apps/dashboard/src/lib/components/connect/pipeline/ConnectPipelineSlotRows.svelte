@@ -32,6 +32,7 @@
   import {
     changedPipelineSlotCount,
     parsePipelineSlotAssignments,
+    pipelineWithdrawalNotice,
     resolveM1PipelineSlots,
     type GraphTargetBundle,
     type PipelineSlotId,
@@ -173,6 +174,15 @@
             Change
           </button>
         </div>
+        {#if row.reverted && row.withdrawnName}
+          <!-- Copy pack §2.7 withdrawal / rollback notice (decisions D + F) — one
+               converged string, role="status", VERBATIM. The withdrawn option is
+               already absent from this row's menu (PR-5 derivation). Never licence
+               or counsel language; no "checker" noun. -->
+          <p class="slot-withdrawn" role="status">
+            {pipelineWithdrawalNotice(row.stageName, row.withdrawnName)}
+          </p>
+        {/if}
         {#if row.partOfPreset}
           <!-- Copy pack §2.7 preset annotation — only while the current choice comes
                from an applied preset (PR-3 derivation sets it per matching slot). -->
@@ -346,6 +356,18 @@
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     color: var(--color-ink-muted);
+  }
+  .slot-withdrawn {
+    /* §6.2 notice — ink text (AAA on surface) + a hard ink accent border. The
+       message is fully carried by text; the border is a ≥2px ink edge (ink/cream
+       clears 1.4.11 trivially — never a bare yellow edge on cream, which fails
+       3:1; restormel-accessibility focus/colour tables). */
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    color: var(--color-ink);
+    border-left: 3px solid var(--color-ink);
+    padding-left: var(--space-2);
+    max-width: 40rem;
   }
   .slot-reason,
   .slot-error {

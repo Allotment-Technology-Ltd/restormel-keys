@@ -30,6 +30,7 @@ import {
   parsePipelinePreset,
   parsePipelineSlotAssignments,
   parseRevertedSlots,
+  parseWithdrawnSlots,
 } from "$lib/connect/pipeline-config";
 
 export { parseSurrealConnectionString };
@@ -50,6 +51,7 @@ function bundleFromRecord(row: ConnectGraphTargetRecord): ConnectGraphTarget["bu
   const pipelineSlots = parsePipelineSlotAssignments(settings.pipeline_slots);
   const revertedSlots = parseRevertedSlots(settings.reverted_slots);
   const pipelinePreset = parsePipelinePreset(settings.pipeline_preset);
+  const withdrawnSlots = parseWithdrawnSlots(settings.withdrawn_slots);
   return {
     ...(row.defaultDomainPackId ? { default_domain_pack_id: row.defaultDomainPackId } : {}),
     ...(Array.isArray(ids)
@@ -63,6 +65,7 @@ function bundleFromRecord(row: ConnectGraphTargetRecord): ConnectGraphTarget["bu
     ...(Object.keys(pipelineSlots).length > 0 ? { pipeline_slots: pipelineSlots } : {}),
     ...(revertedSlots.length > 0 ? { reverted_slots: revertedSlots } : {}),
     ...(pipelinePreset ? { pipeline_preset: pipelinePreset } : {}),
+    ...(Object.keys(withdrawnSlots).length > 0 ? { withdrawn_slots: withdrawnSlots } : {}),
   };
 }
 
