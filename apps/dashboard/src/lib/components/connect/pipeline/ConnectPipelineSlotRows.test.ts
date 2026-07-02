@@ -70,6 +70,19 @@ describe("slot rows — default bundle (§2.7 anatomy)", () => {
     expect(queryByText(/store/i)).toBeNull();
   });
 
+  it("both live regions are persistent and empty at boot (never born inside {#if})", () => {
+    const { container } = render(ConnectPipelineSlotRows, {
+      props: { graphTargetId: "g-1", bundle: {} },
+    });
+    const polite = container.querySelector('[role="status"]');
+    const assertive = container.querySelector('[role="alert"]');
+    expect(polite?.getAttribute("aria-live")).toBe("polite");
+    expect(assertive?.getAttribute("aria-live")).toBe("assertive");
+    // Present at boot with no error/success yet — so a later injection announces.
+    expect(polite?.textContent).toBe("");
+    expect(assertive?.textContent).toBe("");
+  });
+
   it("Change secondaries carry the §2.7 accessible name and aria-expanded", () => {
     const { getByRole } = render(ConnectPipelineSlotRows, {
       props: { graphTargetId: "g-1", bundle: {} },
@@ -191,9 +204,10 @@ describe("slot rows — persistence (§2.7 save states)", () => {
 
   it("a failed save renders the §2.7 failure line and preserves the selection", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => failResponse()) as unknown as typeof fetch);
-    const { getByRole, getByText, container } = render(ConnectPipelineSlotRows, {
+    const { getByRole, container } = render(ConnectPipelineSlotRows, {
       props: { graphTargetId: "g-1", bundle: {} },
     });
+    const SAVE_ERROR = "We couldn't save that choice — your pipeline is unchanged. Try again.";
     await fireEvent.click(getByRole("button", { name: "Change the model for Checking against sources" }));
     await tick();
     const target = [...container.querySelectorAll<HTMLButtonElement>(".slot-option")].find((b) =>
@@ -201,11 +215,16 @@ describe("slot rows — persistence (§2.7 save states)", () => {
     );
     await fireEvent.click(target as HTMLButtonElement);
     await waitFor(() => {
-      expect(
-        getByText("We couldn't save that choice — your pipeline is unchanged. Try again."),
-      ).toBeTruthy();
+      expect(container.querySelector(".slot-error")?.textContent).toContain(SAVE_ERROR);
     });
-    expect(getByText("We couldn't save that choice — your pipeline is unchanged. Try again.").getAttribute("role")).toBe("alert");
+    // The VISIBLE message is not itself a live region — a role="alert" born inside
+    // an {#if} never announces (restormel-accessibility live-region rule).
+    expect(container.querySelector(".slot-error")?.getAttribute("role")).toBeNull();
+    // The announcement comes from the persistent assertive region (rendered empty
+    // at boot, outside every {#if}), now carrying the failure text.
+    const alertRegion = container.querySelector('[role="alert"]');
+    expect(alertRegion?.getAttribute("aria-live")).toBe("assertive");
+    expect(alertRegion?.textContent).toBe(SAVE_ERROR);
     // State preserved: the current choice is still the recommended default.
     const selected = container.querySelector<HTMLButtonElement>('.slot-option[aria-pressed="true"]');
     expect(selected?.textContent).toContain("Granite Guardian");

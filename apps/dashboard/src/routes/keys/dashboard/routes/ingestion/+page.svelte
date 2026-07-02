@@ -834,8 +834,13 @@
     padding: var(--space-2) 0;
   }
   .slot-disclosure-summary:focus-visible {
+    /* The summary has no border of its own, so a bare yellow ring would float on
+       cream (~1.18:1, fails WCAG 1.4.11). Pair it with an ink ring on the OUTER
+       edge (box-shadow, offset:0): yellow sits against ink (13.85:1) and the
+       boundary clears 3:1 (restormel-accessibility focus table). */
     outline: 2px solid var(--color-yellow);
-    outline-offset: 2px;
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px var(--color-ink);
   }
   .slot-disclosure-body {
     margin-top: var(--space-3);

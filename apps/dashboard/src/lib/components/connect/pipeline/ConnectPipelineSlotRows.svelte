@@ -67,6 +67,10 @@
   let savingOptionId: string | null = null;
   let errorSlot: PipelineSlotId | null = null;
   let announceText = "";
+  // Persistent assertive region text (never a live region born inside {#if} —
+  // restormel-accessibility live-region rule). Cleared before each save so a
+  // repeated identical failure is a genuine content change and re-announces.
+  let errorAnnounce = "";
 
   async function toggleOpen(slot: PipelineSlotId) {
     errorSlot = null;
@@ -112,6 +116,7 @@
     savingSlot = row.slot;
     savingOptionId = o.id;
     errorSlot = null;
+    errorAnnounce = "";
     try {
       const res = await fetch(
         `${DASHBOARD_BASE}/api/connect/graph-library/${graphTargetId}/pipeline-slots`,
@@ -124,6 +129,7 @@
       const d = (await res.json().catch(() => ({}))) as { pipeline_slots?: unknown };
       if (!res.ok) {
         errorSlot = row.slot;
+        errorAnnounce = SAVE_ERROR;
         return;
       }
       // Server-authoritative slot map → local bundle → rows re-derive in place.
@@ -131,6 +137,7 @@
       announceText = `${row.stageName} now uses ${o.name}.`;
     } catch {
       errorSlot = row.slot;
+      errorAnnounce = SAVE_ERROR;
     } finally {
       savingSlot = null;
       savingOptionId = null;
@@ -204,13 +211,17 @@
           {/if}
         {/if}
         {#if errorSlot === row.slot}
-          <p class="slot-error" role="alert">{SAVE_ERROR}</p>
+          <!-- Visible-only error (NOT a live region — announcement comes from the
+               persistent assertive region below, which is never born inside {#if}). -->
+          <p class="slot-error">{SAVE_ERROR}</p>
         {/if}
       </li>
     {/each}
   </ul>
-  <!-- Persistent polite region (never inside an {#if}) — announces saved choices. -->
+  <!-- Persistent live regions (never inside an {#if}) — polite announces saved
+       choices; assertive interrupts on a save failure. -->
   <span class="sr-only" role="status" aria-live="polite">{announceText}</span>
+  <span class="sr-only" role="alert" aria-live="assertive">{errorAnnounce}</span>
 </div>
 
 <style>
@@ -289,8 +300,12 @@
     border: var(--border);
   }
   .slot-option:focus-visible {
+    /* Canonical brut-focus geometry (brutalist-utilities.css:131): offset:0 so the
+       yellow ring sits directly against the option's hard ink border — yellow/ink
+       is 13.85:1, clearing WCAG 1.4.11 (3:1). A bare offset ring floats in a cream
+       gap (yellow/cream ~1.18:1) and fails (restormel-accessibility focus table). */
     outline: 2px solid var(--color-yellow);
-    outline-offset: 2px;
+    outline-offset: 0;
   }
   .slot-mark {
     flex: 0 0 auto;
@@ -329,6 +344,12 @@
     max-width: 40rem;
   }
   .slot-error {
-    color: var(--coral-alert, #b00);
+    /* Ink text (AAA on surface), NOT coral text — --coral-alert (#f25c54) as body
+       text on --color-surface is only 3.22:1 and fails WCAG 1.4.3 (4.5:1). Coral
+       is carried as a non-text danger border instead (3.22:1 ≥ 3:1, WCAG 1.4.11).
+       No literal fallback — token discipline (restormel-accessibility §Colour). */
+    color: var(--color-ink);
+    border-left: 3px solid var(--coral-alert);
+    padding-left: var(--space-2);
   }
 </style>
