@@ -176,10 +176,16 @@
         </div>
         {#if row.reverted && row.withdrawnName}
           <!-- Copy pack §2.7 withdrawal / rollback notice (decisions D + F) — one
-               converged string, role="status", VERBATIM. The withdrawn option is
-               already absent from this row's menu (PR-5 derivation). Never licence
-               or counsel language; no "checker" noun. -->
-          <p class="slot-withdrawn" role="status">
+               converged string, VERBATIM. This is durable per-row CONTEXT, not an
+               async result, so it is a plain <p> — NOT a live region: a live region
+               born inside this {#if} would never announce (present-at-load status
+               content is not spoken, and a mid-session flip is recreated inside the
+               conditional), and it would violate the one-persistent-region rule
+               (the layout's polite/assertive pair lives at the foot of .slot-rows,
+               rendered empty at boot). The notice reads in order, is ink-bordered,
+               and the withdrawn option is already absent from this row's menu (PR-5
+               derivation). Never licence or counsel language; no "checker" noun. -->
+          <p class="slot-withdrawn">
             {pipelineWithdrawalNotice(row.stageName, row.withdrawnName)}
           </p>
         {/if}

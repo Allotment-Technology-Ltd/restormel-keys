@@ -244,15 +244,19 @@ describe("slot rows — customised bundle + reason line", () => {
     expect(getByText("Qwen3-Embedding-8B")).toBeTruthy();
   });
 
-  it("renders the §2.7 withdrawal notice ONCE (role=status) when a slot reverted, name absent from its menu", async () => {
+  it("renders the §2.7 withdrawal notice ONCE (plain <p>, not a live region) when a slot reverted, name absent from its menu", async () => {
     const WITHDRAWN = "Frontier hosted model (Claude, Gemini, or GPT)";
     const { container, getByText, getByRole, queryByText } = render(ConnectPipelineSlotRows, {
       props: { graphTargetId: "g-1", bundle: { withdrawn_slots: { validate: WITHDRAWN } } },
     });
-    // The single converged §2.7 notice, VERBATIM, rendered exactly once, role="status".
+    // The single converged §2.7 notice, VERBATIM, rendered exactly once. It is
+    // durable per-row context, so it is a plain <p> — never a live region born
+    // inside {#if} (that anti-pattern never announces and breaks the one-region
+    // rule; the layout's persistent polite/assertive pair sits at the foot).
     const notices = container.querySelectorAll(".slot-withdrawn");
     expect(notices).toHaveLength(1);
-    expect(notices[0]?.getAttribute("role")).toBe("status");
+    expect(notices[0]?.getAttribute("role")).toBeNull();
+    expect(notices[0]?.getAttribute("aria-live")).toBeNull();
     expect(
       getByText(
         "Frontier hosted model (Claude, Gemini, or GPT) is no longer available — Checking against sources is back on the recommended default. Your graph and answers are unaffected.",

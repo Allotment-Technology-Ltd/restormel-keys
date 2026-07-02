@@ -17,8 +17,10 @@
    *
    * A11y (restormel-accessibility): the four options are `aria-pressed` toggle
    * buttons with glyph + word selection marks (R3-A3, never colour alone); a switch
-   * opens a `role="alertdialog"` confirm stating the blast radius in numbers
-   * (ux-craft §3.5); Escape closes and returns focus to the opener; the applied
+   * opens an `aria-modal="true" role="alertdialog"` confirm stating the blast radius
+   * in numbers (ux-craft §3.5) — while it is open the background option list is
+   * `disabled` (no tab escape behind the modal, honouring the alertdialog's modality
+   * promise); Escape closes and returns focus to the opener; the applied
    * confirmation announces on a persistent polite status region (never inside
    * `{#if}`). No yellow primary is introduced on the page surface — the confirm's
    * "Switch setup" primary lives only inside the transient dialog, mirroring the
@@ -95,9 +97,13 @@
     confirmEl?.focus();
   }
 
-  function cancelSwitch() {
+  async function cancelSwitch() {
     const returnTo = pending;
     pending = null;
+    // Await the flush so the opener (disabled while the modal was up — see the
+    // option button's `disabled`) is re-enabled before we focus it; .focus() is
+    // a no-op on a still-disabled button.
+    await tick();
     if (returnTo) {
       // Return focus to the opener (X10).
       rootEl?.querySelector<HTMLButtonElement>(`#preset-opt-${returnTo}`)?.focus();
@@ -160,7 +166,7 @@
           class="preset-option"
           class:sel={isSelected(id)}
           aria-pressed={isSelected(id)}
-          disabled={switching}
+          disabled={switching || pending !== null}
           on:click={() => startSwitch(id)}
         >
           <span class="preset-mark" aria-hidden="true">{mark(id)}</span>
@@ -178,6 +184,7 @@
       bind:this={confirmEl}
       class="preset-confirm"
       role="alertdialog"
+      aria-modal="true"
       aria-labelledby="preset-confirm-title"
       tabindex="-1"
       on:keydown={onConfirmKeydown}
