@@ -8,8 +8,8 @@
  *    the fixture — and no slot-row DOM exists anywhere;
  *  - flag ON + disclosure CLOSED: zero slot pixels (the rows are unmounted);
  *  - flag ON + disclosure OPEN + active graph: the three §0-named rows render
- *    inside the disclosure body, beside (not instead of) ConnectGraphLibrary —
- *    the §3.1 reconciliation (the library owns stores/packs, rows own stages);
+ *    inside the disclosure body, beside the graph-home repoint link (spec §6
+ *    Decision A lifted ConnectGraphLibrary out of Advanced to the standing route);
  *  - flag ON + open + NO active graph: rows absent, never disabled-and-teasing
  *    (ux-craft §2.4).
  */
@@ -107,7 +107,7 @@ describe("sources page — flag ON (reveal predicate: disclosure open)", () => {
     expect(container.querySelector(".slot-row")).toBeNull();
   });
 
-  it("disclosure OPEN renders the three §0-named rows beside ConnectGraphLibrary", async () => {
+  it("disclosure OPEN renders the three §0-named rows beside the graph-home repoint", async () => {
     setFlags({ m1PlugPoints: true });
     const { container, getByText } = await renderPage({});
     await fireEvent.click(container.querySelector(".advanced-toggle") as HTMLButtonElement);
@@ -115,8 +115,13 @@ describe("sources page — flag ON (reveal predicate: disclosure open)", () => {
     expect(getByText("Reading your documents")).toBeTruthy();
     expect(getByText("Making it searchable")).toBeTruthy();
     expect(getByText("Checking against sources")).toBeTruthy();
-    // §3.1 reconciliation: the Graph Library still renders — extended, not replaced.
-    expect(getByText("Graph Library")).toBeTruthy();
+    // Spec §6 Decision A — the graph library is LIFTED OUT of Advanced. It no longer
+    // renders here; the disclosure repoints to the standing graph home instead, so
+    // the per-stage slot rows sit beside the repoint link (not the embedded library).
+    const repoint = getByText("Manage graphs & data store →") as HTMLAnchorElement;
+    expect(repoint).toBeTruthy();
+    expect(repoint.getAttribute("href")).toContain("/graphs");
+    expect(container.textContent).not.toContain("Graph Library");
   });
 
   it("no active graph ⇒ rows absent (never disabled-and-teasing)", async () => {

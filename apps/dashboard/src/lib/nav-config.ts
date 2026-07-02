@@ -34,6 +34,14 @@ export type NavGroup = {
 // ── Canonical section URLs (redesign §2.2) ─────────────────────────────────
 export const HOME_HREF = DASHBOARD_BASE + "/home";
 export const SOURCES_HREF = DASHBOARD_BASE + "/sources";
+/**
+ * The standing "graph home" route (spec §2/§6 — Decision A Option 2). Renders the
+ * full ConnectGraphLibrary (connect / switch / edit / delete) as its own surface,
+ * never behind the Sources "Advanced" disclosure and never m1PlugPoints-gated, so
+ * the graph capability cannot be lost. NOTE: `/graph` is TAKEN by the Restormel
+ * Graph viz suite — this is the plural `/graphs` (matches the "Your graphs" title).
+ */
+export const GRAPHS_HREF = DASHBOARD_BASE + "/graphs";
 /** The ingest guided flow (the relocated setup wizard — a flow, not a place; not in nav). */
 export const INGEST_FLOW_HREF = SOURCES_HREF + "/ingest";
 export const RUNS_HREF = DASHBOARD_BASE + "/runs";
@@ -217,6 +225,7 @@ const PATH_TO_TITLE: Record<string, string> = {
   [DASHBOARD_BASE + "/copy-for-ci"]: "CI snippets",
   [DASHBOARD_BASE + "/access"]: "Gateway keys",
   [DASHBOARD_BASE + "/integrations"]: "Connections",
+  [GRAPHS_HREF]: "Graph & data store",
   [DASHBOARD_BASE + "/graph"]: "Graph",
   [DASHBOARD_BASE + "/dev-tools"]: "CLI & agents",
   [DASHBOARD_BASE + "/cli/connect"]: "Connect CLI",
@@ -340,11 +349,17 @@ export const JOURNEY_WORKSPACE_HOME_HREF = HOME_HREF;
 export const JOURNEY_NAV_GROUPS: NavGroup[] = [
   {
     id: "foundation",
-    label: "Settings",
+    // Spec §6 Decision B — relabel "Settings" → "Workspace" to end the collision
+    // with `/settings` ("Profile & settings", personal, on the user menu).
+    label: "Workspace",
     defaultOpen: false,
     items: [
       { href: DASHBOARD_BASE + "/integrations", label: "Providers" },
       { href: DASHBOARD_BASE + "/projects", label: "Store" },
+      // Spec §6 Decision A Option 2 / Decision C — the standing graph home as a
+      // named foundation sibling. Membership is static (never m1PlugPoints-gated),
+      // so the graph connect/switch/manage capability cannot be lost.
+      { href: GRAPHS_HREF, label: "Graph & data store" },
       { href: ROUTES_HREF, label: "Routes" },
       { href: DASHBOARD_BASE + "/logs", label: "Audit log" },
       { href: DASHBOARD_BASE + "/analytics", label: "Metrics" },
@@ -501,6 +516,10 @@ const JOURNEY_PATH_TO_TITLE: Record<string, string> = {
   [INGEST_FLOW_HREF]: "Build",
   [CLAIMS_HREF]: "Verify",
   [AGENTS_WIRING_HREF]: "Connect",
+  // The standing graph-home route (spec §6 Decision A/C). Not a spine verb, but it
+  // is a foundation nav item under the journey IA, so give it an explicit journey
+  // title too (matches the flag-OFF PATH_TO_TITLE entry).
+  [GRAPHS_HREF]: "Graph & data store",
 };
 
 /**

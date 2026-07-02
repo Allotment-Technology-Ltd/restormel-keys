@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { SOURCES_HREF } from "$lib/nav-config";
+  import { GRAPHS_HREF } from "$lib/nav-config";
   import { invalidateAll } from "$app/navigation";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import type { ConnectGraphTarget } from "@restormel/contracts/connect";
 
   const API = DASHBOARD_BASE + "/api/connect/graph-library";
-  const LIBRARY_HREF = SOURCES_HREF;
+  // Spec §6 — the switcher's manage link now targets the standing graph home
+  // (not SOURCES_HREF, which dead-ended at the Sources Advanced disclosure).
+  const LIBRARY_HREF = GRAPHS_HREF;
 
   let graphs: ConnectGraphTarget[] = [];
   let loaded = false;
@@ -77,7 +79,12 @@
           <option value={g.id}>{summary(g)}{g.status === "error" ? " — ⚠" : ""}</option>
         {/each}
       </select>
-      <a class="switcher-manage" href={LIBRARY_HREF}>Manage library</a>
+      <a
+        class="switcher-manage"
+        href={LIBRARY_HREF}
+        aria-label="Connect or switch a graph — choose the graph this workspace builds into"
+        >Connect or switch a graph</a
+      >
     </div>
     {#if switching}<span class="switcher-msg" role="status">Switching…</span>{/if}
     {#if msg}<span class="switcher-msg switcher-err" role="alert">{msg}</span>{/if}
