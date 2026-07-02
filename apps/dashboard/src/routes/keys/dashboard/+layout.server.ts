@@ -25,7 +25,6 @@ import {
   listProjectsWithEnvironments,
   listProviderIntegrations,
 } from "$lib/server/db";
-import { listConnections } from "$lib/server/connect/connections-service";
 import { listSourceDocuments } from "$lib/server/connect/source-documents";
 import { resolveConnectGraphStats } from "$lib/server/connect/graph-explorer-service";
 import { listConnectIngestJobsForWorkspace } from "$lib/server/neon";
@@ -174,18 +173,24 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
       let connectionCount: number | null = null;
       if (moduleFlags.onboardingJourney) {
         const endExtra = perfSpan("dashboard/layout", "journeySignals.journeyCounts");
-        const [documents, jobs, connections, stats] = await Promise.all([
+        const [documents, jobs, stats] = await Promise.all([
           listSourceDocuments(workspace.id).catch(() => []),
           listConnectIngestJobsForWorkspace({ workspaceId: workspace.id }).catch(() => []),
-          listConnections(workspace.id).catch(() => []),
           resolveConnectGraphStats(workspace.id).catch(() => null),
         ]);
         sourceCount = documents.length;
-        // "Completed" = a terminal, non-active run (mirrors isActiveIngestJobStatus).
-        completedRunCount = jobs.filter(
-          (j) => j.status !== "pending" && j.status !== "running",
-        ).length;
-        connectionCount = connections.length;
+        // "Completed" = a SUCCESSFULLY finished run only. `!== pending/running` would
+        // also count `failed`/`cancelled` (the worker sets `failed`; `neon.ts`
+        // reclaims stalled runs as `failed`) — a workspace whose only run failed would
+        // then read as having a graph. The S2 "ingest complete" gate needs a real
+        // success, so this is `status === "completed"` exactly.
+        completedRunCount = jobs.filter((j) => j.status === "completed").length;
+        // M4 "app connections" are GATEWAY KEYS (the ConnectionsManager builds its
+        // rows from `setup.gatewayKeys`), NOT the ingest *source* connectors that
+        // `listConnections` returns (those feed the Sources setup step). Reuse the
+        // already-fetched `gatewayKeyCount` — no extra query, and the LIVE-vs-
+        // BUILT_NOT_CONNECTED distinction keys on the right signal.
+        connectionCount = gatewayKeyCount;
         flaggedClaimCount = stats
           ? stats.validation.awaiting_triage ?? stats.validation.weak + stats.validation.unsupported
           : 0;

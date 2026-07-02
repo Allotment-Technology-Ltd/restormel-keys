@@ -28,8 +28,7 @@
  *      as-is; the shell renders nothing (not a placeholder) when it is null.
  */
 
-/** Active ingest job statuses (mirrors `isActiveIngestJobStatus` in connect-journey.ts). */
-const ACTIVE_JOB_STATUSES = new Set(["pending", "running"]);
+import { isActiveIngestJobStatus } from "$lib/connect/connect-journey";
 
 /**
  * The four Home states (REC-ADR-022 §Decision). A discriminated union on `kind`
@@ -114,13 +113,11 @@ export type HomeStateSignals = {
   connectionCount: number;
   /** The latest ingest job, or null when none has run. */
   latestJob: { id: string; status: string; currentStage?: string | null } | null;
-  /** Run count — a completed run (with a built graph) distinguishes BUILT from EMPTY. */
-  completedRunCount: number;
 };
 
-/** A real active ingest job is in flight. */
+/** A real active ingest job is in flight (single source of truth: connect-journey.ts). */
 function isActiveJob(job: HomeStateSignals["latestJob"]): boolean {
-  return job !== null && ACTIVE_JOB_STATUSES.has(job.status);
+  return job !== null && isActiveIngestJobStatus(job.status);
 }
 
 /**

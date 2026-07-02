@@ -432,9 +432,14 @@ export type JourneyNavItem = NavItem & {
 
 /** The server-derived signals `resolveJourneyNav` needs (plan §3.5 Mechanics). */
 export type JourneyNavSignals = {
-  /** ≥1 completed ingest run (S2 gate — unlocks Connect). */
+  /**
+   * ≥1 SUCCESSFULLY completed ingest run (the plan-named S2 signal). NOTE: Connect
+   * reachability keys on `units > 0`, NOT this count — a completed run that extracted
+   * 0 units is not a built graph, and gating on the run count would unlock Connect
+   * while Home reads EMPTY. Retained on the type for PR-4 wiring / future S2 copy.
+   */
   completedRunCount: number;
-  /** Idea/unit count (`> 0` ⇒ a graph is built — a second, robust "past empty" cue). */
+  /** Idea/unit count (`> 0` ⇒ a graph is built — the shared "graph exists" gate). */
   units: number;
   /** Live app connections (S4 — full spine, CTA becomes ask/prove). */
   connectionCount: number;
@@ -509,11 +514,19 @@ export function shouldShowVerifyTab(signals: JourneyNavSignals): boolean {
  *   • Home    — always reachable (the landing).
  *   • Build   — always reachable (M1 ingest is available from S1).
  *   • Verify  — present per `shouldShowVerifyTab`; reachable when present.
- *   • Connect — reachable once a graph exists (≥1 completed run OR units > 0);
- *               otherwise dimmed with "Build your graph first" behind the click.
+ *   • Connect — reachable once a graph exists (`units > 0` — a real extracted graph
+ *               with content, the SAME gate Home's `deriveHomeState` uses for
+ *               EMPTY-vs-built, so the two surfaces cannot disagree); otherwise
+ *               dimmed with "Build your graph first" behind the click.
  */
 export function resolveJourneyNav(signals: JourneyNavSignals, flags: ModuleFlags): JourneyNav {
-  const graphExists = signals.completedRunCount > 0 || signals.units > 0;
+  // `graphExists` keys on `units > 0` ONLY — reconciled with Home's `graphBuilt`
+  // (home-state.ts). A `completedRunCount > 0` run that produced 0 units is NOT a
+  // built graph (extraction yielded nothing to connect); gating Connect on the run
+  // count alone would unlock it while Home still reads EMPTY. `completedRunCount`
+  // stays on the signals type as the plan-named S2 input, but the honest
+  // graph-exists predicate both surfaces share is the unit count.
+  const graphExists = signals.units > 0;
   const showVerify = shouldShowVerifyTab(signals);
 
   const items: JourneyNavItem[] = [

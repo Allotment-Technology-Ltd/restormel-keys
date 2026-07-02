@@ -20,7 +20,6 @@ function signals(over: Partial<HomeStateSignals> = {}): HomeStateSignals {
     awaitingTriage: 0,
     connectionCount: 0,
     latestJob: null,
-    completedRunCount: 0,
     ...over,
   };
 }
@@ -53,8 +52,12 @@ describe("deriveHomeState — EMPTY (no completed ingest)", () => {
     expect(deriveHomeState(signals()).trustScore).toBeNull();
   });
 
-  it("a completed run count with a since-emptied graph still reads EMPTY (units gate wins)", () => {
-    const s = deriveHomeState(signals({ completedRunCount: 3, units: 0, latestJob: { id: "j", status: "succeeded" } }));
+  it("a finished run with a since-emptied graph still reads EMPTY (units gate wins)", () => {
+    // Home derives "graph built" purely from `units` — a completed/finished run that
+    // left 0 units is genuinely nothing to connect. This is the SAME gate nav uses for
+    // Connect reachability (`resolveJourneyNav` keys `graphExists` on `units > 0`), so
+    // Home and nav cannot disagree about whether a graph exists.
+    const s = deriveHomeState(signals({ units: 0, latestJob: { id: "j", status: "succeeded" } }));
     expect(s.kind).toBe("empty");
   });
 });

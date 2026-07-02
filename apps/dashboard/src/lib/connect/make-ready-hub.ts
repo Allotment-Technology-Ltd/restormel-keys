@@ -25,6 +25,7 @@
  */
 
 import type { StateChipState } from "$lib/components/brutalist/StateChip.svelte";
+import type { ConnectSpineStageState } from "$lib/connect/connect-spine";
 
 /** The three make-ready gates (03_SCREENS.md M2 / `M2 Make Ready.html`). */
 export type MakeReadyGateId = "sources" | "embed" | "validate";
@@ -129,14 +130,19 @@ function gate(id: MakeReadyGateId, state: MakeReadyGateState, pct: number | null
 /**
  * Sources gate — every idea bound to a source (scorecard EBV Layer-1 binding).
  *
- * The `units <= 0` "no ideas yet" fabricated branch is DELETED (REC-ADR-016): the
- * gates never render on an empty workspace (Home mounts M2 content only for the
- * `triage`/`ready` surface — see `resolveM2Surface`), so a fake "running" state for
- * `units === 0` was unreachable-in-truth and dishonest. The genuine "signal
- * unavailable" case (`evidence === null` — the scorecard could not be read) stays:
- * that is an honest "computing", not a fabricated empty state.
+ * The `units <= 0` pre-graph branch STAYS until M2 surface gating lands (PR-6a).
+ * `resolveM2Surface` (added in PR-2) is the eventual guard that keeps these gates
+ * from rendering on an empty workspace, but it has NO production caller yet —
+ * `M2VerifyHub` still mounts unconditionally under the `onboardingJourney` flag
+ * (`home/+page.svelte`). Deleting this branch now would flip an empty flag-ON
+ * workspace to a dishonest "all 0 grounded · Done" (0 unbound ⇒ done_auto), i.e. a
+ * fabricated-DONE — the opposite dishonesty REC-ADR-016 forbids. So on `units <= 0`
+ * the gate names the honest pre-graph state ("no ideas yet"). Once PR-6a gates the
+ * whole hub on `resolveM2Surface !== "hidden"`, this branch becomes truly
+ * unreachable and can be deleted then.
  */
 export function buildSourcesGate(s: MakeReadySignals): MakeReadyGate {
+  if (s.units <= 0) return gate("sources", "running", null, "no ideas yet", false);
   if (!s.evidence) return gate("sources", "running", null, "reading source links…", false);
   const needLink = s.evidence.unbound + s.evidence.noEvidence;
   if (needLink <= 0) return gate("sources", "done_auto", 100, `all ${num(s.evidence.bound)} grounded`, false);
@@ -145,10 +151,12 @@ export function buildSourcesGate(s: MakeReadySignals): MakeReadyGate {
 
 /**
  * Embed gate — vectorised for retrieval. Runs itself; never blocks the user.
- * (`units <= 0` fabricated branch deleted — REC-ADR-016; the gate never renders
- * pre-graph.)
+ * (`units <= 0` pre-graph branch RETAINED until PR-6a gates the hub on
+ * `resolveM2Surface` — without it, `0 >= 0` would flip an empty workspace to a
+ * dishonest "0 vectors · Done"; see `buildSourcesGate`.)
  */
 export function buildEmbedGate(s: MakeReadySignals): MakeReadyGate {
+  if (s.units <= 0) return gate("embed", "running", null, "no ideas yet", false);
   const pct = pctOf(s.embedded, s.units);
   if (s.embedded >= s.units) return gate("embed", "done_auto", 100, `${num(s.embedded)} vectors`, false);
   return gate("embed", "running", pct, `${num(s.embedded)} of ${num(s.units)} vectorised`, false);
@@ -158,10 +166,13 @@ export function buildEmbedGate(s: MakeReadySignals): MakeReadyGate {
  * Validate gate — the trust gate. DONE means every flagged claim carries a
  * verdict (`awaitingTriage === 0`), NOT that weak/unsupported reached zero
  * (accept-guard: a triaged-weak claim is finished, not a failure).
- * (`units <= 0` fabricated branch deleted — REC-ADR-016.)
+ * (`units <= 0` pre-graph branch RETAINED until PR-6a gates the hub on
+ * `resolveM2Surface` — without it, `awaitingTriage === 0` would flip an empty
+ * workspace to a dishonest "0 flagged · all triaged · Done"; see `buildSourcesGate`.)
  */
 export function buildValidateGate(s: MakeReadySignals): MakeReadyGate {
   const v = s.validation;
+  if (s.units <= 0) return gate("validate", "running", null, "no ideas yet", false);
   const triaged = v.ok + v.weak + v.unsupported;
   const considered = triaged + v.awaitingTriage;
   const pct = pctOf(triaged, considered);
@@ -196,11 +207,11 @@ export type MakeReadyTrustMeter = {
  * is no live-climbing number (REC-ADR-016 / SESSION_TRUST_DELTA_DEFERRED).
  */
 export function buildTrustMeter(s: MakeReadySignals): MakeReadyTrustMeter {
-  // Honest absent: a null score has nothing to show. The `units <= 0` half of this
-  // guard is DELETED (REC-ADR-016) — the meter never renders pre-graph (Home gates
-  // M2 on `resolveM2Surface`), and a graph with units but a genuinely-null score is
-  // still "no score yet", driven by the score itself, not a fabricated unit check.
-  if (s.trustScore === null) {
+  // Honest absent: pre-graph (`units <= 0`) or a null score has nothing to show.
+  // The `units <= 0` half is RETAINED until PR-6a gates the hub on `resolveM2Surface`
+  // — the meter still mounts on an empty flag-ON workspace today, and "No graph yet"
+  // is the honest state there (see `buildSourcesGate`).
+  if (s.units <= 0 || s.trustScore === null) {
     return { score: s.trustScore, recomputeState: "idle", recomputeLabel: "No graph yet", lastVerifiedAt: s.lastVerifiedAt };
   }
   if (s.validation.awaitingTriage > 0) {
@@ -233,10 +244,21 @@ export type MakeReadyVerdict = {
  */
 export function resolveMarkReady(s: MakeReadySignals): MakeReadyVerdict {
   const gatesNeedingYou = buildMakeReadyGates(s).filter((g) => g.needsYou).length;
-  // The `units <= 0` "No graph yet" branch is DELETED (REC-ADR-016): the mark-ready
-  // guard only ever runs inside the `ready`/`triage` M2 surface (a built graph), so
-  // the pre-graph case is handled upstream by `resolveM2Surface` returning "hidden"
-  // — this function no longer fabricates a no-graph verdict of its own.
+  // The `units <= 0` "No graph yet" branch is RETAINED until PR-6a gates the hub on
+  // `resolveM2Surface`. That surface predicate exists (PR-2) but has no production
+  // caller yet — `M2VerifyHub` mounts unconditionally under the flag — so without
+  // this guard an empty flag-ON workspace (units 0, awaitingTriage 0) would report
+  // `ready: true`, a fabricated DONE that REC-ADR-016 forbids. Once PR-6a gates the
+  // hub on `resolveM2Surface !== "hidden"`, the pre-graph case is owned upstream and
+  // this branch can be deleted.
+  if (s.units <= 0) {
+    return {
+      ready: false,
+      reason: "No graph yet — run an ingest first.",
+      outstandingTriage: 0,
+      gatesNeedingYou,
+    };
+  }
   const outstanding = s.validation.awaitingTriage;
   if (outstanding > 0) {
     return {
@@ -294,9 +316,9 @@ export type M2Surface =
 export type M2SurfaceSignals = {
   graphBuilt: boolean;
   /** The spine `make_ready` stage state (embed/link/validate work). */
-  makeReadyState: string;
+  makeReadyState: ConnectSpineStageState;
   /** The spine `review` stage state (flagged-claim triage work). */
-  reviewState: string;
+  reviewState: ConnectSpineStageState;
 };
 
 /**

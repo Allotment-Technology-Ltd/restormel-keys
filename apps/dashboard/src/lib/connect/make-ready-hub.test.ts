@@ -73,6 +73,48 @@ describe("make-ready gates", () => {
   });
 });
 
+describe("pre-graph honesty (units <= 0, retained until PR-6a surface gating)", () => {
+  // The M2 hub still mounts unconditionally under the flag, so the gate builders
+  // must name the honest pre-graph state on an empty workspace rather than flip to a
+  // fabricated DONE (0 unbound ⇒ "grounded", 0 >= 0 ⇒ "vectors", 0 awaiting ⇒
+  // "triaged"). REC-ADR-016: never fabricate progress in EITHER direction.
+  it("Sources gate reports 'no ideas yet' (running, not done) when there are no units", () => {
+    const g = buildSourcesGate(signals({ units: 0, evidence: { bound: 0, unbound: 0, noEvidence: 0, boundPct: 0 } }));
+    expect(g.state).toBe("running");
+    expect(g.detail).toBe("no ideas yet");
+    expect(g.needsYou).toBe(false);
+  });
+
+  it("Embed gate reports 'no ideas yet' (running) at units 0 — never '0 vectors · Done'", () => {
+    const g = buildEmbedGate(signals({ units: 0, embedded: 0 }));
+    expect(g.state).toBe("running");
+    expect(g.detail).toBe("no ideas yet");
+    expect(g.pct).toBeNull();
+  });
+
+  it("Validate gate reports 'no ideas yet' (running) at units 0 — never 'all triaged · Done'", () => {
+    const g = buildValidateGate(
+      signals({ units: 0, validation: { ok: 0, weak: 0, unsupported: 0, unvalidated: 0, awaitingTriage: 0, unsupportedUntriaged: 0 } }),
+    );
+    expect(g.state).toBe("running");
+    expect(g.detail).toBe("no ideas yet");
+    expect(g.needsYou).toBe(false);
+  });
+
+  it("no gate needs the user on an empty workspace (summary reads 'all gates clear', but none are DONE)", () => {
+    const empty = signals({
+      units: 0,
+      embedded: 0,
+      evidence: { bound: 0, unbound: 0, noEvidence: 0, boundPct: 0 },
+      validation: { ok: 0, weak: 0, unsupported: 0, unvalidated: 0, awaitingTriage: 0, unsupportedUntriaged: 0 },
+    });
+    for (const g of buildMakeReadyGates(empty)) {
+      expect(g.state).toBe("running");
+      expect(g.needsYou).toBe(false);
+    }
+  });
+});
+
 describe("mark-ready guard (accept-guard honesty)", () => {
   it("clears the bar when every claim is TRIAGED even though weak + unsupported are non-zero", () => {
     // 35 weak + 12 unsupported, but all triaged (awaitingTriage 0) → production-grade.
@@ -98,15 +140,16 @@ describe("mark-ready guard (accept-guard honesty)", () => {
     expect(v.outstandingTriage).toBe(47);
   });
 
-  // NOTE (RES-113 PR-2 / REC-ADR-016): the fabricated `units <= 0` "No graph yet"
-  // branch was deleted from resolveMarkReady. The pre-graph case is now owned upstream
-  // by resolveM2Surface returning "hidden" — the mark-ready guard only ever runs inside
-  // a built-graph (triage/ready) surface, so it no longer invents a no-graph verdict.
-  // The guard now decides purely on outstanding triage: nothing awaiting ⇒ ready.
-  it("no longer fabricates a no-graph verdict — clears when nothing awaits triage", () => {
+  // RES-113 PR-2 (REC-ADR-016, honest pre-graph state): the `units <= 0` branch is
+  // RETAINED until PR-6a gates the hub on `resolveM2Surface`. `M2VerifyHub` still
+  // mounts unconditionally under the flag, so an empty workspace must NOT read as
+  // ready — that would be a fabricated DONE. The guard blocks with the honest
+  // "No graph yet" reason regardless of the (vacuously-zero) triage count.
+  it("does NOT report ready on an empty workspace — blocks with 'No graph yet'", () => {
     const v = resolveMarkReady(signals({ units: 0, trustScore: null }));
-    expect(v.ready).toBe(true);
-    expect(v.reason).toBeNull();
+    expect(v.ready).toBe(false);
+    expect(v.reason).toBe("No graph yet — run an ingest first.");
+    expect(v.outstandingTriage).toBe(0);
   });
 });
 
@@ -128,6 +171,14 @@ describe("trust meter (deferred, not climbing)", () => {
     const m = buildTrustMeter(signals({ units: 0, trustScore: null }));
     expect(m.recomputeState).toBe("idle");
     expect(m.score).toBeNull();
+  });
+
+  it("shows 'no graph yet' (idle) at units 0 even if a stale score leaks through", () => {
+    // The retained `units <= 0` half of the guard: an empty workspace is pre-graph
+    // regardless of any leftover score (until PR-6a gates the hub on resolveM2Surface).
+    const m = buildTrustMeter(signals({ units: 0, trustScore: 88 }));
+    expect(m.recomputeState).toBe("idle");
+    expect(m.recomputeLabel).toBe("No graph yet");
   });
 });
 
@@ -172,7 +223,8 @@ describe("resolveM2Surface (plan §3.3 — the single M2 gate)", () => {
   });
 
   it("non-'current' spine states (todo/blocked/done/unknown) are NOT outstanding", () => {
-    for (const state of ["todo", "blocked", "done", "unknown"]) {
+    const states = ["todo", "blocked", "done", "unknown"] as const;
+    for (const state of states) {
       expect(resolveM2Surface(m2({ makeReadyState: state, reviewState: state }))).toBe("ready");
     }
   });

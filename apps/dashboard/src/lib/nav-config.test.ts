@@ -566,26 +566,31 @@ describe("RES-113 PR-2 — resolveJourneyNav (state-derived journey nav)", () =>
     }
   });
 
-  it("S2 — a completed run unlocks Connect (reachable, no reason)", () => {
-    const nav = resolveJourneyNav(sig({ completedRunCount: 1 }), ON);
+  it("S2 — a built graph (units > 0) unlocks Connect (reachable, no reason)", () => {
+    const nav = resolveJourneyNav(sig({ units: 42 }), ON);
     const connect = nav.items.find((i) => i.label === "Connect")!;
     expect(connect.reachable).toBe(true);
     expect(connect.lockReason).toBeNull();
   });
 
-  it("a built graph (units > 0) also unlocks Connect even before a run count is known", () => {
-    expect(resolveJourneyNav(sig({ units: 42 }), ON).items.find((i) => i.label === "Connect")!.reachable).toBe(true);
+  it("a completed run that left 0 units does NOT unlock Connect — reconciled with Home's EMPTY", () => {
+    // A run can complete without extracting any ideas; there is genuinely nothing to
+    // connect. Home's `deriveHomeState` reads that as EMPTY (units gate), so nav must
+    // NOT unlock Connect on the run count alone — otherwise the two surfaces disagree.
+    const connect = resolveJourneyNav(sig({ completedRunCount: 1, units: 0 }), ON).items.find((i) => i.label === "Connect")!;
+    expect(connect.reachable).toBe(false);
+    expect(connect.lockReason).toMatch(/build your graph first/i);
   });
 
   it("S3 — flagged claims now: Verify enters between Build and Connect", () => {
-    const nav = resolveJourneyNav(sig({ completedRunCount: 1, flaggedClaimCount: 6 }), ON);
+    const nav = resolveJourneyNav(sig({ units: 100, flaggedClaimCount: 6 }), ON);
     expect(nav.items.map((i) => i.label)).toEqual(["Home", "Build", "Verify", "Connect"]);
     expect(nav.showVerify).toBe(true);
   });
 
   it("Verify is MONOTONIC — stays once ever warranted, even when flagged drops to 0", () => {
     // No flagged claims NOW, but the server says verify activity has ever happened.
-    const nav = resolveJourneyNav(sig({ completedRunCount: 1, flaggedClaimCount: 0, everHadVerifyActivity: true }), ON);
+    const nav = resolveJourneyNav(sig({ units: 100, flaggedClaimCount: 0, everHadVerifyActivity: true }), ON);
     expect(nav.showVerify).toBe(true);
     expect(nav.items.some((i) => i.label === "Verify")).toBe(true);
   });
