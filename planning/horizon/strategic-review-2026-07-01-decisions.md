@@ -7,7 +7,7 @@ status: approved
 classification: internal
 control-tier: 1
 created: 2026-07-01
-last-reviewed: 2026-07-01
+last-reviewed: 2026-07-02
 review-interval: P12M
 approved-by: founder
 approved-on: 2026-07-01
@@ -31,6 +31,10 @@ related: [REC-ADR-023, REC-PLAN-026, REC-GOV-022, REC-PLAN-024]
 - **Sovereignty reframed as a global, configurable product dimension** — deployment (managed / self-host / air-gapped) and region are presets, not filters; licensing is the gate for any model used in verification-as-a-service.
 - **HS-014 reframe:** Mistral OCR 4 is a connector + distribution opportunity + competitive hedge, not a COGS line.
 - **Positioning (D3) inputs:** "verified ≠ fresh/governed"; "Mistral extracts, we prove it" / "verified ≠ extracted"; "supply-chain provenance, for AI context" (SLSA/Sigstore analogy, HS-012); plus the P1/P2 framing (D-2026-07-01-3).
+
+## Founder-approved, 2026-07-02 (gate-posture change)
+
+- **D-2026-07-02-1 — Proceed at risk ahead of counsel clearance (trial phase).** Counsel review of REC-GOV-022 (Action #1) proceeds in parallel but **no longer blocks component wiring during the trial phase**. Rationale (founder, 2026-07-02): no external users; trial phase; limited legal exposure. **Mitigation: functionality is rolled back if counsel returns adverse findings** — every at-risk component integration must stay cleanly removable (plug-point/swap architecture is the enabler). **Scope bound (unchanged): the BLOCKED set (NV-Embed-v2, Patronus Lynx, Bespoke-MiniCheck-7B, all Jina) and the AMBIGUOUS set (lytang MiniCheck, Surya) remain fully excluded** — rollback cannot cure a licence breach (e.g. CC-BY-NC), so at-risk applies only to the recommended/provisionally-CLEARED set (PaddleOCR-VL, Mistral OCR API pure-extraction mode, HHEM-2.1-Open, Granite Guardian, frontier verification APIs, voyage-context-4). The gate REINSTATES in full before any external-user launch: counsel CLEARED verdicts remain a launch precondition; this decision changes sequencing, not the launch bar.
 
 ## Open decisions (status: OPEN — founder to rule; keep visible)
 
