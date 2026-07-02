@@ -81,6 +81,15 @@ export const ANSWER_CONSOLE_HREF = PROVE_HREF + "/proof";
 export const WORKSPACE_HOME_HREF = ANSWER_CONSOLE_HREF;
 
 /**
+ * RES-113 Track A A1 (spec §6/§8): the Home hero's "Workspace settings" link
+ * target. Points at the `foundation` (Workspace) nav group's landing — its top
+ * item `/integrations` — because that group has no index route of its own. This
+ * is the single retargetable anchor: A3b repoints it to the real Workspace
+ * landing / graph-home route once that ships (Decision A-Option 2 / B).
+ */
+export const WORKSPACE_SETTINGS_HREF = DASHBOARD_BASE + "/integrations";
+
+/**
  * Primary work destinations (Phase 3 Stage 6) — lead with the verified-query
  * product surfaces. The operator/audit desk (Home, Runs, Claims, Prove, Agents)
  * is demoted to the collapsed "Operator" group below, not deleted.

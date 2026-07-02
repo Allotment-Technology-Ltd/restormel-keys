@@ -44,6 +44,7 @@
     INGEST_FLOW_HREF,
     RUNS_HREF,
     VERIFY_HREF,
+    WORKSPACE_SETTINGS_HREF,
   } from "$lib/nav-config";
   import {
     PROVE_LINK_CLASS,
@@ -608,6 +609,16 @@
               {/if}
             </p>
           {/if}
+          <!-- RES-113 Track A A1 (copy pack §7): the standing door from Home to the
+               Workspace settings group. Chrome, not a tile and not a CTA (no arrow,
+               muted) — present in every HomeState because it sits above the
+               `home.kind` switch, so one-primary-per-state is untouched. aria-label
+               contains the visible text verbatim (WCAG 2.5.3 Label-in-Name). -->
+          <a
+            class="hero-settings-link brut-focus"
+            href={WORKSPACE_SETTINGS_HREF}
+            aria-label="Workspace settings — providers, store, graph, routes, audit"
+          >Workspace settings</a>
         </section>
 
         {#if home.kind === "empty"}
@@ -1102,6 +1113,31 @@
     display: flex;
     gap: var(--space-2);
     flex-wrap: wrap;
+  }
+  /* RES-113 Track A A1: the muted "Workspace settings" chrome link. Not a CTA —
+     no arrow, muted token colour, small type. inline-flex + min-height:44px gives
+     the net-new focusable an adequate hit target (WCAG 2.5.5 / X10). */
+  .hero-settings-link {
+    margin: var(--space-3) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 var(--space-1);
+  }
+  .hero-settings-link:focus-visible {
+    /* Ink-paired focus (a11y skill §Focus / WCAG 1.4.11) — mirrors `.tile-link`:
+       this muted text link has no border of its own, so the shared bare-yellow
+       `.brut-focus` ring would float ~1.3:1 on the cream panel. Pair it: yellow
+       ring (brand focus signal) + a 2px ink band so the focus boundary meets 3:1.
+       Tokens only — no new colours. */
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px var(--color-ink);
   }
 
   .home-state {
