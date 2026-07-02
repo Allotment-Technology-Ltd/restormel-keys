@@ -42,14 +42,29 @@ type HubJourney = {
   latestJob: { id: string; status: string; currentStage?: string | null } | null;
 };
 
-function hubPayload(journey: Partial<HubJourney> = {}) {
+function hubPayload(
+  journey: Partial<HubJourney> = {},
+  spine: { stages: { id: string; state: string }[] } | null = null,
+) {
   return {
     journey: {
       stats: journey.stats ?? null,
       latestJob: journey.latestJob ?? null,
     },
+    // RES-113 PR-6a: the Verify ready tile reads the hub spine via
+    // `resolveM2SurfaceFromSpine`. Default null (spine unresolved) so the
+    // pre-PR-6 fixtures keep asserting an honest no-tile absence.
+    spine,
   };
 }
+
+/** A spine whose make_ready + review stages are cleared — `resolveM2Surface` reads "ready". */
+const SPINE_VERIFY_CLEAR = {
+  stages: [
+    { id: "make_ready", state: "done" },
+    { id: "review", state: "done" },
+  ],
+};
 
 function scorecard(over: { trust_score?: number | null; units?: number } = {}) {
   if (over.trust_score === null) return null;
@@ -267,6 +282,62 @@ describe("HOME · BUILT_NOT_CONNECTED (flag ON)", () => {
     expect(getByRole("link", { name: "Review 1 fact" })).toBeTruthy();
   });
 
+  it("mounts the ghost READY tile when verify work is cleared (spine-derived, copy pack §3.4)", async () => {
+    // RES-113 PR-6a: `resolveM2SurfaceFromSpine` reads "ready" → the ok ghost tile.
+    setJourneyPageData();
+    const { getByRole, getByText, container } = render(
+      HomePage,
+      pageProps({
+        graphName: "acme-graph",
+        scorecard: Promise.resolve(scorecard({ units: 1204 })),
+        hub: Promise.resolve(
+          hubPayload({ stats: { units: 1204, validation: { awaiting_triage: 0 } } }, SPINE_VERIFY_CLEAR),
+        ),
+      }),
+    );
+    await settle();
+    expect(getByText("All facts are matched to sources.")).toBeTruthy();
+    const link = getByRole("link", { name: "Open Verify" });
+    expect(link.getAttribute("href")).toContain("/verify");
+    // Ghost, never a second primary — Connect keeps the one yellow CTA.
+    expect(link.className).not.toContain("btn-primary");
+    expect(container.querySelectorAll(".btn-primary").length).toBe(1);
+  });
+
+  it("renders NO ready tile when the spine is unresolved (honest absence, never a fabricated 'all matched')", async () => {
+    setJourneyPageData();
+    const { queryByText } = render(
+      HomePage,
+      pageProps({
+        scorecard: Promise.resolve(scorecard({ units: 1204 })),
+        // spine defaults to null in the fixture — unresolved.
+        hub: Promise.resolve(hubPayload({ stats: { units: 1204, validation: { awaiting_triage: 0 } } })),
+      }),
+    );
+    await settle();
+    expect(queryByText("All facts are matched to sources.")).toBeNull();
+    expect(queryByText("Open Verify")).toBeNull();
+  });
+
+  it("the triage tile wins over the ready tile while facts are flagged", async () => {
+    setJourneyPageData();
+    const { getByText, queryByText } = render(
+      HomePage,
+      pageProps({
+        scorecard: Promise.resolve(scorecard({ units: 1204 })),
+        hub: Promise.resolve(
+          hubPayload(
+            { stats: { units: 1204, validation: { awaiting_triage: 6 } } },
+            { stages: [{ id: "make_ready", state: "done" }, { id: "review", state: "current" }] },
+          ),
+        ),
+      }),
+    );
+    await settle();
+    expect(getByText("6 facts couldn't be matched to a source yet.")).toBeTruthy();
+    expect(queryByText("All facts are matched to sources.")).toBeNull();
+  });
+
   it("trustScore null ⇒ the stat is ABSENT — never a placeholder dash", async () => {
     setJourneyPageData();
     const { getByText, queryByText } = render(
@@ -345,6 +416,33 @@ describe("HOME · LIVE (flag ON)", () => {
     expect(getByRole("heading", { name: "RECENT ACTIVITY" })).toBeTruthy();
     await waitFor(() => expect(getByText(/support-agent asked · 9m ago/)).toBeTruthy());
     expect(getByText(/backend asked · 2h ago/)).toBeTruthy();
+  });
+
+  it("mounts the ghost READY tile inside LIVE too when the spine reads verify-clear (PR-6a)", async () => {
+    setJourneyPageData({
+      journeySignals: {
+        integrationCount: 0,
+        gatewayKeyCount: 1,
+        sourceCount: 12,
+        completedRunCount: 1,
+        flaggedClaimCount: 0,
+        connectionCount: 1,
+      },
+    });
+    const { getByRole, getByText, container } = render(
+      HomePage,
+      livePageProps({
+        hub: Promise.resolve(
+          hubPayload({ stats: { units: 1204, validation: { awaiting_triage: 0 } } }, SPINE_VERIFY_CLEAR),
+        ),
+        homeActivity: Promise.resolve([]),
+      }),
+    );
+    await settle();
+    expect(getByText("All facts are matched to sources.")).toBeTruthy();
+    expect(getByRole("link", { name: "Open Verify" })).toBeTruthy();
+    // The ask submit stays the ONE yellow primary.
+    expect(container.querySelectorAll(".btn-primary").length).toBe(1);
   });
 
   it("activity empty state (copy pack §1.4)", async () => {
