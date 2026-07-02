@@ -1,19 +1,36 @@
 <script lang="ts">
   /**
-   * M4 connections manager (RES-113 PR-E; designs/M4 Connections.html).
+   * M4 Connect — the state-derived S0/S1/S2 surface (RES-113 PR-7; REC-ADR-018
+   * + its 2026-07-01 wizard-collapse addendum; copy pack §4, strings verbatim).
    *
-   * One area, many connection shapes. First connection → the wizard; after that →
-   * a manager listing each connection (type icon, access badge, endpoint, status,
-   * delete danger-zone). THE KEY IS THE CONNECTION: each connection is a real
-   * Gateway key minted through the EXISTING key CRUD (api/projects/[id]/keys) — no
-   * auth-model or schema change here (that is PR-L). Method/access are a
-   * presentational MOCK; the read+write badge does not enforce anything yet.
+   * Flag-ON only: this component mounts exclusively under `onboardingJourney`
+   * (agents/wiring/+page.svelte), so the flag-OFF path is byte-identical by
+   * construction.
    *
-   * Consumes the M0–M4 milestone helper (connect-journey) for the "where am I /
-   * what next" cue: M4 is the terminal milestone.
+   * Reveal predicates (ux-craft §2.1) — `resolveConnectSurface`:
+   *   S0 (`!setup.hasGraph`)                      → locked state; NOTHING else renders.
+   *   S1 (`hasGraph && connections === 0`)        → StateChip cue bar + guided fork.
+   *   S2 (`connections >= 1`)                     → manager list (list-plus-nudge; no
+   *                                                 yellow primary — a steady state
+   *                                                 demands nothing).
+   *   success (a key was just minted)             → display-once key + endpoint +
+   *                                                 one CTA to Home's ask.
+   *
+   * THE KEY IS THE CONNECTION (addendum §4): keys are minted purpose-bound
+   * (type + access + target) through the existing key CRUD. The first key is
+   * ENFORCED read-only (addendum §2) — there is no access step. Project is
+   * resolved silently (`defaultProjectId ?? projects[0]`, addendum §3); the
+   * inline chip appears only when genuinely ambiguous. RES-154: keys are
+   * workspace-available — no copy re-introduces per-project binding.
+   *
+   * `LIVE` honesty (REC-ADR-016): the per-row chip derives from REAL request-log
+   * traffic attributed to each key (`liveKeyIds`, ingest excluded) — the PR-3
+   * `hasAppTraffic24h` probe pattern resolved PER CONNECTION in the wiring
+   * loader. Until/unless evidence arrives, nothing renders.
    */
+  import { tick } from "svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { buildConnectMcpSnippet } from "$lib/connect/connect-mcp-snippet";
+  import { BUILD_HREF, HOME_HREF } from "$lib/nav-config";
   import { MILESTONE_LABEL } from "$lib/connect/connect-journey";
   import StateChip from "$lib/components/brutalist/StateChip.svelte";
   import type { ConnectAgentSetupData } from "$lib/connect/agent-setup-types";
@@ -21,9 +38,10 @@
   import ConnectionRow from "./ConnectionRow.svelte";
   import {
     connectionFromKey,
-    getMethod,
-    MOCK_SCOPE_NOTE,
-    ENFORCED_SCOPE_NOTE,
+    connectionEndpoint,
+    resolveConnectSurface,
+    resolveConnectProject,
+    showReadWriteSuggestion,
     type ConnectionView,
     type ConnectionMethodId,
     type ConnectionAccessId,
@@ -31,14 +49,19 @@
 
   export let setup: ConnectAgentSetupData;
   /**
-   * RES-113 PR-L — when true (onboardingJourney flag ON), the key IS the connection: new keys are
-   * minted purpose-bound (type + access + target) and the access badge reflects a REAL enforced
-   * scope. When false, behaviour is the PR-E presentational shell (mock scope, flat keys).
+   * When true (onboardingJourney ON — always true where this mounts), keys are
+   * minted purpose-bound (type + access + target) and badges reflect REAL
+   * enforced scope (PR-L). Kept as a prop so tests can pin both payload shapes.
    */
   export let enforceScope = false;
+  /**
+   * Key ids with REAL observed non-ingest traffic in the last 24h (the wiring
+   * loader's per-connection honesty probe). Null while unresolved — rows render
+   * without a `LIVE` chip until evidence arrives (absence, never fabrication).
+   */
+  export let liveKeyIds: Promise<string[]> | string[] | null = null;
 
-  // Connections derived from the workspace's stored Gateway keys (the manager view). When scope is
-  // enforced, the key's persisted key_type/access drive the view; otherwise they derive from label.
+  // Connections derived from the workspace's stored Gateway keys.
   let serverConnections: ConnectionView[] = setup.gatewayKeys.map((k) =>
     connectionFromKey({
       id: k.id,
@@ -53,60 +76,100 @@
   let sessionConnections: ConnectionView[] = [];
 
   $: connections = [...sessionConnections, ...serverConnections];
-  $: hasConnections = connections.length > 0;
 
-  // Wizard is shown automatically when there are no connections yet (first run),
-  // and on demand via "New connection".
-  let wizardOpen = false;
-  $: showWizard = wizardOpen || !hasConnections;
+  // Silent project resolution (addendum §3).
+  const resolvedProject = resolveConnectProject(setup);
+  let projectId: string | null = resolvedProject.projectId;
+  const projectAmbiguous = resolvedProject.ambiguous;
 
-  let projectId = setup.defaultProjectId ?? setup.projects[0]?.id ?? "";
-  $: hasProject = Boolean(projectId);
+  // Per-key traffic evidence (resolves after mount; rows stay chip-less until then).
+  let liveIds: string[] = [];
+  $: if (liveKeyIds) {
+    if (Array.isArray(liveKeyIds)) {
+      liveIds = liveKeyIds;
+    } else {
+      liveKeyIds.then((ids) => (liveIds = ids)).catch(() => {});
+    }
+  }
 
   let creating = false;
   let createError = "";
   let deletingKeyId: string | null = null;
+  // The row whose last delete attempt failed — its confirm block renders the
+  // visible failure message (copy pack §4.5; ux-contracts §3 recovery floor).
+  let deleteErrorKeyId: string | null = null;
+  const DELETE_FAILED = "We couldn't delete the connection. Try again.";
 
-  // The just-created key — shown once, with a copy-ready snippet for MCP connections.
-  let newKey: { raw: string; method: ConnectionMethodId; name: string } | null = null;
+  // The just-created key — the display-once success screen (copy pack §4.3).
+  let newKey: {
+    raw: string;
+    method: ConnectionMethodId;
+    name: string;
+  } | null = null;
   let copiedKey = false;
-  let copiedSnippet = false;
+  let copiedEndpoint = false;
 
-  $: newKeySnippet =
-    newKey && newKey.method === "mcp"
-      ? buildConnectMcpSnippet({
-          connectApiBase: setup.connectApiBase,
-          workspaceId: setup.workspaceId,
-          gatewayKey: newKey.raw,
-          projectId,
-        })
-      : "";
+  // S2 add-form state. Opened by "+ Add connection" (read) or the read+write
+  // suggestion row (read_write).
+  let addFormOpen = false;
+  let addFormAccess: ConnectionAccessId = "read";
 
-  function openWizard() {
-    createError = "";
-    newKey = null;
-    wizardOpen = true;
+  $: surface = resolveConnectSurface({
+    hasGraph: setup.hasGraph,
+    connectionCount: connections.length,
+  });
+
+  $: newKeyEndpoint = newKey
+    ? connectionEndpoint({ connectApiBase: setup.connectApiBase, method: newKey.method })
+    : "";
+
+  // Persistent polite live region text (rendered empty at boot, outside every
+  // {#if} — a11y skill: recreated regions don't announce).
+  let announceText = "";
+  function announce(text: string) {
+    announceText = "";
+    // Re-inject atomically so repeat announcements re-fire.
+    void tick().then(() => (announceText = text));
   }
 
-  function closeWizard() {
-    // Only collapsible when at least one connection already exists.
-    if (hasConnections) wizardOpen = false;
+  async function openAddForm(access: ConnectionAccessId) {
+    createError = "";
+    addFormAccess = access;
+    const wasOpen = addFormOpen;
+    addFormOpen = true;
+    await tick();
+    if (!wasOpen) {
+      (document.getElementById("m4-fork-heading") as HTMLElement | null)?.focus();
+    }
+  }
+
+  async function closeAddForm(returnFocusId: string) {
+    addFormOpen = false;
+    await tick();
+    document.getElementById(returnFocusId)?.focus();
+  }
+
+  function toggleAddForm() {
+    if (addFormOpen) void closeAddForm("m4-add-connection");
+    else void openAddForm("read");
   }
 
   async function handleCreate(
     e: CustomEvent<{ method: ConnectionMethodId; access: ConnectionAccessId; name: string }>,
   ) {
     if (!projectId) {
-      createError = "Create a Keys project before adding a connection.";
+      createError =
+        "We couldn't create the connection — this workspace has no project yet. Create a project first.";
       return;
     }
     const { method, access, name } = e.detail;
     creating = true;
     createError = "";
     try {
-      // PR-L: mint the key purpose-bound. When enforceScope is OFF the server ignores keyType/access
-      // (flat key); when ON it persists + enforces them ("the key IS the connection"). The target is
-      // the graph/workspace this connection serves.
+      // Mint the key purpose-bound (addendum §4). enforceScope OFF ⇒ the server
+      // ignores keyType/access (flat key); ON ⇒ persists + enforces them. The
+      // target is the workspace this connection serves (RES-154: workspace-
+      // available, never per-project bound).
       const payload: Record<string, unknown> = enforceScope
         ? { label: name, keyType: method, access, target: setup.workspaceId }
         : { label: name };
@@ -120,8 +183,6 @@
       if (res.ok && body.data?.rawKey) {
         const keyId = typeof body.data.keyId === "string" ? body.data.keyId : "";
         const keyPrefix = typeof body.data.keyPrefix === "string" ? body.data.keyPrefix : "rk_…";
-        // Session-authoritative view: show exactly the chosen method/access. When scope is enforced
-        // the badge is real (isMockScope false); otherwise it is a presentational label.
         sessionConnections = [
           {
             keyId,
@@ -135,12 +196,19 @@
           ...sessionConnections,
         ];
         newKey = { raw: body.data.rawKey, method, name };
-        wizardOpen = false;
+        addFormOpen = false;
+        // The fork is replaced by the success screen — relocate focus to its
+        // heading (a11y skill: focus relocation on {#if} swaps).
+        await tick();
+        (document.getElementById("m4-success-heading") as HTMLElement | null)?.focus();
       } else {
-        createError = (body as { error?: string }).error ?? `Request failed (${res.status})`;
+        createError =
+          (body as { error?: string }).error ??
+          "We couldn't create the connection — something failed on our side. Try again in a moment.";
       }
-    } catch (err) {
-      createError = err instanceof Error ? err.message : "Request failed";
+    } catch {
+      createError =
+        "We couldn't create the connection — something failed on our side. Try again in a moment.";
     } finally {
       creating = false;
     }
@@ -148,11 +216,11 @@
 
   async function handleDelete(e: CustomEvent<{ keyId: string }>) {
     const { keyId } = e.detail;
-    // Find the owning project for the delete route (server keys carry their own project).
     const conn = connections.find((c) => c.keyId === keyId);
     const pid = conn?.projectId || projectId;
     if (!pid) return;
     deletingKeyId = keyId;
+    deleteErrorKeyId = null;
     try {
       const res = await fetch(`${DASHBOARD_BASE}/api/projects/${pid}/keys`, {
         method: "DELETE",
@@ -164,10 +232,30 @@
         sessionConnections = sessionConnections.filter((c) => c.keyId !== keyId);
         serverConnections = serverConnections.filter((c) => c.keyId !== keyId);
         if (newKey && conn && newKey.name === conn.name) newKey = null;
+        announce("Connection deleted.");
+        // The focused confirm button went with the row — relocate to the
+        // surface heading (a11y skill: never drop focus to <body>).
+        await tick();
+        (document.getElementById("m4-connect-heading") as HTMLElement | null)?.focus();
+      } else {
+        // Visible in the row's confirm block (recovery = its retry button) AND announced.
+        deleteErrorKeyId = keyId;
+        announce(DELETE_FAILED);
       }
+    } catch {
+      deleteErrorKeyId = keyId;
+      announce(DELETE_FAILED);
     } finally {
       deletingKeyId = null;
     }
+  }
+
+  function handleClearDeleteError(e: CustomEvent<{ keyId: string }>) {
+    if (deleteErrorKeyId === e.detail.keyId) deleteErrorKeyId = null;
+  }
+
+  function handleRowAnnounce(e: CustomEvent<{ text: string }>) {
+    announce(e.detail.text);
   }
 
   async function copyNewKey() {
@@ -175,114 +263,151 @@
     try {
       await navigator.clipboard.writeText(newKey.raw);
       copiedKey = true;
+      announce("Copied.");
       setTimeout(() => (copiedKey = false), 2000);
     } catch {
       copiedKey = false;
+      // Clipboard failure reaches the status region too (copy pack §4.5).
+      announce("We couldn't copy — select the text and copy it manually.");
     }
   }
-  async function copyNewSnippet() {
-    if (!newKeySnippet) return;
+
+  async function copyNewEndpoint() {
+    if (!newKeyEndpoint) return;
     try {
-      await navigator.clipboard.writeText(newKeySnippet);
-      copiedSnippet = true;
-      setTimeout(() => (copiedSnippet = false), 2000);
+      await navigator.clipboard.writeText(newKeyEndpoint);
+      copiedEndpoint = true;
+      announce("Copied.");
+      setTimeout(() => (copiedEndpoint = false), 2000);
     } catch {
-      copiedSnippet = false;
+      copiedEndpoint = false;
+      announce("We couldn't copy — select the text and copy it manually.");
     }
   }
 </script>
 
-<section class="manager" aria-labelledby="m4-manager-heading">
-  <!-- where am I / what next cue (consumes the M0–M4 milestone helper) -->
-  <div class="cue">
-    <StateChip state={hasConnections ? "done" : "running"} label={`M4 · ${MILESTONE_LABEL.m4}`} />
-    <span class="cue-text">
-      {#if hasConnections}
-        Live — your app, agent, or site can answer from your graph, with citations.
-      {:else}
-        Create your first connection to let your app reach your graph.
-      {/if}
-    </span>
-  </div>
-
-  {#if setup.projects.length === 0}
-    <p class="blocked" role="status">
-      <a href={DASHBOARD_BASE + "/projects"}>Create a Keys project</a> before adding a connection.
-    </p>
-  {/if}
-
-  {#if hasConnections}
-    <header class="mgr-head">
-      <div>
-        <h2 id="m4-manager-heading">Connections</h2>
-        <p class="sub">Everything connected to your graph. Add any number, of any type.</p>
-      </div>
-      {#if !showWizard}
-        <button type="button" class="btn btn-primary new-btn" on:click={openWizard} disabled={!hasProject}>
-          + New connection
-        </button>
-      {/if}
-    </header>
-  {/if}
+<!-- The success branch renders m4-success-heading instead of m4-connect-heading —
+     the label must track the rendered heading or the region loses its name. -->
+<section class="manager" aria-labelledby={newKey ? "m4-success-heading" : "m4-connect-heading"}>
+  <!-- Persistent polite region — outside every {#if}, rendered empty at boot. -->
+  <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{announceText}</div>
 
   {#if newKey}
-    <div class="new-key" role="status" aria-live="polite">
-      <p class="nk-label">New connection key — copy now (shown once):</p>
-      <code class="nk-value">{newKey.raw}</code>
-      <div class="nk-actions">
-        <button type="button" class="btn btn-secondary" on:click={copyNewKey}>
-          {copiedKey ? "Copied key" : "Copy key"}
-        </button>
-      </div>
-      {#if newKeySnippet}
-        <p class="nk-sub">Add to your agent's MCP host config:</p>
-        <pre class="snippet" aria-label="MCP config snippet"><code>{newKeySnippet}</code></pre>
-        <button type="button" class="btn btn-secondary" on:click={copyNewSnippet}>
-          {copiedSnippet ? "Copied snippet" : "Copy MCP snippet"}
-        </button>
-      {:else if newKey.method === "rest"}
-        <p class="nk-sub">
-          Send it as <code>Authorization: Bearer {newKey.raw.slice(0, 10)}…</code> to the REST endpoint.
+    <!-- S1/S2 · SUCCESS (copy pack §4.3) — display-once key, one yellow primary → Home's ask. -->
+    <div class="success">
+      <h2 id="m4-success-heading" class="surface-h" tabindex="-1">Connection created</h2>
+      <div class="key-box">
+        <p class="kb-label">Your connection key</p>
+        <p class="kb-warning">
+          This is the only time the full key is shown. Copy it now and store it somewhere safe.
         </p>
-      {/if}
+        <code class="kb-value">{newKey.raw}</code>
+        <div class="kb-actions">
+          <button type="button" class="btn btn-secondary" on:click={copyNewKey}>
+            {copiedKey ? "Copied." : "Copy key"}
+          </button>
+        </div>
+      </div>
+      <div class="ep-box">
+        <p class="kb-label">Endpoint</p>
+        <code class="kb-value">{newKeyEndpoint}</code>
+        <div class="kb-actions">
+          <button type="button" class="btn btn-secondary" on:click={copyNewEndpoint}>
+            {copiedEndpoint ? "Copied." : "Copy"}
+          </button>
+        </div>
+      </div>
+      <p class="setup-hint">
+        {#if newKey.method === "mcp"}
+          Paste the endpoint and key into your agent's MCP settings.
+        {:else}
+          Call the endpoint with your key in the Authorization header.
+        {/if}
+      </p>
+      <div class="success-cta">
+        <a class="btn btn-primary" href={HOME_HREF}>Ask a question →</a>
+        <p class="cta-sub">See what your app sees — every answer with its citations.</p>
+      </div>
     </div>
-  {/if}
-
-  {#if showWizard}
-    {#if setup.projects.length > 1}
-      <label class="proj-field">
-        <span class="field-label">Project for this connection</span>
-        <select class="input" bind:value={projectId} disabled={creating}>
-          {#each setup.projects as p (p.id)}
-            <option value={p.id}>{p.name}</option>
-          {/each}
-        </select>
-      </label>
-    {/if}
+  {:else if surface === "s0"}
+    <!-- S0 · LOCKED (copy pack §4.1) — no completed ingest; nothing else renders. -->
+    <div class="locked">
+      <h2 id="m4-connect-heading" class="surface-h" tabindex="-1">Nothing to connect yet</h2>
+      <p class="locked-body">
+        Connect is where your app or AI agent gets access to your answers. First, add some
+        documents so there's something to answer from.
+      </p>
+      <a class="btn btn-primary" href={BUILD_HREF}>Add your documents →</a>
+    </div>
+  {:else if surface === "s1"}
+    <!-- S1 · GUIDED FORK (copy pack §4.2) — cue bar kept with its shipped strings. -->
+    <h2 id="m4-connect-heading" class="sr-only" tabindex="-1">Connect</h2>
+    <div class="cue">
+      <StateChip state="running" label={`M4 · ${MILESTONE_LABEL.m4}`} />
+      <span class="cue-text">Create your first connection to let your app reach your graph.</span>
+    </div>
     <ConnectWizard
-      connectApiBase={setup.connectApiBase}
       {creating}
       {createError}
+      access="read"
+      variant="first"
+      projects={setup.projects}
+      bind:projectId
+      {projectAmbiguous}
       on:create={handleCreate}
-      on:cancel={closeWizard}
     />
-  {/if}
+  {:else}
+    <!-- S2 · MANAGER (copy pack §4.4) — list-plus-nudge; no yellow primary in the steady state. -->
+    <header class="mgr-head">
+      <h2 id="m4-connect-heading" class="surface-h" tabindex="-1">Connections</h2>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        id="m4-add-connection"
+        aria-expanded={addFormOpen}
+        on:click={toggleAddForm}
+      >
+        + Add connection
+      </button>
+    </header>
 
-  {#if hasConnections}
     <ul class="conn-list">
       {#each connections as conn (conn.keyId)}
         <ConnectionRow
           connection={conn}
           connectApiBase={setup.connectApiBase}
           deleting={deletingKeyId === conn.keyId}
+          deleteError={deleteErrorKeyId === conn.keyId ? DELETE_FAILED : ""}
+          live={liveIds.includes(conn.keyId)}
           on:delete={handleDelete}
+          on:announce={handleRowAnnounce}
+          on:cleardeleteerror={handleClearDeleteError}
         />
       {/each}
     </ul>
-    <p class="mock-note" role="note">{enforceScope ? ENFORCED_SCOPE_NOTE : MOCK_SCOPE_NOTE}</p>
-    <p class="manage-link">
-      <a href={DASHBOARD_BASE + "/access"}>Manage and revoke Gateway keys</a>
-    </p>
+
+    {#if showReadWriteSuggestion(connections) && !addFormOpen}
+      <!-- The full stop lives INSIDE the link's inline box — a period after the
+           padded button renders as a detached floating glyph (5-lens fix). -->
+      <p class="suggestion">
+        Need your app to add or update facts in your graph too?
+        <button type="button" class="suggest-link" on:click={() => openAddForm("read_write")}>
+          Add a read + write connection.</button>
+      </p>
+    {/if}
+
+    {#if addFormOpen}
+      <ConnectWizard
+        {creating}
+        {createError}
+        access={addFormAccess}
+        variant="add"
+        projects={setup.projects}
+        bind:projectId
+        {projectAmbiguous}
+        on:create={handleCreate}
+      />
+    {/if}
   {/if}
 </section>
 
@@ -292,6 +417,48 @@
     flex-direction: column;
     gap: var(--space-4);
   }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .surface-h {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 0.95;
+    margin: 0;
+    font-size: 1.9rem;
+  }
+  .surface-h:focus {
+    /* Programmatic-only focus target (state-swap relocation) — no visible ring. */
+    outline: none;
+  }
+
+  /* S0 — locked */
+  .locked {
+    border: 2px dashed var(--color-ink);
+    background: var(--color-surface);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+  .locked-body {
+    margin: 0;
+    color: var(--color-ink-muted);
+    line-height: 1.55;
+    max-width: 52ch;
+  }
+
+  /* S1 — cue bar (shipped chrome, unchanged) */
   .cue {
     display: flex;
     align-items: center;
@@ -308,29 +475,14 @@
     line-height: 1.5;
     color: var(--color-ink);
   }
+
+  /* S2 — manager */
   .mgr-head {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     gap: var(--space-4);
     flex-wrap: wrap;
-  }
-  .mgr-head h2 {
-    font-family: var(--font-display);
-    text-transform: uppercase;
-    letter-spacing: -0.01em;
-    line-height: 0.95;
-    margin: 0;
-    font-size: 1.9rem;
-  }
-  .sub {
-    margin: var(--space-1) 0 0;
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-sm);
-    color: var(--color-ink-muted);
-  }
-  .new-btn {
-    white-space: nowrap;
   }
   .conn-list {
     list-style: none;
@@ -340,35 +492,69 @@
     flex-direction: column;
     gap: var(--space-3);
   }
-  .blocked {
-    font-size: var(--text-sm);
+  .suggestion {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-muted);
+    line-height: 1.6;
+    max-width: 62ch;
+  }
+  .suggest-link {
+    border: none;
+    background: none;
+    font: inherit;
+    color: var(--color-ink);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: var(--space-2);
+    margin: calc(-1 * var(--space-2)) 0;
+    min-height: 44px;
+  }
+  .suggest-link:focus-visible {
+    /* Ink-paired focus (a11y skill §Focus / WCAG 1.4.11). */
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px var(--color-ink);
+  }
+
+  /* Success (§4.3) */
+  .success {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    border: 2px solid var(--color-ink);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-5);
+  }
+  .key-box {
+    border: 2px solid var(--color-ink);
+    background: color-mix(in srgb, var(--color-yellow) 12%, var(--color-surface));
     padding: var(--space-3);
-    border: var(--border-thin);
   }
-  .proj-field {
-    display: block;
+  .ep-box {
+    border: 2px solid var(--color-ink);
+    background: var(--color-surface);
+    padding: var(--space-3);
   }
-  .field-label {
-    display: block;
+  .kb-label {
+    margin: 0 0 var(--space-2);
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    margin-bottom: var(--space-2);
     color: var(--color-ink-muted);
   }
-  .new-key {
-    padding: var(--space-3);
-    border: 2px solid var(--color-ink);
-    background: color-mix(in srgb, var(--color-yellow) 12%, var(--color-surface));
-  }
-  .nk-label {
+  .kb-warning {
     margin: 0 0 var(--space-2);
     font-size: var(--text-sm);
     font-weight: 700;
+    line-height: 1.5;
+    max-width: 62ch;
   }
-  .nk-value {
+  .kb-value {
     display: block;
     word-break: break-all;
     font-size: 0.85rem;
@@ -376,30 +562,26 @@
     background: var(--color-bg);
     border: var(--border-thin);
   }
-  .nk-actions {
+  .kb-actions {
     margin-top: var(--space-2);
   }
-  .nk-sub {
-    margin: var(--space-3) 0 var(--space-2);
-    font-size: var(--text-sm);
+  .setup-hint {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-muted);
+    line-height: 1.5;
   }
-  .snippet {
-    overflow-x: auto;
-    font-size: 0.8rem;
-    padding: var(--space-3);
-    border: var(--border-thin);
-    background: var(--color-bg);
-    margin: 0 0 var(--space-2);
+  .success-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
   }
-  .mock-note {
+  .cta-sub {
+    margin: 0;
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     color: var(--color-ink-faint);
-    line-height: 1.5;
-    margin: 0;
-  }
-  .manage-link {
-    font-size: var(--text-sm);
-    margin: 0;
   }
 </style>

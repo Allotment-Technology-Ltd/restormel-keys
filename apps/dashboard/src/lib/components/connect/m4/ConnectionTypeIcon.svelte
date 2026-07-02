@@ -1,10 +1,10 @@
 <script lang="ts">
   /**
-   * M4 connection-type icons (RES-113 PR-E). Small inline SVGs — never single
+   * M4 connection-type icons (RES-113 PR-7). Small inline SVGs — never single
    * letters (08_ARTEFACTS.md: the single-letter avatars read poorly; use icons):
-   *   mcp → plug · rest → exchange arrows · widget → chat bubble ·
-   *   sdk → code brackets · graphql → node-graph.
-   * currentColor throughout so the brutalist border/fill tokens drive the colour.
+   *   mcp → plug · rest → exchange arrows. MVP ships MCP + REST only
+   * (REC-ADR-018 addendum §1) — the widget/SDK/GraphQL icons left with their
+   * deferred methods. currentColor throughout so the brutalist tokens drive colour.
    */
   import type { ConnectionMethodId } from "./connection-model";
 
@@ -35,23 +35,6 @@
     <!-- exchange arrows -->
     <path d="M4 8h13l-3-3" />
     <path d="M20 16H7l3 3" />
-  {:else if method === "widget"}
-    <!-- chat bubble -->
-    <path d="M4 5h16v11H9l-5 4V5Z" />
-    <path d="M8 10h8" />
-    <path d="M8 13h5" />
-  {:else if method === "sdk"}
-    <!-- code brackets -->
-    <path d="M9 7 4 12l5 5" />
-    <path d="m15 7 5 5-5 5" />
-  {:else if method === "graphql"}
-    <!-- node graph -->
-    <circle cx="12" cy="4" r="2" />
-    <circle cx="5" cy="18" r="2" />
-    <circle cx="19" cy="18" r="2" />
-    <path d="M12 6 6 16" />
-    <path d="m12 6 6 10" />
-    <path d="M7 18h10" />
   {/if}
 </svg>
 
