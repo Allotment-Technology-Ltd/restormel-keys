@@ -12,14 +12,14 @@ review-interval: P12M
 approved-by: founder
 approved-on: 2026-07-01
 retention: permanent
-related: [REC-ADR-008, REC-PLAN-022, REC-GOV-022, REC-PLAN-024]
+related: [REC-ADR-023, REC-PLAN-026, REC-GOV-022, REC-PLAN-024]
 ---
 
 > **Filed via Cowork horizon handover, 2026-07-01.** Decisions log from handover payload §3. The four review decisions below carry **founder approval (2026-07-01)**; the two deliberate reopenings (dual-mode verification; Stage-5 measurement decoupling) are founder-approved and additive to settled `/planning` and ADR items. **Proposed id — reconcile at merge.**
 
 ## Founder-approved, 2026-07-01 (strategic review)
 
-- **D-2026-07-01-1 — Dual-mode verification engine.** Batch-at-ingest for first-party corpora (door 1) + in-path, cache-first, latency-budgeted verification for the proxy (door 2). One engine, two modes; on budget exhaustion or residual uncertainty a claim is returned labelled-unverified (annotated mode) or withheld (strict mode) — abstention doubles as the answer to latency. Supersedes the batch-only framing of ADR v1; embodied in **ADR v2 (REC-ADR-008).**
+- **D-2026-07-01-1 — Dual-mode verification engine.** Batch-at-ingest for first-party corpora (door 1) + in-path, cache-first, latency-budgeted verification for the proxy (door 2). One engine, two modes; on budget exhaustion or residual uncertainty a claim is returned labelled-unverified (annotated mode) or withheld (strict mode) — abstention doubles as the answer to latency. Supersedes the batch-only framing of ADR v1; embodied in **ADR v2 (REC-ADR-023).**
 - **D-2026-07-01-2 — Stage-5 economic measurement decoupled from Stage 3.** The proxy go/no-go economics (added latency + cost per verified third-party response) are produced by the cascade-validation harness now, without waiting for remote serving / D1 / D2. The Stage-3 gate governed *serving* (transport, auth); measurement builds on its intent rather than re-deciding it.
 - **D-2026-07-01-3 — P1/P2 proxy-tier product framing.** Tier P1 = response-groundedness (any source; grounding-vendor-comparable; explicitly not the moat). Tier P2 = full span + source-version-hash depth where sources are ingested/hashed (the moat over third-party context). Honest tier-labelling is mandatory — never imply P2 depth on a P1 check. Feeds D3 positioning.
 - **D-2026-07-01-4 — Extraction confirmed as connector instance #1.** Embedding/retrieval is instance #2, reusing the same contract; voyage-context-4 (HS-015) is the lead candidate.

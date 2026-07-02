@@ -10,7 +10,7 @@ created: 2026-07-01
 last-reviewed: 2026-07-01
 review-interval: P6M
 retention: review-only
-related: [REC-PLAN-022, REC-PLAN-023, REC-ADR-008]
+related: [REC-PLAN-026, REC-PLAN-023, REC-ADR-023]
 ---
 
 > **PENDING COUNSEL — fact-gathering to inform legal review, NOT legal advice.** Every "CLEARED" verdict is a research judgement on public licence/ToS text and **must be confirmed by counsel before launch**. **No component ships to production until counsel returns CLEARED** (gating backlog item — Action #1). The **BLOCKED** set (NV-Embed-v2, Patronus Lynx 8B/70B, Bespoke-MiniCheck-7B, all Jina embeddings/rerankers) and the **AMBIGUOUS** set (lytang MiniCheck, Surya) stay out of managed defaults/swaps until resolved. This record is the **source of truth for the component menu + presets, pending counsel**; on clearance it graduates to a **Tier-2 governed vendor/compliance register** with founder+counsel approval. **Proposed id/placement/status — reconcile at merge; class governance chosen for its compliance/vendor nature, filed at tier 1 while pending.**

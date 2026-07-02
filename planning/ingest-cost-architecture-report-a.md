@@ -10,10 +10,10 @@ created: 2026-07-01
 last-reviewed: 2026-07-01
 review-interval: P6M
 retention: review-only
-related: [REC-PLAN-022, REC-GOV-022, REC-ADR-008]
+related: [REC-PLAN-026, REC-GOV-022, REC-ADR-023]
 ---
 
-> **Filing caveat (per handover brief).** This report's cost **architecture** — the cheap->expensive verifier cascade, hash-keyed verdict caching, and verify-at-ingest ("the moat is the cost-mechanism") — **stands, and is now extended to dual-mode by the ingest-connector ADR (REC-ADR-008).** Its component **picks are superseded by the licensing/component-menu report (REC-GOV-022)**, were EU/UK-self-host-biased, and contained a non-commercial licensing error (NV-Embed-v2 is CC-BY-NC, not commercial). Read the architecture as current; do not treat the specific component selections here as cleared. **Proposed id/status — reconcile at merge.**
+> **Filing caveat (per handover brief).** This report's cost **architecture** — the cheap->expensive verifier cascade, hash-keyed verdict caching, and verify-at-ingest ("the moat is the cost-mechanism") — **stands, and is now extended to dual-mode by the ingest-connector ADR (REC-ADR-023).** Its component **picks are superseded by the licensing/component-menu report (REC-GOV-022)**, were EU/UK-self-host-biased, and contained a non-commercial licensing error (NV-Embed-v2 is CC-BY-NC, not commercial). Read the architecture as current; do not treat the specific component selections here as cleared. **Proposed id/status — reconcile at merge.**
 
 # Re-Architecting Restormel's Ingestion Pipeline: Cutting Cost-to-User While Preserving the Verification Moat
 

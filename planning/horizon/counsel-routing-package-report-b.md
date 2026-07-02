@@ -10,7 +10,7 @@ created: 2026-07-01
 last-reviewed: 2026-07-01
 review-interval: P6M
 retention: P6Y-after-superseded
-related: [REC-GOV-022, REC-ADR-008]
+related: [REC-GOV-022, REC-ADR-023]
 ---
 
 > **ACTION REQUIRED — founder to send to counsel.** This package routes **Report B (REC-GOV-022)** for legal review. It is **fact-gathering, NOT legal advice**; every "CLEARED" verdict is a research judgement on public licence/ToS text and must be confirmed by counsel. **Counsel sign-off gates production component wiring — nothing ships on a component until confirmed CLEARED.** Cowork cannot send email; the founder forwards this package + the full Report B record to counsel. **Proposed id — reconcile at merge.**

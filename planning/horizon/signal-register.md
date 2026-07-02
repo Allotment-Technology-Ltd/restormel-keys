@@ -10,7 +10,7 @@ created: 2026-07-01
 last-reviewed: 2026-07-01
 review-interval: P3M
 retention: review-only
-related: [REC-PLAN-022, REC-PLAN-025, REC-GOV-022, REC-ADR-008]
+related: [REC-PLAN-026, REC-PLAN-025, REC-GOV-022, REC-ADR-023]
 ---
 
 > **Filed via Cowork horizon handover, 2026-07-01.** **Placement decision:** the SCHEMA has no explicit home for a standing signal register, so per the brief this is placed at `planning/horizon/` as a Tier-1 planning record — reconcile at merge. **ID mapping:** `SIG-NNN` are chat-local working labels; this register assigns canonical within-register entry IDs `HS-NNN`. The `HS-NNN` scheme and the `REC-PLAN-024` id are **proposed — confirm against `records/register.yaml` at merge** (founder may instead prefer each Keeper as its own `REC-PLAN-*` record — that would be a deliberate re-key).
@@ -60,4 +60,4 @@ related: [REC-PLAN-022, REC-PLAN-025, REC-GOV-022, REC-ADR-008]
 
 ## Emergent pattern
 
-Captured in the synthesis record (**REC-PLAN-022**), not as a separate signal: HS-002/003/004/006 converge on "production AI stalls on trust/clarity/validation of inputs-and-outputs, not model quality" — none names verification as the answer. That convergence is the GTM opening; HS-005/007 are the on-wedge positioning anchors.
+Captured in the synthesis record (**REC-PLAN-026**), not as a separate signal: HS-002/003/004/006 converge on "production AI stalls on trust/clarity/validation of inputs-and-outputs, not model quality" — none names verification as the answer. That convergence is the GTM opening; HS-005/007 are the on-wedge positioning anchors.

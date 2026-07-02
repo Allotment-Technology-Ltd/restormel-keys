@@ -145,18 +145,6 @@ records:
     next-review: 2027-06-23
     retention: ""
     path: docs/decisions/host-managed-postgres-graph-store.md
-  - id: REC-ADR-008
-    title: ADR — Ingest Pipeline as a Connector Abstraction with a Dual-Mode Tiered Verification Cascade
-    class: decision
-    status: draft
-    classification: internal
-    control-tier: 1
-    owner: founder
-    last-reviewed: 2026-07-01
-    review-interval: P12M
-    next-review: 2027-07-01
-    retention: permanent
-    path: docs/decisions/ingest-connector-architecture-adr.md
   - id: REC-ADR-009
     title: "ADR: Provider-abstracted per-workspace database provisioning across tiers (EU-sovereign default, Neon quick-start)"
     class: decision
@@ -325,6 +313,18 @@ records:
     next-review: 2027-07-01
     retention: permanent
     path: docs/decisions/onboarding-first-run-home-minimal.md
+  - id: REC-ADR-023
+    title: ADR — Ingest Pipeline as a Connector Abstraction with a Dual-Mode Tiered Verification Cascade
+    class: decision
+    status: draft
+    classification: internal
+    control-tier: 1
+    owner: founder
+    last-reviewed: 2026-07-01
+    review-interval: P12M
+    next-review: 2027-07-01
+    retention: permanent
+    path: docs/decisions/ingest-connector-architecture-adr.md
   - id: "REC-ADR-XXX  # PLACEHOLDER — human to assign the next free REC-ADR-NNN from records/register.yaml (do NOT reuse a disposed id)"
     title: "ADR: UK-sovereign hosting — migrate the K3s stack off Hetzner-EU to a UK-resident, UK-controlled provider (Civo)"
     class: decision
@@ -1261,18 +1261,6 @@ records:
     next-review: 2027-06-28
     retention: review-only
     path: docs/design/staging-env-integration-train-plan-2026-06-27.md
-  - id: REC-PLAN-022
-    title: "Verified Context in 2026 — Market & Buyer-Narrative Synthesis"
-    class: planning
-    status: approved
-    classification: internal
-    control-tier: 1
-    owner: founder
-    last-reviewed: 2026-07-01
-    review-interval: P6M
-    next-review: 2027-01-01
-    retention: review-only
-    path: planning/verified-context-synthesis-2026.md
   - id: REC-PLAN-023
     title: Re-Architecting Restormel's Ingestion Pipeline — Cost Architecture (Report A)
     class: planning
@@ -1309,6 +1297,18 @@ records:
     next-review: 2026-10-01
     retention: review-only
     path: planning/horizon/watch-list-triggers.md
+  - id: REC-PLAN-026
+    title: "Verified Context in 2026 — Market & Buyer-Narrative Synthesis"
+    class: planning
+    status: approved
+    classification: internal
+    control-tier: 1
+    owner: founder
+    last-reviewed: 2026-07-01
+    review-interval: P6M
+    next-review: 2027-01-01
+    retention: review-only
+    path: planning/verified-context-synthesis-2026.md
   - id: REC-POL-001
     title: Information Security Policy
     class: governance

@@ -10,10 +10,10 @@ created: 2026-07-01
 last-reviewed: 2026-07-01
 review-interval: P12M
 retention: review-only
-related: [REC-ADR-008, REC-GOV-022]
+related: [REC-ADR-023, REC-GOV-022]
 ---
 
-> **Routed AS-IS to Claude Code as the build instruction (build step 1A of REC-ADR-008).** Body verbatim, unedited per the handover brief. Component wiring is **GATED** on counsel clearance of REC-GOV-022 (the brief carries its own gate). **Proposed id — reconcile at merge.**
+> **Routed AS-IS to Claude Code as the build instruction (build step 1A of REC-ADR-023).** Body verbatim, unedited per the handover brief. Component wiring is **GATED** on counsel clearance of REC-GOV-022 (the brief carries its own gate). **Proposed id — reconcile at merge.**
 
 # Hand to Claude Code — Spike: the ingest-connector abstraction (instance #1: extraction)
 

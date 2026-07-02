@@ -10,7 +10,7 @@ created: 2026-07-01
 last-reviewed: 2026-07-01
 review-interval: P3M
 retention: review-only
-related: [REC-PLAN-024, REC-PLAN-022]
+related: [REC-PLAN-024, REC-PLAN-026]
 ---
 
 > **Filed via Cowork horizon handover, 2026-07-01.** **Placement decision:** the SCHEMA defines no explicit home for standing monitoring criteria, so per the brief these durable tripwires are placed alongside the signal register at `planning/horizon/` as a Tier-1 planning record — reconcile at merge. Each trigger is a condition that, if it fires, changes competitive/strategic posture and should reopen the relevant decision.

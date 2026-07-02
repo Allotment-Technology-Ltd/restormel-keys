@@ -1,5 +1,5 @@
 ---
-id: REC-PLAN-022
+id: REC-PLAN-026
 title: "Verified Context in 2026 — Market & Buyer-Narrative Synthesis"
 class: planning
 owner: founder
@@ -10,7 +10,7 @@ created: 2026-07-01
 last-reviewed: 2026-07-01
 review-interval: P6M
 retention: review-only
-related: [REC-PLAN-023, REC-GOV-022, REC-PLAN-024, REC-PLAN-025, REC-ADR-008]
+related: [REC-PLAN-023, REC-GOV-022, REC-PLAN-024, REC-PLAN-025, REC-ADR-023]
 ---
 
 > **Filed via Cowork horizon handover, 2026-07-01.** Placement: planning/strategy record, sibling in altitude to `planning/planning-context.md` (REC-PLAN-001). **Proposed id/status — reconcile against `records/register.yaml` at merge.** Proven-claims discipline: only the **>=90% supported / <=2% unsupported** bar is proven; every other figure keeps its inline source attribution and "verify before external use" flag.

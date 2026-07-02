@@ -1,5 +1,5 @@
 ---
-id: REC-ADR-008
+id: REC-ADR-023
 title: "ADR — Ingest Pipeline as a Connector Abstraction with a Dual-Mode Tiered Verification Cascade"
 class: decision
 owner: founder
@@ -10,7 +10,7 @@ created: 2026-07-01
 last-reviewed: 2026-07-01
 review-interval: P12M
 retention: permanent
-related: [REC-ADR-001, REC-PLAN-022, REC-PLAN-023, REC-GOV-022, REC-PLAN-025]
+related: [REC-ADR-001, REC-PLAN-026, REC-PLAN-023, REC-GOV-022, REC-PLAN-025]
 ---
 
 > **Filed via Cowork horizon handover, 2026-07-01.** Decision record, sibling to `docs/decisions/records-architecture.md` (REC-ADR-001). **Status: Proposed** (see body). Linked build items: the extraction-connector spike (build step 1A) and the cascade-validation harness (step 2) are raised as PBIs; production component wiring is **GATED** on counsel clearance of REC-GOV-022. **Proposed id/status — reconcile against `records/register.yaml` at merge.**
