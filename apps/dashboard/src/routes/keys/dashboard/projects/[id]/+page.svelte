@@ -270,7 +270,7 @@
       Includes <strong>policy evaluate</strong> (<code class="inline-code">RESTORMEL_EVALUATE_URL</code>), <strong>control-plane base</strong>
       (<code class="inline-code">RESTORMEL_CONTROL_PLANE_URL</code>), and <strong>server token</strong> (<code class="inline-code">RESTORMEL_SERVER_TOKEN</code>
       — same value as the Gateway key for MCP / Plot-style admin wizards). The full snippet also repeats <strong>unprefixed</strong> names for setup
-      wizards that expect <code class="inline-code">RESTORMEL_PROJECT_ID</code> / <code class="inline-code">RESTORMEL_ENVIRONMENT_ID</code> without
+      wizards that expect <code class="inline-code">RESTORMEL_PROJECT_ID</code>{#if environmentsOn} / <code class="inline-code">RESTORMEL_ENVIRONMENT_ID</code>{/if} without
       <code class="inline-code">_STAGING</code>.
     </p>
 
