@@ -155,6 +155,85 @@ export function canAcceptAsSupported(
   };
 }
 
+// ── Dossier first-contact lines (RES-113 placement spec §3.2, PR-6) ─────────
+// Copy pack §3.5, VERBATIM. Predicate: dossier open AND `judge !== null`.
+// Exactly one novice-register line renders per dossier, ABOVE the shipped
+// operator block (judgedBy, the JUDGE chip, the judgment-history disclosure) —
+// no new fields, no second disclosure, never a "CHECKED BY" label, and the
+// word "checker" never appears (decision D: stage-table language for novices;
+// the shipped JUDGE vocabulary stays the operator layer).
+
+export type DossierFirstContactVariant = "machine" | "human" | "abstention";
+
+export type DossierFirstContactLine = {
+  variant: DossierFirstContactVariant;
+  text: string;
+};
+
+/**
+ * Copy pack §3.5 independence gloss (machine verdict), verbatim around the
+ * {DD Month YYYY} slot.
+ */
+export function dossierIndependenceGloss(date: string): string {
+  return `Checked against its source on ${date} by a model independent of the one that read your documents.`;
+}
+
+/** Copy pack §3.5 human-verdict variant, verbatim around the {DD Month YYYY} slot. */
+export function dossierHumanVerdictLine(date: string): string {
+  return `Reviewed by you on ${date}.`;
+}
+
+/** Copy pack §3.5 abstention line (claim still awaiting your triage), verbatim. */
+export const DOSSIER_ABSTENTION_LINE =
+  "We couldn't fully match this claim to its source — it's waiting for your verdict." as const;
+
+/**
+ * DD Month YYYY (copy pack §6.5), matching the legal-pages precedent:
+ * en-GB long month, UTC so the rendered date never shifts across timezones.
+ */
+export function formatDossierFirstContactDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? null
+    : d.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+}
+
+/**
+ * Derive the single §3.5 first-contact line for a dossier, or null when the
+ * predicate fails (state earns pixels — no predicate, no pixels):
+ *   - `judge === null` → null (only Layer 1 / legacy validation ran);
+ *   - recorded Operator verdict (`judgedBy` = "operator:…") → human variant;
+ *   - claim still awaiting triage (`unverified`, ledger row 10) → abstention;
+ *   - otherwise → machine-verdict independence gloss.
+ * The dated variants render only when a date exists — a missing measurement is
+ * absent, never fabricated (ux-craft 2.3).
+ */
+export function dossierFirstContactLine(
+  summary:
+    | Pick<UnitEvidenceSummary, "judge" | "judgedBy" | "judgedAt" | "verificationState">
+    | null
+    | undefined,
+): DossierFirstContactLine | null {
+  if (!summary || summary.judge == null) return null;
+  if (typeof summary.judgedBy === "string" && summary.judgedBy.startsWith("operator")) {
+    const date = formatDossierFirstContactDate(summary.judgedAt);
+    if (!date) return null;
+    return { variant: "human", text: dossierHumanVerdictLine(date) };
+  }
+  if (summary.verificationState === "unverified") {
+    return { variant: "abstention", text: DOSSIER_ABSTENTION_LINE };
+  }
+  const date = formatDossierFirstContactDate(summary.judge.judgedAt ?? summary.judgedAt);
+  if (!date) return null;
+  return { variant: "machine", text: dossierIndependenceGloss(date) };
+}
+
 // ── Dossier wire types (shared between the API route and the explorer panel) ─
 
 export type EvidenceExcerpt =

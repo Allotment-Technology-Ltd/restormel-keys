@@ -52,6 +52,7 @@
     canAcceptAsSupported,
     facetForUrlFilter,
     predatesEvidenceBinding,
+    dossierFirstContactLine,
     evidenceFidelityNote,
     recheckResultCopy,
     unitMatchesEvidenceFacet,
@@ -145,7 +146,8 @@
 
   /**
    * RES-113 verification-engine cluster flag (`m1PlugPoints`, default OFF).
-   * Gates the dossier's §3.5 passage-fidelity note (PR-7). Flag-OFF renders
+   * Gates the dossier's §3.5 lines: the passage-fidelity note (PR-7) and the
+   * first-contact lines above the JUDGE block (PR-6). Flag-OFF renders
    * byte-identically to the shipped dossier.
    */
   export let m1PlugPoints = false;
@@ -3608,6 +3610,18 @@
                   </p>
                 {/if}
 
+                {#if m1PlugPoints}
+                  {@const firstContact = dossierFirstContactLine(evidence)}
+                  {#if firstContact}
+                    <!-- §3.5 first-contact line (PR-6). Predicate: dossier open AND
+                         judge !== null; exactly one variant per dossier, above the
+                         shipped JUDGE block. Static text in the dossier's reading
+                         order — content never swaps post-open, so no live region. -->
+                    <p class="dossier-first-contact" data-variant={firstContact.variant}>
+                      {firstContact.text}
+                    </p>
+                  {/if}
+                {/if}
                 <div class="custody" role="group" aria-label="Chain of custody">
                   <span
                     class="custody-hop"
@@ -6554,6 +6568,16 @@
     font-size: var(--text-mono-sm);
     letter-spacing: var(--text-mono-tracking);
     color: var(--color-ink-muted);
+  }
+
+  /* §3.5 first-contact line (PR-6) — novice register: body face, sentence case,
+     full-ink (it is the dossier's plain-language layer, not a muted footnote). */
+  .dossier-first-contact {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-body-sm);
+    line-height: 1.5;
+    color: var(--color-ink);
   }
 
   .custody {
