@@ -5,8 +5,14 @@
  *
  * Pins:
  *  - `models.activeGraph` null (the flag-OFF payload, server-gated in
- *    connect-models-load): NO plug-point disclosure exists — the page renders
- *    byte-for-byte as shipped (snapshot-pinned);
+ *    connect-models-load): NO m1PlugPoints surface exists — neither the
+ *    plug-point disclosure NOR the relocated deployment preset. This is the
+ *    byte-identity boundary that survives the ingestion-regroup: the flag-gated
+ *    surfaces render identically (i.e. not at all) when the flag is OFF. The
+ *    page's OWN default copy is intentionally NOT byte-identical anymore — the
+ *    regroup (spec §5/§8 B2) removed the Environment <select> and simplified the
+ *    project-card copy — so a whole-page snapshot would wrongly pin those
+ *    deliberate changes; we assert the flag-gated boundary directly instead;
  *  - activeGraph present + disclosure CLOSED: only the summary line (reusing the
  *    registered §2.1 label "Advanced — choose a model per stage") — zero slot
  *    rows mounted;
@@ -58,14 +64,17 @@ const ACTIVE_GRAPH = {
 };
 
 describe("/routes/ingestion — flag OFF payload (activeGraph null)", () => {
-  it("renders no plug-point disclosure at all (byte-identity snapshot)", () => {
+  it("renders no m1PlugPoints surface at all (flag-gated byte-identity boundary)", () => {
     const { container, queryByText } = render(IngestionPage, {
       props: { data: { signedIn: true, models: models() } },
     });
+    // plug-point disclosure — absent.
     expect(container.querySelector(".slot-disclosure")).toBeNull();
     expect(queryByText("Advanced — choose a model per stage")).toBeNull();
     expect(container.querySelector(".slot-row")).toBeNull();
-    expect(container.innerHTML).toMatchSnapshot();
+    // relocated deployment preset (also activeGraph-gated) — absent.
+    expect(container.querySelector(".preset-card")).toBeNull();
+    expect(queryByText("Where your pipeline runs")).toBeNull();
   });
 });
 
