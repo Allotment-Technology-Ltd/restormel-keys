@@ -36,6 +36,21 @@ export interface VerifierRequest {
   context?: string;
 }
 
+/**
+ * Authoritative usage + cost for one tier call (skill §8 "authoritative token counts",
+ * REC-ADR-023 Decision 4). Read from the provider's `usage` fields by the LIVE adapter,
+ * never client-side estimated. Fixture doubles leave this undefined (honest absence) — the
+ * cascade then records `null` token/cost and `fixture: true` on the span. A live adapter that
+ * populates this is what makes `cost_usd` / cost-per-verified-claim structurally reachable
+ * through the shipped seam (not a permanent null placeholder).
+ */
+export interface VerifierUsage {
+  inputTokens: number;
+  outputTokens: number;
+  /** Cost in USD for this single call, computed by the adapter from authoritative usage. */
+  costUsd: number;
+}
+
 /** One tier's judgement of one claim. */
 export interface VerifierResult {
   ref: string;
@@ -48,6 +63,12 @@ export interface VerifierResult {
   confidence: number | null;
   /** Short machine/human reason; never raw vendor payloads (plugpoints redaction rule). */
   note?: string;
+  /**
+   * Authoritative usage/cost from a LIVE credentialed call (skill §8). Undefined for fixture
+   * doubles — the cascade records `null` usage + cost and marks the span `fixture: true`.
+   * Present ⇒ the span is a real call: usage/cost populate and the span is `fixture: false`.
+   */
+  usage?: VerifierUsage;
 }
 
 /**
@@ -67,10 +88,18 @@ export interface VerifierTier {
   /** Model version string; part of the cache key so a bump invalidates dependent verdicts. */
   readonly modelVersion: string;
   /**
-   * Deterministic hash of the tier's config (temperature, tools, prompt-template version):
-   * part of the cache key (skill §6 full key composition). A pure double returns a constant.
+   * Deterministic hash of the tier's config (temperature, tools, params): part of the cache
+   * key (skill §6 full key composition). A pure double returns a constant.
    */
   readonly configHash: string;
+  /**
+   * Prompt/template version — a DISTINCT, first-class cache-key input (skill §6: prompt
+   * version is a mandatory key field on its own, not folded into `configHash`). Keying it
+   * separately makes "stale verdicts survive a prompt change" structurally impossible even
+   * for a live adapter that computes `configHash` from temperature/tools only. A double sets
+   * it to its frozen prompt-version constant.
+   */
+  readonly promptTemplateVersion: string | number;
   /**
    * Is this tier a STUB (no real verifier wired)? The excluded cheap-slot is a permanent
    * stub — both candidate checkpoints are excluded (REC-GOV-022). A stub tier MUST NOT

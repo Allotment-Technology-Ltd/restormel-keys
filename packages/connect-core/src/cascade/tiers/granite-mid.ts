@@ -18,7 +18,11 @@
  */
 import type { VerifierRequest, VerifierResult, VerifierTier } from "../verifier-port.js";
 import { verdictFromEntailment } from "../verdict.js";
-import { lexicalOverlap, polarityMismatch } from "./hhem-prefilter.js";
+// Import the shared signals from the NEUTRAL heuristics module, never from the sibling
+// hhem-prefilter adapter — so this file and hhem-prefilter.ts are each independently
+// removable (removability checks 1+2; the runbook promises per-tier excise leaves the rest
+// building green).
+import { lexicalOverlap, polarityMismatch } from "./heuristics.js";
 
 export const GRANITE_MID_PROMPT_VERSION = "granite-double-1";
 
@@ -44,7 +48,9 @@ export function createGraniteMidDouble(): VerifierTier {
     id: "granite-guardian-3.3-8b",
     modelFamily: "granite",
     modelVersion: "3.3-8b-double",
-    configHash: GRANITE_MID_PROMPT_VERSION,
+    // Double carries no tunable config; the prompt version is the DISTINCT key input (skill §6).
+    configHash: "double",
+    promptTemplateVersion: GRANITE_MID_PROMPT_VERSION,
     async verify(request: VerifierRequest): Promise<VerifierResult> {
       const overlap = lexicalOverlap(request.claim, request.span);
       const run = longestSharedRun(request.claim, request.span);

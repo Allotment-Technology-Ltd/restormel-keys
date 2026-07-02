@@ -16,6 +16,10 @@
  * is STUBBED. Every printed number is tagged run_kind=fixture and the MCP report is flagged
  * mcpWrappingIsStub=true. To run the frontier tier live, inject a credentialed `generate`
  * via buildDefaultCascade({ frontierGenerate }) in a host-app runner (out of connect-core).
+ * A live adapter returns authoritative `usage` on its VerifierResult; the cascade then emits
+ * `fixture: false` spans with real token counts + `cost_usd`, and cost-per-verified-claim +
+ * cache-avoided-cost populate. run_kind is derived from whether the frontier tier is a double
+ * (frontierIsFixture), so it never contradicts the span-level `fixture` flag.
  *
  * Usage:
  *   pnpm exec tsx scripts/reviews/cascade-harness.ts [--json] [--budget-ms 800]
@@ -95,8 +99,14 @@ function printBarReports(reports: BarReport[]): void {
     process.stdout.write(`  bar (reported):     ${r.barPass ? "PASS" : "FAIL"} ${r.barReasons.join("; ")}\n`);
     process.stdout.write(`  stage-1 AUROC:      ${r.stage1.auroc.toFixed(3)} — ${r.stage1.finding}\n`);
     const e = r.economics;
+    const costStr =
+      e.claimsWithAuthoritativeCost === 0
+        ? "n/a (fixture: no authoritative token usage)"
+        : `$${e.costPerVerifiedClaim.value.toFixed(6)}`;
+    const avoidedStr =
+      e.cacheAvoidedCostUsd === null ? "n/a (fixture)" : `$${e.cacheAvoidedCostUsd.toFixed(6)}`;
     process.stdout.write(
-      `  economics: cost/claim=${e.costPerVerifiedClaim.value === 0 && e.claimsWithAuthoritativeCost === 0 ? "n/a (fixture: no authoritative token usage)" : `$${e.costPerVerifiedClaim.value.toFixed(6)}`}` +
+      `  economics: cost/claim=${costStr}, cache-avoided-cost=${avoidedStr}` +
         `, escalation-rate(β)=${pct(e.escalationRate.value)}, tiers=${JSON.stringify(
           Object.fromEntries(Object.entries(e.tierDistribution).map(([k, v]) => [k, pct(v)])),
         )}\n\n`,

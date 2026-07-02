@@ -20,6 +20,13 @@
  */
 import type { VerifierRequest, VerifierResult, VerifierTier } from "../verifier-port.js";
 import { verdictFromEntailment } from "../verdict.js";
+import { NEGATION_RE, lexicalOverlap, polarityMismatch } from "./heuristics.js";
+
+// Shared neutral heuristics (lexicalOverlap/polarityMismatch/NEGATION_RE) live in
+// tiers/heuristics.ts — NOT here — so a per-tier excise of this adapter file cannot break a
+// sibling adapter's build (removability checks 1+2). Re-exported for the barrel + tests that
+// already reference them off this module.
+export { lexicalOverlap, polarityMismatch } from "./heuristics.js";
 
 /** Bump when the (double's) scoring wording/logic changes — folds into the cache key. */
 export const HHEM_PREFILTER_PROMPT_VERSION = "hhem-double-1";
@@ -29,50 +36,6 @@ export interface HhemPrefilterOptions {
   supportThreshold?: number;
   /** Overlap at/below which the double is confident the span is silent (unverifiable). */
   silentThreshold?: number;
-}
-
-const STOPWORDS = new Set([
-  "the", "a", "an", "of", "to", "in", "on", "at", "and", "or", "is", "are", "was", "were",
-  "be", "been", "for", "with", "as", "by", "that", "this", "it", "its", "from", "which",
-]);
-
-function contentTokens(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((t) => t.length > 1 && !STOPWORDS.has(t));
-}
-
-/**
- * Fraction of the claim's content tokens present in the span. Deterministic; no model, no
- * network. This is the double's stand-in for a calibrated entailment probability.
- */
-export function lexicalOverlap(claim: string, span: string): number {
-  const claimTokens = contentTokens(claim);
-  if (claimTokens.length === 0) return 0;
-  const spanSet = new Set(contentTokens(span));
-  let present = 0;
-  for (const t of claimTokens) if (spanSet.has(t)) present += 1;
-  return present / claimTokens.length;
-}
-
-const NEGATION_RE = /\b(no|not|never|cannot|without|denies?|denied|false|incorrect|none|neither|nor)\b/i;
-
-/**
- * Polarity-mismatch detector (double-only). A negation in the CLAIM but not the SPAN — or
- * vice versa — over substantially shared content is a contradiction signal, NOT support.
- * This is the classic polarity-flip a naive lexical-overlap score gets wrong (e.g. claim
- * "No serious adverse events were reported" vs span "Three serious adverse events were
- * reported"): high token overlap, opposite meaning. The harness surfaced exactly this leak,
- * so the double must not score a polarity mismatch as "supported".
- */
-export function polarityMismatch(claim: string, span: string): boolean {
-  const overlap = lexicalOverlap(claim, span);
-  if (overlap < 0.4) return false;
-  const claimNeg = NEGATION_RE.test(claim);
-  const spanNeg = NEGATION_RE.test(span);
-  return claimNeg !== spanNeg;
 }
 
 /** Detects a refutation: an explicit negation cue in the span, or a claim/span polarity flip. */
@@ -90,7 +53,9 @@ export function createHhemPrefilterDouble(opts?: HhemPrefilterOptions): Verifier
     id: "hhem-2.1-open",
     modelFamily: "flan-t5",
     modelVersion: "2.1-open-double",
-    configHash: `${HHEM_PREFILTER_PROMPT_VERSION}:${supportThreshold}:${silentThreshold}`,
+    // configHash = tuning params only; the prompt version is a DISTINCT key input (skill §6).
+    configHash: `thr:${supportThreshold}:${silentThreshold}`,
+    promptTemplateVersion: HHEM_PREFILTER_PROMPT_VERSION,
     async verify(request: VerifierRequest): Promise<VerifierResult> {
       const overlap = lexicalOverlap(request.claim, request.span);
       if (looksRefuted(request.claim, request.span)) {

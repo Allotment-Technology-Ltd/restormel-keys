@@ -30,6 +30,7 @@ export function createExcludedCheapSlotStub(): VerifierTier {
     modelFamily: "none",
     modelVersion: "stub",
     configHash: "stub",
+    promptTemplateVersion: "stub",
     isStub: true,
     async verify(request: VerifierRequest): Promise<VerifierResult> {
       return {

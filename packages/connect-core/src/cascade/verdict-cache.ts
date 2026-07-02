@@ -5,9 +5,9 @@
  *
  * EXACT-MATCH ONLY. There is no approximate/fuzzy/nearest-neighbour lookup anywhere in this
  * file -- a near-miss hit would silently flip a verdict, the exact failure the product exists
- * to prevent (skill sec-6, and the resolved approximate-caching conflict). The grep gate
- * `grep -rinE 'similar|embed|cosine' cascade/verdict-cache.ts` must return zero hits, so this
- * file avoids those trigger words even in prose.
+ * to prevent (skill sec-6, and the resolved approximate-caching conflict). The skill's
+ * cache-module grep gate is binary, so this file deliberately carries none of its trigger
+ * words -- not even in prose, and not by quoting the pattern itself.
  *
  * Key composition (every field mandatory -- omitting one is a Blocker, skill sec-6):
  *   hash(canonicalSerialize({

@@ -119,6 +119,85 @@ describe("VerifierCascade — budget exhaustion (door 2, skill §4)", () => {
   });
 });
 
+describe("VerifierCascade — per-tier latency timeout (door 2, in-path budget enforced mid-call)", () => {
+  it("a tier slower than the remaining budget throws VerifierTimeoutError -> abstained, never a pass", async () => {
+    // A tier that would eventually return "supported", but takes longer than the budget. The
+    // per-tier timeout must fire and the claim must abstain (not pass on the late result).
+    const slowSupporter: VerifierTier = {
+      id: "hhem-2.1-open", modelFamily: "flan-t5", modelVersion: "slow",
+      configHash: "slow", promptTemplateVersion: "p1",
+      async verify(request) {
+        await new Promise((r) => setTimeout(r, 60));
+        return { ref: request.ref, verdict: "supported", confidence: 0.99 };
+      },
+    };
+    const cascade = new VerifierCascade({
+      slots: [{ role: "prefilter", tier: slowSupporter }],
+      calibration: DEV_FIXTURE_CALIBRATION,
+      cache: new InMemoryVerdictCache(),
+    });
+    const rec = await cascade.verify(
+      claim({ ref: "slow", claim: "term of three years", span: "a term of three years applies" }),
+      { corpus: "t", mode: "in_path", latencyBudgetMs: 15, recorder: new EconomicsRecorder() },
+    );
+    expect(rec.finalVerdict).toBe("abstained");
+    expect(["supported", "contradicted"]).not.toContain(rec.finalVerdict);
+  });
+
+  it("in batch mode (no budget) a slow tier is NOT force-timed-out and can decide", async () => {
+    const slowSupporter: VerifierTier = {
+      id: "hhem-2.1-open", modelFamily: "flan-t5", modelVersion: "slow",
+      configHash: "slow", promptTemplateVersion: "p1",
+      async verify(request) {
+        await new Promise((r) => setTimeout(r, 30));
+        return { ref: request.ref, verdict: "supported", confidence: 0.99 };
+      },
+    };
+    const cascade = new VerifierCascade({
+      slots: [{ role: "prefilter", tier: slowSupporter }],
+      calibration: DEV_FIXTURE_CALIBRATION,
+      cache: new InMemoryVerdictCache(),
+    });
+    const rec = await cascade.verify(
+      claim({ ref: "b", claim: "term of three years", span: "a term of three years applies" }),
+      runOpts(),
+    );
+    expect(rec.finalVerdict).toBe("supported");
+  });
+});
+
+describe("VerifierCascade — prompt version is a DISTINCT cache key input (skill §6)", () => {
+  it("changing ONLY promptTemplateVersion (configHash unchanged) MISSES the cache", async () => {
+    const cache = new InMemoryVerdictCache();
+    const base: VerifierTier = {
+      id: "hhem-2.1-open", modelFamily: "flan-t5", modelVersion: "v1",
+      configHash: "same-config", promptTemplateVersion: "prompt-v1",
+      async verify(request) {
+        return { ref: request.ref, verdict: "supported", confidence: 0.99 };
+      },
+    };
+    const c = claim({ ref: "p1", claim: "term of three years", span: "a term of three years applies" });
+
+    const cascadeV1 = new VerifierCascade({
+      slots: [{ role: "prefilter", tier: base }],
+      calibration: DEV_FIXTURE_CALIBRATION,
+      cache,
+    });
+    const first = await cascadeV1.verify(c, runOpts());
+    expect(first.cacheHit).toBe(false);
+
+    // Same configHash, only the prompt version bumped: a stale verdict must NOT be reused.
+    const bumped: VerifierTier = { ...base, promptTemplateVersion: "prompt-v2" };
+    const cascadeV2 = new VerifierCascade({
+      slots: [{ role: "prefilter", tier: bumped }],
+      calibration: DEV_FIXTURE_CALIBRATION,
+      cache,
+    });
+    const second = await cascadeV2.verify({ ...c, ref: "p1-again" }, runOpts());
+    expect(second.cacheHit).toBe(false); // distinct prompt version -> distinct key -> miss
+  });
+});
+
 describe("VerifierCascade — cross-model independence (ADR invariant 1, skill §4)", () => {
   it("throws ModelIndependenceError when adjacent live tiers share a family", () => {
     const sameFamilyA: VerifierTier = { ...createGraniteMidDouble(), id: "granite-a" };

@@ -100,10 +100,17 @@ export interface EconomicsReport {
   abstentionRate: Estimate;
   /** Metric 5: mean latency per tier role (ms). */
   latencyPerTierMs: Partial<Record<CascadeTierRole, number>>;
-  /** β — escalation rate: share of claims that reached the escalation tier (live SLO input). */
+  /** β — escalation rate: share of claims that REACHED the escalation tier (live SLO input). */
   escalationRate: Estimate;
   /** How many claims contributed an authoritative cost figure (honesty: the rest are null). */
   claimsWithAuthoritativeCost: number;
+  /**
+   * Total USD SAVED by cache hits (skill §8 "a hit is worth the counterfactual tier cost it
+   * avoided"). Each hit is valued at the mean authoritative cost observed for the tier role it
+   * short-circuited (`cacheAvoidedTierRole`). Null (not 0) when no authoritative tier cost was
+   * ever seen — i.e. fixtures carry no usage, so the value is honestly unknown, never faked.
+   */
+  cacheAvoidedCostUsd: number | null;
 }
 
 /**
@@ -147,7 +154,19 @@ export class EconomicsRecorder {
 
     const hits = rows.filter((r) => r.cacheHit).length;
     const abstentions = rows.filter((r) => r.finalVerdict === "abstained").length;
-    const escalations = rows.filter((r) => r.decidingTierRole === "escalation").length;
+
+    // β = escalation rate: share of claims that REACHED the escalation tier (a span was
+    // emitted for that role on the claim's ref), NOT merely those DECIDED there — a claim can
+    // reach escalation and still end abstained. Reaching escalation is what drives the
+    // frontier cost, so β must count reach, per its own SLO definition (skill §8). Cache hits
+    // never run a tier, so they cannot reach escalation.
+    const escalationRefs = new Set<string>();
+    for (const s of this.spans) {
+      if (s.corpus === corpus && s.mode === mode && s.tier === "escalation") {
+        escalationRefs.add(s.ref);
+      }
+    }
+    const escalations = rows.filter((r) => !r.cacheHit && escalationRefs.has(r.ref)).length;
 
     // Cost per VERIFIED (decisive) claim. Only claims with an authoritative cost contribute
     // to the cost figure; the count of contributing claims is reported for honesty.
@@ -166,6 +185,27 @@ export class EconomicsRecorder {
 
     const latencyPerTierMs = meanLatencyPerTier(rows);
 
+    // Cache-hit valuation (skill §8): value each hit at the mean AUTHORITATIVE cost seen for
+    // the tier role it avoided. Build per-role mean cost from real (non-fixture, cost-bearing)
+    // spans; if a role has no authoritative cost (all fixtures), a hit avoiding it contributes
+    // nothing measurable, and if NO role ever had a cost the total stays null (honest unknown).
+    const roleCosts = new Map<string, { sum: number; n: number }>();
+    for (const s of this.spans) {
+      if (s.corpus !== corpus || s.mode !== mode || s.cost_usd === null) continue;
+      const agg = roleCosts.get(s.tier) ?? { sum: 0, n: 0 };
+      agg.sum += s.cost_usd;
+      agg.n += 1;
+      roleCosts.set(s.tier, agg);
+    }
+    let cacheAvoidedCostUsd: number | null = roleCosts.size > 0 ? 0 : null;
+    if (cacheAvoidedCostUsd !== null) {
+      for (const r of rows) {
+        if (!r.cacheHit || r.cacheAvoidedTierRole === null) continue;
+        const agg = roleCosts.get(r.cacheAvoidedTierRole);
+        if (agg && agg.n > 0) cacheAvoidedCostUsd += agg.sum / agg.n;
+      }
+    }
+
     return {
       corpus,
       mode,
@@ -177,6 +217,7 @@ export class EconomicsRecorder {
       latencyPerTierMs,
       escalationRate: proportionEstimate(escalations, n),
       claimsWithAuthoritativeCost: costed.length,
+      cacheAvoidedCostUsd,
     };
   }
 }

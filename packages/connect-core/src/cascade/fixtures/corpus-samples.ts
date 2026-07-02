@@ -23,8 +23,8 @@
  * legal-sample corpus REPORTS a bar FAIL under fixtures. This is a limitation of the
  * DOUBLES, not the cascade: a real Granite/frontier checker catches value substitution. It
  * is left in deliberately so the harness output honestly shows where the doubles fall short
- * and what the live tiers must cover; it is NOT patched with a bespoke "France≠England" hack
- * (that would game the fixture). The harness tests assert the never-leak safety property on
+ * and what the live tiers must cover; it is NOT patched with a hand-rolled "France≠England"
+ * special-case (that would game the fixture). The harness tests assert the never-leak safety property on
  * corpora where the doubles can honestly deliver it (polarity-flip + fabricated + absent),
  * and treat legal-3 as a documented live-tier expectation.
  */

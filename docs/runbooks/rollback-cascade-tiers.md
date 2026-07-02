@@ -65,7 +65,11 @@ produces a silent pass.
 |---|---|---|---|
 | pending | staging | tier-1 disable + tier-2 evict | **pending** — must be filled before first production use of any live adapter (plugpoints gate) |
 
-## Three rollback tiers (all pre-tested; see the excise dry-run evidence in the PR)
+## Three rollback tiers (all pre-tested; the PR's `## Excise dry-run` section carries the output)
+
+Per-tier excise is independent: the fixture doubles share their lexical heuristics through the
+NEUTRAL `cascade/tiers/heuristics.ts` module (never adapter-to-adapter), so `git rm` of any one
+adapter file does not break a sibling's build (removability checks 1+2).
 
 1. **Disable (same day):** delete the tier's slot in `default-cascade.ts`; redeploy the host
    app. Cascade falls back per the table above; fails closed.
@@ -75,9 +79,10 @@ produces a silent pass.
    (`cascade/tiers/<tier>.ts`), delete its `default-cascade.ts` slot + options, its
    `cascade/index.ts` re-exports, its calibration band in `cascade/calibration.ts`, its tests,
    and (live) delete the Infisical secret. Run the removability checklist; record the removal
-   in `planning/horizon/strategic-review-2026-07-01-decisions.md`. The **excise dry-run in the
-   PR** proved this leaves the cascade spine (`cascade.ts`, `verdict.ts`, `verdict-cache.ts`,
-   `economics.ts`) untouched and the package building green.
+   in `planning/horizon/strategic-review-2026-07-01-decisions.md`. The **excise dry-run**
+   (attached in the PR's `## Excise dry-run` section) proves this leaves the cascade spine
+   (`cascade.ts`, `verdict.ts`, `verdict-cache.ts`, `economics.ts`) untouched and the package
+   building green.
 
 Instrumentation continuity: every verification is tagged with tier id + role (economics.ts —
 cost/claim, cache-hit rate, tier distribution, abstention rate, latency per tier), so

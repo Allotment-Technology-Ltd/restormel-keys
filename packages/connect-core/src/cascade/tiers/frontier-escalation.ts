@@ -98,7 +98,10 @@ export function createFrontierEscalationTier(opts: FrontierTierOptions): Verifie
     id: tierId,
     modelFamily: opts.modelFamily,
     modelVersion: opts.modelVersion,
-    configHash: FRONTIER_JUDGE_PROMPT_VERSION,
+    // Judge prompt version is the DISTINCT key input (skill §6 + §5 "frozen, versioned
+    // prompts"); configHash covers any non-prompt call params (none for this double).
+    configHash: "double",
+    promptTemplateVersion: FRONTIER_JUDGE_PROMPT_VERSION,
     async verify(request: VerifierRequest): Promise<VerifierResult> {
       const system = buildFrontierJudgeSystemPrompt();
       const user = buildFrontierJudgeUserPrompt(request);
