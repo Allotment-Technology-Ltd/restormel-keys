@@ -37,6 +37,7 @@ import {
   resolveJourneyNav,
   shouldShowVerifyTab,
   resolveJourneyTopbarTitle,
+  isJourneyNavActive,
   type NavItem,
   type NavGroup,
   type JourneyNavSignals,
@@ -552,7 +553,9 @@ describe("RES-113 PR-2 — resolveJourneyNav (state-derived journey nav)", () =>
     const connect = nav.items.find((i) => i.label === "Connect")!;
     expect(connect.reachable).toBe(false);
     // STRIPPED nav: the reason travels for the click-through, NOT rendered inline.
-    expect(connect.lockReason).toMatch(/build your graph first/i);
+    // PR-4: the copy pack §5.3 in-place template instance, verbatim.
+    expect(connect.lockReason).toBe("Connect unlocks once you've added documents.");
+    expect(connect.lockAction).toEqual({ href: BUILD_HREF, label: "Add your documents" });
     expect(nav.showVerify).toBe(false);
     expect(nav.items.some((i) => i.label === "Verify")).toBe(false);
   });
@@ -563,6 +566,7 @@ describe("RES-113 PR-2 — resolveJourneyNav (state-derived journey nav)", () =>
       const item = nav.items.find((i) => i.label === label)!;
       expect(item.reachable).toBe(true);
       expect(item.lockReason).toBeNull();
+      expect(item.lockAction).toBeNull();
     }
   });
 
@@ -579,7 +583,9 @@ describe("RES-113 PR-2 — resolveJourneyNav (state-derived journey nav)", () =>
     // NOT unlock Connect on the run count alone — otherwise the two surfaces disagree.
     const connect = resolveJourneyNav(sig({ completedRunCount: 1, units: 0 }), ON).items.find((i) => i.label === "Connect")!;
     expect(connect.reachable).toBe(false);
-    expect(connect.lockReason).toMatch(/build your graph first/i);
+    // PR-4: the copy pack §5.3 in-place template instance, verbatim.
+    expect(connect.lockReason).toBe("Connect unlocks once you've added documents.");
+    expect(connect.lockAction).toEqual({ href: BUILD_HREF, label: "Add your documents" });
   });
 
   it("S3 — flagged claims now: Verify enters between Build and Connect", () => {
@@ -644,5 +650,60 @@ describe("RES-113 PR-2 — resolveJourneyTopbarTitle (journey verb titles, flag-
   it("flag ON — non-spine paths fall back to topbarTitle (Settings/advanced unchanged)", () => {
     expect(resolveJourneyTopbarTitle(INGEST_ROUTES_HREF, ON)).toBe(topbarTitle(INGEST_ROUTES_HREF));
     expect(resolveJourneyTopbarTitle(RUNS_HREF, ON)).toBe(topbarTitle(RUNS_HREF));
+  });
+});
+
+/**
+ * RES-113 PR-4 — journey nav wiring helpers: the alias-aware active matcher and
+ * the §5.4 title extensions. The verb-spine alias routes 308-redirect to the
+ * shipped surfaces until PR-5/6/7 rehome them, so both the highlight and the
+ * titles must recognise the redirect destinations. Flag-ON only; every flag-OFF
+ * assertion above is untouched.
+ */
+describe("RES-113 PR-4 — isJourneyNavActive (alias-aware journey highlight)", () => {
+  it("matches exact and sub-paths like the north-star matcher", () => {
+    expect(isJourneyNavActive(HOME_HREF, HOME_HREF)).toBe(true);
+    expect(isJourneyNavActive(HOME_HREF + "/x", HOME_HREF)).toBe(true);
+    expect(isJourneyNavActive(BUILD_HREF, BUILD_HREF)).toBe(true);
+    expect(isJourneyNavActive(HOME_HREF, BUILD_HREF)).toBe(false);
+  });
+
+  it("lights Build on the alias destinations (ingest flow + runs surfaces)", () => {
+    expect(isJourneyNavActive(SOURCES_HREF + "/ingest", BUILD_HREF)).toBe(true);
+    expect(isJourneyNavActive(RUNS_HREF, BUILD_HREF)).toBe(true);
+    expect(isJourneyNavActive(RUNS_HREF + "/job-1", BUILD_HREF)).toBe(true);
+    // The Sources LIST page is not a journey spine surface — only the ingest flow.
+    expect(isJourneyNavActive(SOURCES_HREF, BUILD_HREF)).toBe(false);
+  });
+
+  it("lights Verify on /claims and Connect on /agents/wiring", () => {
+    expect(isJourneyNavActive(CLAIMS_HREF, VERIFY_HREF)).toBe(true);
+    expect(isJourneyNavActive(CLAIMS_MEMORY_HREF, VERIFY_HREF)).toBe(true);
+    expect(isJourneyNavActive(AGENTS_WIRING_HREF, CONNECT_HUB_HREF)).toBe(true);
+    // The wider Agents section is NOT the Connect spine surface.
+    expect(isJourneyNavActive(AGENTS_HREF, CONNECT_HUB_HREF)).toBe(false);
+  });
+});
+
+describe("RES-113 PR-4 — journey topbar titles cover alias destinations (copy pack §5.4)", () => {
+  const OFF = { ...MVP_MODULE_DEFAULTS, onboardingJourney: false };
+  const ON = { ...MVP_MODULE_DEFAULTS, onboardingJourney: true, connect: true };
+
+  it("flag ON — alias-redirect destinations carry the verb titles", () => {
+    expect(resolveJourneyTopbarTitle(SOURCES_HREF + "/ingest", ON)).toBe("Build");
+    expect(resolveJourneyTopbarTitle(CLAIMS_HREF, ON)).toBe("Verify");
+    expect(resolveJourneyTopbarTitle(AGENTS_WIRING_HREF, ON)).toBe("Connect");
+  });
+
+  it("flag ON — the run console titles as 'Build · Run' (§5.4 sub-surface pattern)", () => {
+    expect(resolveJourneyTopbarTitle(RUNS_HREF + "/job-42", ON)).toBe("Build · Run");
+    // The /runs list itself is not in the §5.4 table — fallback title kept.
+    expect(resolveJourneyTopbarTitle(RUNS_HREF, ON)).toBe("Runs");
+  });
+
+  it("flag OFF — the same paths keep their north-star titles byte-for-byte", () => {
+    expect(resolveJourneyTopbarTitle(SOURCES_HREF + "/ingest", OFF)).toBe("Ingest");
+    expect(resolveJourneyTopbarTitle(CLAIMS_HREF, OFF)).toBe("Stamping desk");
+    expect(resolveJourneyTopbarTitle(RUNS_HREF + "/job-42", OFF)).toBe("Run");
   });
 });

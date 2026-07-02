@@ -11,6 +11,8 @@ const PALETTE = {
   blue: "#1a3f8a",
   coral: "#d94e47",
   surface: "#fffef0",
+  /** --color-ink-faint / --rm-dim — the dimmed journey-nav item text (RES-113 PR-4). */
+  dim: "#7a7060",
 } as const;
 
 function channelToLinear(value8bit: number): number {
@@ -62,5 +64,11 @@ describe("Neo-Brutalist palette contrast (WCAG)", () => {
 
   it("surface text on code block ink meets AAA", () => {
     expect(contrastRatio(PALETTE.surface, PALETTE.ink)).toBeGreaterThanOrEqual(AAA_NORMAL);
+  });
+
+  it("dimmed journey-nav text (ink-faint) on the white sidebar meets AA (RES-113 PR-4)", () => {
+    // The dimmed items are STILL OPERABLE (disclosure buttons), so we do not rely
+    // on WCAG 1.4.3's inactive-component exemption — the text must pass on merit.
+    expect(contrastRatio(PALETTE.dim, PALETTE.surface)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
