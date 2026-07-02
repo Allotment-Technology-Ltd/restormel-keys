@@ -5,7 +5,9 @@ import {
   resolveNavGroupsForModuleFlags,
   resolveWorkNavForModuleFlags,
   resolveTestingNavForModuleFlags,
+  resolveJourneyNav,
   HOME_HREF,
+  type JourneyNav,
 } from "$lib/nav-config";
 import {
   dashboardUiSectionLabel,
@@ -133,6 +135,20 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
   };
   let journeySignals: JourneySignals | null = null;
   let workspaceId: string | null = null;
+  // RES-113 PR-4: the resolved state-derived journey nav (plan §3.5 AFTER-state).
+  // Non-null ONLY on the flag-ON path with a signed-in user AND healthy signals;
+  // the flag-OFF payload gains an inert `journeyNav: null` field (same pattern as
+  // the PR-2 null journey counts). When signals fail — whether the enclosing try
+  // throws OR the graph-stats fetch alone degrades to null (the per-promise
+  // `.catch` below) — this stays null and the shell falls back to the STATIC
+  // journey items. That fallback is degraded, not state-derived: it renders the
+  // full flag-ON spine (Verify visible, Connect reachable) regardless of
+  // workspace state, which can over-show on a degraded EMPTY workspace — a
+  // pre-PR-4 shell behaviour, tracked as a follow-up. What we guarantee HERE is
+  // the opposite failure mode never happens: a nav is never resolved from zeroed
+  // signals (falsely dimming Connect / dropping a shown Verify on a transient
+  // stats failure).
+  let journeyNav: JourneyNav | null = null;
 
   if (locals.user) {
     const loadProjectContexts = async (): Promise<ProjectContextRow[]> => {
@@ -194,6 +210,47 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
         flaggedClaimCount = stats
           ? stats.validation.awaiting_triage ?? stats.validation.weak + stats.validation.unsupported
           : 0;
+
+        // ── PR-4: resolve the state-derived journey nav (plan §3.5) ────────────
+        // ONLY when the graph stats actually resolved. `stats === null` here means
+        // the fetch FAILED (the `.catch(() => null)` above), not "empty workspace" —
+        // resolving a nav from zeroed signals would falsely dim Connect on a BUILT
+        // workspace ("Connect unlocks once you've added documents." to a user who
+        // has) and drop a previously-shown Verify tab mid-session — exactly the
+        // flicker the founder's "once shown, it stays" decision (REC-ADR-022)
+        // exists to prevent. On failure `journeyNav` stays null → the shell's
+        // static fallback (5-lens review, Lens 2 finding 1).
+        if (stats) {
+          // `units > 0` is the shared "graph exists" gate (same as deriveHomeState —
+          // the nav and Home can never disagree about EMPTY vs built).
+          const units = stats.units;
+          // The MONOTONIC Verify anchor (founder §4.4), SERVER-derived: weak /
+          // unsupported validation statuses persist after triage (the operator
+          // verdict is recorded in the validation note, not by clearing the status),
+          // so once a claim has ever been flagged this stays true and the Verify tab
+          // cannot flicker out as the awaiting-triage count returns to zero. If a
+          // history is ever fully re-validated to `ok`, the signal degrades to the
+          // forward-only trigger (`flaggedClaimCount > 0`) — the tab is then merely
+          // not monotonic in that edge, never wrongly shown (PR-2's documented
+          // degraded case).
+          const everHadVerifyActivity =
+            stats.validation.weak + stats.validation.unsupported > 0 || flaggedClaimCount > 0;
+          // The switcher gate needs the real project count; on the flag-ON branch we
+          // await the (possibly streamed) project rows. Flag-OFF streaming behaviour
+          // is untouched, and a failed load already degraded to [] → switcher hidden.
+          const projectRows = await projectContexts;
+          journeyNav = resolveJourneyNav(
+            {
+              completedRunCount,
+              units,
+              connectionCount,
+              flaggedClaimCount,
+              everHadVerifyActivity,
+              projectCount: projectRows.length,
+            },
+            moduleFlags,
+          );
+        }
         endExtra();
       }
 
@@ -231,6 +288,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     projectContexts,
     workspaceId,
     journeySignals,
+    journeyNav,
     dashboardUiHidden,
     navGroupsForUi,
     workNavForUi,

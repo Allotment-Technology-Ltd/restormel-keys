@@ -416,6 +416,12 @@ export function resolveWorkspaceHomeHref(flags: ModuleFlags): string {
 // This is used ONLY by the flag-ON branch. `resolveWorkNavForModuleFlags` and every
 // flag-OFF path are untouched — flag-OFF byte-identity is preserved by construction.
 
+/**
+ * The single spine action offered inside a dimmed item's click-through explanation
+ * (copy pack §5.3 template: "**{Item} unlocks once {plain condition}.** [{Spine action}]").
+ */
+export type JourneyNavLockAction = { href: string; label: string };
+
 /** A journey nav item with its reachability + the (chrome-free) click-through reason. */
 export type JourneyNavItem = NavItem & {
   /**
@@ -426,8 +432,14 @@ export type JourneyNavItem = NavItem & {
   /**
    * Why the item is unreachable — surfaced ONLY via the click-through explanation,
    * NEVER inline in the nav chrome (founder §4.2). Null when `reachable`.
+   * The literal string is the copy pack §5.3 in-place template instance, verbatim.
    */
   lockReason: string | null;
+  /**
+   * The spine action rendered inside the click-through explanation (copy pack
+   * §5.3 template's "[{Spine action}]"). Null when `reachable`.
+   */
+  lockAction: JourneyNavLockAction | null;
 };
 
 /** The server-derived signals `resolveJourneyNav` needs (plan §3.5 Mechanics). */
@@ -482,16 +494,50 @@ const JOURNEY_PATH_TO_TITLE: Record<string, string> = {
   [BUILD_HREF]: "Build",
   [VERIFY_HREF]: "Verify",
   [CONNECT_HUB_HREF]: "Connect",
+  // PR-4 (copy pack §5.4): the verb-spine alias routes 308-redirect to the shipped
+  // surfaces until PR-5/6/7 rehome them (/build → /sources/ingest, /verify →
+  // /claims, /connect → /agents/wiring), so the journey titles must ALSO cover the
+  // redirect destinations or the pack's titles would never render at all.
+  [INGEST_FLOW_HREF]: "Build",
+  [CLAIMS_HREF]: "Verify",
+  [AGENTS_WIRING_HREF]: "Connect",
 };
 
 /**
  * Topbar title, flag-resolved. OFF ⇒ the north-star `topbarTitle` (byte-identical).
- * ON ⇒ the journey verb titles for the spine paths, falling back to `topbarTitle`
- * for everything else (Settings/advanced surfaces keep their existing titles).
+ * ON ⇒ the journey verb titles for the spine paths (and the alias-redirect
+ * destinations they land on — see JOURNEY_PATH_TO_TITLE), plus the copy pack
+ * §5.4 sub-surface pattern for the run console ("Build · Run" — runs fold into
+ * Build under the journey IA). Everything else falls back to `topbarTitle`
+ * (Settings/advanced surfaces keep their existing titles).
  */
 export function resolveJourneyTopbarTitle(pathname: string, flags: ModuleFlags): string {
   if (!flags.onboardingJourney) return topbarTitle(pathname);
-  return JOURNEY_PATH_TO_TITLE[pathname] ?? topbarTitle(pathname);
+  const mapped = JOURNEY_PATH_TO_TITLE[pathname];
+  if (mapped) return mapped;
+  // Copy pack §5.4: "Build → run console" titles as "Build · Run".
+  if (pathname.startsWith(RUNS_HREF + "/")) return "Build · Run";
+  return topbarTitle(pathname);
+}
+
+/**
+ * Journey nav active-state matcher (flag-ON only). Prefix-matches like
+ * `isWorkNavActive`, but ALSO lights a spine item on its alias-redirect
+ * destination: until PR-5/6/7 rehome the surfaces, /build 308s to the M1 ingest
+ * flow, /verify to /claims, and /connect to /agents/wiring — without this the
+ * journey nav would never show an active item after the redirect lands. Runs
+ * surfaces light Build (runs fold into Build under the journey IA, plan §3.5).
+ */
+export function isJourneyNavActive(pathname: string, href: string): boolean {
+  if (pathname === href || pathname.startsWith(href + "/")) return true;
+  const aliases: Record<string, string[]> = {
+    [BUILD_HREF]: [INGEST_FLOW_HREF, RUNS_HREF],
+    [VERIFY_HREF]: [CLAIMS_HREF],
+    [CONNECT_HUB_HREF]: [AGENTS_WIRING_HREF],
+  };
+  return (aliases[href] ?? []).some(
+    (alias) => pathname === alias || pathname.startsWith(alias + "/"),
+  );
 }
 
 /**
@@ -517,7 +563,7 @@ export function shouldShowVerifyTab(signals: JourneyNavSignals): boolean {
  *   • Connect — reachable once a graph exists (`units > 0` — a real extracted graph
  *               with content, the SAME gate Home's `deriveHomeState` uses for
  *               EMPTY-vs-built, so the two surfaces cannot disagree); otherwise
- *               dimmed with "Build your graph first" behind the click.
+ *               dimmed with the copy pack §5.3 explanation behind the click.
  */
 export function resolveJourneyNav(signals: JourneyNavSignals, flags: ModuleFlags): JourneyNav {
   // `graphExists` keys on `units > 0` ONLY — reconciled with Home's `graphBuilt`
@@ -530,22 +576,27 @@ export function resolveJourneyNav(signals: JourneyNavSignals, flags: ModuleFlags
   const showVerify = shouldShowVerifyTab(signals);
 
   const items: JourneyNavItem[] = [
-    { href: HOME_HREF, label: "Home", reachable: true, lockReason: null },
-    { href: BUILD_HREF, label: "Build", reachable: true, lockReason: null },
+    { href: HOME_HREF, label: "Home", reachable: true, lockReason: null, lockAction: null },
+    { href: BUILD_HREF, label: "Build", reachable: true, lockReason: null, lockAction: null },
   ];
 
   // Verify enters monotonically, between Build and Connect (verb-spine order).
   if (showVerify) {
-    items.push({ href: VERIFY_HREF, label: "Verify", reachable: true, lockReason: null });
+    items.push({ href: VERIFY_HREF, label: "Verify", reachable: true, lockReason: null, lockAction: null });
   }
 
   // Connect is ALWAYS rendered (never hidden — §3.5 "Explicitly rejected: hiding
   // Connect pre-ingest"); dimmed with a click-through reason until a graph exists.
+  // The strings are the copy pack §5.3 in-place template instance, VERBATIM
+  // ("Connect unlocks once you've added documents. [Add your documents]") — used
+  // until PR-7 lands Connect S0, after which the click-through may become plain
+  // navigation to the locked surface (the pack's primary mechanism).
   items.push({
     href: CONNECT_HUB_HREF,
     label: "Connect",
     reachable: graphExists,
-    lockReason: graphExists ? null : "Build your graph first — there is nothing to connect yet.",
+    lockReason: graphExists ? null : "Connect unlocks once you've added documents.",
+    lockAction: graphExists ? null : { href: BUILD_HREF, label: "Add your documents" },
   });
 
   // Settings (incl. Store) present from S1, collapsed — reuse the flag-ON groups.

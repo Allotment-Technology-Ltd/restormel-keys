@@ -7,14 +7,19 @@
     CLAIMS_HREF,
     WORKSPACE_HOME_HREF,
     isWorkNavActive,
+    isJourneyNavActive,
     navGroupContainsPath,
     topbarTitle,
+    resolveJourneyTopbarTitle,
     defaultNavGroupsOpen,
     hydrateNavGroupsOpen,
     type NavGroupId,
     type NavItem,
     type NavGroup,
+    type JourneyNav as JourneyNavData,
   } from "$lib/nav-config";
+  import JourneyNav from "$lib/components/dashboard/JourneyNav.svelte";
+  import JourneyWelcome from "$lib/components/dashboard/JourneyWelcome.svelte";
   import { connectReviewCount } from "$lib/stores/connect-review-count";
   import { contextualHelpForPath, SUITE_MAP_LINK } from "$lib/dashboard-contextual-help";
   import { onMount } from "svelte";
@@ -57,7 +62,12 @@
   // On the opened surfaces the shell renders read-only (actions hidden via the
   // data-mobile-readonly flag below); everywhere else the phone gate stays up.
   $: mobileAllowed = isMobileAllowedPath(currentPath);
-  $: title = topbarTitle(currentPath);
+  // RES-113 PR-4: journey verb titles on the flag-ON branch (copy pack §5.4).
+  // `resolveJourneyTopbarTitle` delegates to `topbarTitle` verbatim when the flag
+  // is OFF (or moduleFlags are absent), so the flag-OFF title is byte-identical.
+  $: title = moduleFlags
+    ? resolveJourneyTopbarTitle(currentPath, moduleFlags)
+    : topbarTitle(currentPath);
   $: contextualHelp = contextualHelpForPath(currentPath);
   $: projectContextsSource = $page.data.projectContexts ?? [];
   $: workNavForUi = ($page.data.workNavForUi ?? []) as NavItem[];
@@ -67,6 +77,11 @@
   $: uiHiddenBanner = $page.data.dashboardUiHiddenBanner ?? null;
   $: projectsNavHidden = ($page.data.dashboardUiHidden ?? []).includes("projects");
   $: journeySignals = $page.data.journeySignals ?? null;
+  // RES-113 PR-4: the server-resolved state-derived journey nav. Non-null ONLY on
+  // the flag-ON branch with healthy signals; null keeps every flag-OFF (and
+  // degraded flag-ON) render on the existing markup below, byte-identical.
+  $: journeyNavData = ($page.data.journeyNav ?? null) as JourneyNavData | null;
+  $: journeyFlagOn = Boolean(moduleFlags?.onboardingJourney);
   $: monitorInterestFromRedirect = ($page.data.monitorInterestFromRedirect ?? null) as MonitorInterestItem | null;
   $: monitorComingSoon = moduleFlags ? !moduleFlags.monitor : true;
   $: returnContext = parseReturnTo($page.url.searchParams);
@@ -169,6 +184,13 @@
   $: pendingHref = (() => {
     const dest = $navigating?.to?.url.pathname;
     if (!dest) return null;
+    // RES-113 PR-4: journey nav items match with the journey-aware matcher
+    // (alias-redirect destinations light their spine item). Flag-ON only.
+    if (journeyNavData) {
+      for (const item of journeyNavData.items) {
+        if (item.reachable && isJourneyNavActive(dest, item.href)) return item.href;
+      }
+    }
     // Check primary work nav items first.
     for (const item of workNavForUi) {
       if (isWorkNavActive(dest, item.href)) return item.href;
@@ -187,6 +209,12 @@
   $: pendingLabel = (() => {
     const dest = $navigating?.to?.url.pathname;
     if (!dest) return null;
+    // RES-113 PR-4: journey items first (flag-ON only; see pendingHref above).
+    if (journeyNavData) {
+      for (const item of journeyNavData.items) {
+        if (item.reachable && isJourneyNavActive(dest, item.href)) return item.label;
+      }
+    }
     // Match work nav items.
     for (const item of workNavForUi) {
       if (isWorkNavActive(dest, item.href)) return item.label;
@@ -256,19 +284,31 @@
   >
     <aside class="sidebar" aria-label="Dashboard navigation">
       <nav class="nav" aria-label="Dashboard" data-sveltekit-preload-data="tap">
-        {#if !projectsNavHidden}
+        <!-- RES-113 PR-4: on the journey branch the switcher is state-derived —
+             it renders ONLY when projectCount > 1 (plan §3.5). journeyNavData is
+             null on every flag-OFF render, so that path is untouched. The journey
+             branch also names the trigger's INTENT ("Switch project — current: …",
+             5-lens review Lens 1 finding 2); flag-OFF keeps the original
+             labelledBy-only name, byte-identical. -->
+        {#if !projectsNavHidden && (!journeyNavData || journeyNavData.showProjectSwitcher)}
           <div class="nav-section nav-section-scope">
             <p class="nav-section-label" id="nav-scope-label">Project</p>
             {#await Promise.resolve(projectContextsSource)}
-              <ProjectContextSwitcher projects={[]} {moduleFlags} labelledBy="nav-scope-label" />
+              <ProjectContextSwitcher projects={[]} {moduleFlags} labelledBy="nav-scope-label" actionLabel={journeyNavData ? "Switch project" : undefined} />
             {:then projectContexts}
-              <ProjectContextSwitcher projects={projectContexts ?? []} {moduleFlags} labelledBy="nav-scope-label" />
+              <ProjectContextSwitcher projects={projectContexts ?? []} {moduleFlags} labelledBy="nav-scope-label" actionLabel={journeyNavData ? "Switch project" : undefined} />
             {:catch}
-              <ProjectContextSwitcher projects={[]} {moduleFlags} labelledBy="nav-scope-label" />
+              <ProjectContextSwitcher projects={[]} {moduleFlags} labelledBy="nav-scope-label" actionLabel={journeyNavData ? "Switch project" : undefined} />
             {/await}
           </div>
         {/if}
 
+        {#if journeyNavData}
+          <!-- RES-113 PR-4: the STRIPPED state-derived journey nav (flag-ON only).
+               Plain-text spine; dimmed items carry their reason behind the click;
+               Verify present per the monotonic server signal. -->
+          <JourneyNav items={journeyNavData.items} {currentPath} {pendingHref} />
+        {:else}
         <div class="nav-section nav-section-work">
           <p class="nav-section-label" id="nav-work-label">Work</p>
           <div class="nav-section-links" role="group" aria-labelledby="nav-work-label">
@@ -296,6 +336,7 @@
             {/each}
           </div>
         </div>
+        {/if}
 
         {#each navGroupsForLayout as group}
           <section class="nav-group" aria-labelledby={`nav-group-label-${group.id}`}>
@@ -479,6 +520,14 @@
                 <a href={DASHBOARD_BASE + "/login"} class="auth-error-link">sign in again</a>.
               </p>
             </div>
+          {:else if journeyFlagOn}
+            <!-- RES-113 PR-4 (copy pack §5.5): the journey signed-out layout. The
+                 stale "Sources → Runs → Claims / Foundation" tour copy is deleted
+                 from this branch — one sentence + the canonical auth CTA.
+                 Extracted to JourneyWelcome.svelte so the CTA is getByRole-tested
+                 (5-lens review, Lens 4 minor 2). The flag-OFF welcome below is
+                 byte-identical. -->
+            <JourneyWelcome />
           {:else}
             <div class="welcome" role="region" aria-labelledby="welcome-heading">
               <h1 id="welcome-heading" class="welcome-title">Restormel Dashboard</h1>

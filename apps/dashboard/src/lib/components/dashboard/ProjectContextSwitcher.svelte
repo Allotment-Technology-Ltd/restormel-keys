@@ -20,6 +20,16 @@
   export let moduleFlags: ModuleFlags | null = null;
   /** ID of the sidebar section label (`nav-section-label`). */
   export let labelledBy: string | undefined = undefined;
+  /**
+   * RES-113 PR-4 (5-lens review, Lens 1 finding 2): optional ACTION-stating
+   * accessible name for the trigger, e.g. "Switch project". When set, the
+   * trigger's name becomes "{actionLabel} — current: {project}" (aria-label
+   * replaces `labelledBy` on the trigger only), so AT announces both the
+   * control's INTENT and its current value — "Project, button, collapsed"
+   * says neither. Undefined (the default, and every flag-OFF caller) renders
+   * byte-identically to before.
+   */
+  export let actionLabel: string | undefined = undefined;
 
   let open = false;
   let selected: ActiveProjectSelection | null = null;
@@ -93,7 +103,12 @@
     class="switcher-trigger"
     aria-haspopup="menu"
     aria-expanded={open}
-    aria-labelledby={labelledBy}
+    aria-labelledby={actionLabel ? undefined : labelledBy}
+    aria-label={actionLabel
+      ? selectedProject
+        ? `${actionLabel} — current: ${selectedProject.name}`
+        : actionLabel
+      : undefined}
     on:click={() => (open = !open)}
   >
     {#if hasSelection}
