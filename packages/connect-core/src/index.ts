@@ -427,3 +427,7 @@ export {
   type EnvelopeMeta,
   type VerifiedEnvelope,
 } from "./proxy/index.js";
+
+// Cascade-validation harness (REC-ADR-023 build step 1B + step 2). Re-exported via the
+// `@restormel/connect-core/cascade` subpath; barrelled here for the single-import path too.
+export * from "./cascade/index.js";

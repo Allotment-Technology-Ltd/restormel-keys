@@ -40,6 +40,10 @@
     "./ingest/golden-eval": {
       "types": "./dist/ingest/golden-eval.d.ts",
       "import": "./dist/ingest/golden-eval.js"
+    },
+    "./cascade": {
+      "types": "./dist/cascade/index.d.ts",
+      "import": "./dist/cascade/index.js"
     }
   },
   "scripts": {
