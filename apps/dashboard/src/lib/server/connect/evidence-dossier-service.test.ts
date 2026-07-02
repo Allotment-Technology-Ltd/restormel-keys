@@ -91,6 +91,8 @@ describe("composeEvidenceSummaryFromPostgresRow — the units-API additive shape
         end: END,
         match: "exact",
         sourceHash: "hash-1",
+        // PR-7: the Postgres spine records no locator kind — spatial (as today).
+        fidelity: "spatial",
       },
       judgedBy: "gpt-5#pv2",
       judgedAt: "2026-06-10T09:00:00.000Z",
@@ -179,7 +181,23 @@ describe("composeEvidenceSummaryFromSurrealRow", () => {
       end: END,
       match: "normalized",
       sourceHash: "hash-1",
+      // PR-7: no locator-kind marker on the row — spatial (renders as today).
+      fidelity: "spatial",
     });
+  });
+
+  it("an explicit textual locator-kind marker downgrades the span fidelity (PR-7)", () => {
+    const s = composeEvidenceSummaryFromSurrealRow({
+      verification_state: "supported",
+      evidence_status: "bound",
+      evidence_quote: QUOTE,
+      evidence_start: START,
+      evidence_end: END,
+      evidence_match: "exact",
+      evidence_source_hash: "hash-1",
+      evidence_locator_kind: "textual",
+    });
+    expect(s!.evidence!.fidelity).toBe("textual");
   });
 
   it("returns null (pre-EBV) when the record has no EBV fields — never fabricates", () => {

@@ -42,6 +42,45 @@ export function normalizeEvidenceStatus(raw: unknown): EvidenceBindingStatus | n
   return v === "bound" || v === "unbound" || v === "no_evidence" ? v : null;
 }
 
+/**
+ * Passage fidelity of a bound span (RES-113 placement spec §3.2, PR-7).
+ * Mirrors the extraction `source_locator` kinds (REC-TECH-014): `"spatial"` spans
+ * render exactly as today with no note; `"textual"` spans carry the registered
+ * §3.5 fidelity note — the note's presence is the only signal. Tier names
+ * (A/B) never appear anywhere in UI or in this module's output.
+ */
+export type EvidenceSpanFidelity = "spatial" | "textual";
+
+/**
+ * Normalize a raw stored locator-kind marker to a span fidelity. Only an explicit
+ * `"textual"` marker downgrades; everything else — including absent (every span
+ * bound before the discriminant existed) — is `"spatial"`, so shipped spans keep
+ * rendering byte-identically (the §3.5 "renders exactly as today, with no note" pin).
+ */
+export function normalizeEvidenceFidelity(raw: unknown): EvidenceSpanFidelity {
+  return typeof raw === "string" && raw.trim().toLowerCase() === "textual"
+    ? "textual"
+    : "spatial";
+}
+
+/**
+ * Textual-fidelity note (copy pack §3.5, verbatim). Rendered in-dossier only when
+ * `fidelity === "textual"`; a spatial span renders no note.
+ */
+export const EVIDENCE_TEXTUAL_FIDELITY_NOTE =
+  "Source passage shown as text — this document type doesn't support a visual highlight." as const;
+
+/**
+ * The fidelity note for a bound span, or null when no note renders (spatial —
+ * exactly today's rendering). "State earns pixels": the note's presence is the
+ * only signal, carried by text, never by colour alone (R3-A3).
+ */
+export function evidenceFidelityNote(
+  span: Pick<UnitEvidenceSpan, "fidelity"> | null | undefined,
+): string | null {
+  return span?.fidelity === "textual" ? EVIDENCE_TEXTUAL_FIDELITY_NOTE : null;
+}
+
 /** Bound span as carried by the units API (camelCase over the wire, like Unit). */
 export type UnitEvidenceSpan = {
   quote: string;
@@ -50,6 +89,8 @@ export type UnitEvidenceSpan = {
   /** exact | normalized | fuzzy — anything looser than exact is labeled, never hidden. */
   match: string;
   sourceHash: string;
+  /** Passage fidelity (spec §3.2): spatial renders as today; textual carries the §3.5 note. */
+  fidelity: EvidenceSpanFidelity;
 };
 
 export type UnitJudgeView = {

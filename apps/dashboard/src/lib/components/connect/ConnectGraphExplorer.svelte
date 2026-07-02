@@ -52,6 +52,7 @@
     canAcceptAsSupported,
     facetForUrlFilter,
     predatesEvidenceBinding,
+    evidenceFidelityNote,
     recheckResultCopy,
     unitMatchesEvidenceFacet,
     urlFilterForFacet,
@@ -141,6 +142,13 @@
   };
 
   export let graph: Graph;
+
+  /**
+   * RES-113 verification-engine cluster flag (`m1PlugPoints`, default OFF).
+   * Gates the dossier's §3.5 passage-fidelity note (PR-7). Flag-OFF renders
+   * byte-identically to the shipped dossier.
+   */
+  export let m1PlugPoints = false;
 
   export let revalidate: {
     enabled: boolean;
@@ -3572,6 +3580,14 @@
                           Full source text could not be resolved — the quote is shown verbatim
                           without surrounding context. Import the source text in Pipeline → Sources.
                         {/if}
+                      </p>
+                    {/if}
+                    {#if m1PlugPoints && evidenceFidelityNote(evidence.evidence)}
+                      <!-- §3.5 passage fidelity (PR-7): renders ONLY for a textual-fidelity
+                           span — a spatial span renders exactly as today, with no note.
+                           The note's presence is the only signal (text, never colour alone). -->
+                      <p class="evidence-note" role="note">
+                        {evidenceFidelityNote(evidence.evidence)}
                       </p>
                     {/if}
                     {#if evidence.evidence.match !== "exact"}
