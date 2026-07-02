@@ -19,6 +19,7 @@ import {
   resolvePipelineDomainPack,
 } from "$lib/server/connect/domain-pack-service";
 import { requireConnectWorkspace } from "$lib/server/connect/workspace-cache";
+import { listGraphTargetsForUi } from "$lib/server/connect/graph-target-service";
 import type { ServerLoadEvent } from "@sveltejs/kit";
 
 export async function loadConnectModelsPage(
@@ -41,10 +42,18 @@ export async function loadConnectModelsPage(
       );
     });
 
-    const [routing, integrations, projects] = await Promise.all([
+    const [routing, integrations, projects, activeGraph] = await Promise.all([
       getConnectStageRouting(workspace.id),
       listProviderIntegrations(workspace.id).catch(() => []),
       listProjectsByWorkspace(workspace.id),
+      // RES-113 PR-2: the /routes/ingestion plug-point twin needs the active
+      // graph's bundle. Fetched ONLY when the m1PlugPoints flag is ON — flag OFF
+      // adds zero queries and the payload field stays null (byte-identical page).
+      event.locals.moduleFlags?.m1PlugPoints === true
+        ? listGraphTargetsForUi(workspace.id)
+            .then((graphs) => graphs.find((g) => g.is_active) ?? null)
+            .catch(() => null)
+        : Promise.resolve(null),
     ]);
 
     const projectId = routing?.project_id ?? projects[0]?.id ?? null;
@@ -117,6 +126,9 @@ export async function loadConnectModelsPage(
       activePackEmbedding: activePack?.embedding ?? { model: "voyage-3", dimensions: 1024 },
       upstreamValidationProviders: [...upstream.providers],
       apiBase: DASHBOARD_BASE + "/api/connect/pipeline/stage-models",
+      // RES-113 PR-2: non-null ONLY when m1PlugPoints is ON and a graph is active —
+      // the page renders the plug-point disclosure purely off this field.
+      activeGraph: activeGraph ? { id: activeGraph.id, bundle: activeGraph.bundle } : null,
     };
   } catch {
     return null;

@@ -4,9 +4,15 @@
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
   import { page } from "$app/stores";
   import ConnectBuilderReturnBar from "$lib/components/connect/ConnectBuilderReturnBar.svelte";
+  import ConnectPipelineSlotRows from "$lib/components/connect/pipeline/ConnectPipelineSlotRows.svelte";
   import ConnectSpineLedger from "$lib/components/connect/ConnectSpineLedger.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
-  import { parseReturnTo, withReturnTo } from "$lib/connect/pipeline-config";
+  import {
+    M1_BUILD_PANEL_COPY,
+    parseReturnTo,
+    withReturnTo,
+    type GraphTargetBundle,
+  } from "$lib/connect/pipeline-config";
   import type { ConnectSpine } from "$lib/connect/connect-spine";
   import { matchActiveToRecommended, type ActiveModelMatch } from "$lib/connect/stage-active-model";
 
@@ -49,6 +55,13 @@
     activePackEmbedding: { model: string; dimensions: number };
     upstreamValidationProviders: string[];
     apiBase: string;
+    /**
+     * RES-113 PR-2: the workspace's active graph, non-null ONLY when the
+     * m1PlugPoints module flag is ON (server-gated in connect-models-load) —
+     * the plug-point disclosure below renders purely off this field, so
+     * flag OFF is byte-identical.
+     */
+    activeGraph?: { id: string; bundle?: GraphTargetBundle } | null;
   };
 
   export let data: { signedIn: boolean; models: Models | null; spine?: Promise<ConnectSpine | null> };
@@ -66,6 +79,12 @@
   let error = false;
 
   let resetConfirmEl: HTMLDivElement | undefined;
+
+  // RES-113 PR-2: the plug-point disclosure (operator twin of the sources-page
+  // "Advanced" host — decision C). Reveal predicate: disclosure open — the rows
+  // are unmounted (zero pixels) while closed. Only exists when `activeGraph`
+  // is non-null, i.e. the m1PlugPoints flag is ON (server-gated).
+  let slotDisclosureOpen = false;
 
   $: if (data.models && !selectedProjectId && data.models.projectId) {
     selectedProjectId = data.models.projectId;
@@ -521,6 +540,24 @@
       </section>
     {/if}
 
+    {#if data.models.activeGraph}
+      <!-- RES-113 PR-2: per-stage plug-point rows — the operator twin of the
+           sources-page Advanced disclosure (one derivation, one renderer, two
+           hosts; placement spec §3.4-C). The summary reuses the registered §2.1
+           disclosure label; the rows mount only while the disclosure is open. -->
+      <details class="card slot-disclosure" bind:open={slotDisclosureOpen}>
+        <summary class="slot-disclosure-summary">{M1_BUILD_PANEL_COPY.provider.advancedLabel}</summary>
+        {#if slotDisclosureOpen}
+          <div class="slot-disclosure-body">
+            <ConnectPipelineSlotRows
+              graphTargetId={data.models.activeGraph.id}
+              bundle={data.models.activeGraph.bundle}
+            />
+          </div>
+        {/if}
+      </details>
+    {/if}
+
     {#if msg && !(data.models.projectId && data.models.environmentId)}
       <p class:err={error} class:notice={!error} role="status">{msg}</p>
     {/if}
@@ -784,6 +821,24 @@
     display: flex;
     gap: var(--space-2);
     align-items: center;
+  }
+  /* RES-113 PR-2: plug-point disclosure (operator twin). */
+  .slot-disclosure-summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--rm-text);
+    /* 04_TOKENS floor: ≥44px hit target on the disclosure toggle. Keeps the
+       native list-item display so the details marker (the open/closed cue)
+       stays visible — never a caret-less summary. */
+    min-height: 44px;
+    padding: var(--space-2) 0;
+  }
+  .slot-disclosure-summary:focus-visible {
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 2px;
+  }
+  .slot-disclosure-body {
+    margin-top: var(--space-3);
   }
   .actions {
     display: flex;

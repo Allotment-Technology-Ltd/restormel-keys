@@ -1489,7 +1489,26 @@ export const ConnectGraphBundleSchema = z.object({
    *
    * Only meaningful for Surreal BYO stores; ignored for Postgres spine targets.
    */
-  allow_claim_versions_table: z.boolean().default(false)
+  allow_claim_versions_table: z.boolean().default(false),
+  /**
+   * RES-113 verification-engine plug-points (placement spec §5 PR-2): per-slot
+   * curated component choice, keyed slot → option id. Option ids are neutral
+   * strings validated server-side against the CLEARED catalog in the dashboard's
+   * `pipeline-config.ts` (REC-GOV-022) — the contract stays vendor-neutral.
+   * Absent/empty ⇒ the recommended default for every slot (a "default bundle").
+   */
+  pipeline_slots: z
+    .object({
+      extract: z.string().max(120).optional(),
+      embed: z.string().max(120).optional(),
+      validate: z.string().max(120).optional()
+    })
+    .optional(),
+  /**
+   * RES-113 (PR-5 renders the notice): slots whose curated choice was withdrawn
+   * server-side and reverted to the recommended default (D-2026-07-02-1 rollback).
+   */
+  reverted_slots: z.array(z.enum(['extract', 'embed', 'validate'])).optional()
 });
 
 export type ConnectGraphBundle = z.infer<typeof ConnectGraphBundleSchema>;

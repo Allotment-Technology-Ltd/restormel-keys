@@ -26,6 +26,7 @@ import {
 import { looksLikeSurrealJwt, parseSurrealConnectionString } from "$lib/server/connect/connection-string";
 import { validateOutboundSurrealEndpoint } from "$lib/server/connect/outbound-surreal-endpoint";
 import { isWebSocketSurrealEndpoint, surrealSdkQuery } from "$lib/server/connect/surreal-sdk";
+import { parsePipelineSlotAssignments, parseRevertedSlots } from "$lib/connect/pipeline-config";
 
 export { parseSurrealConnectionString };
 
@@ -38,6 +39,12 @@ function bundleFromRecord(row: ConnectGraphTargetRecord): ConnectGraphTarget["bu
   const ids = settings.ingest_document_ids;
   const stage = settings.default_stop_after_stage;
   const allowVersionTable = settings.allow_claim_versions_table;
+  // RES-113 PR-2: per-slot plug-point choices + server-side reverts, persisted
+  // as settings keys (no schema column). Parsed defensively — unknown slot keys
+  // and non-string ids are dropped; an unrecognised option id falls back to the
+  // recommended default inside the derivation, so a stale id can never render.
+  const pipelineSlots = parsePipelineSlotAssignments(settings.pipeline_slots);
+  const revertedSlots = parseRevertedSlots(settings.reverted_slots);
   return {
     ...(row.defaultDomainPackId ? { default_domain_pack_id: row.defaultDomainPackId } : {}),
     ...(Array.isArray(ids)
@@ -48,6 +55,8 @@ function bundleFromRecord(row: ConnectGraphTargetRecord): ConnectGraphTarget["bu
       : {}),
     // Stage 3.2b: default false when absent (opt-in, never assumed).
     allow_claim_versions_table: allowVersionTable === true,
+    ...(Object.keys(pipelineSlots).length > 0 ? { pipeline_slots: pipelineSlots } : {}),
+    ...(revertedSlots.length > 0 ? { reverted_slots: revertedSlots } : {}),
   };
 }
 
