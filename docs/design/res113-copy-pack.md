@@ -459,6 +459,21 @@ unchanged.
 `{stage}` renders the §0 stage-table on-screen name; `{name}` the withdrawn option's
 display name.
 
+**Save states (registered by PR-2 — the slot-rows render PR).** Choosing an option
+persists it to the graph's bundle; these are the three strings that interaction needs.
+The pending word replaces the option's selection word while the save runs (the list also
+carries `aria-busy`); the failure line follows §6.2 (what happened + what to do next,
+adjacent to the control, state preserved); the confirmation is announced on the slot
+renderer's persistent polite `role="status"` region (§6.3 — async completion is announced,
+never silent). `{stage}` renders the §0 stage-table on-screen name; `{name}` the chosen
+option's display name.
+
+| Element | Literal string |
+|---|---|
+| Save pending (in the chosen option's selection-mark position) | saving… |
+| Save failure (adjacent to the slot row, `role="alert"`, §6.2) | We couldn't save that choice — your pipeline is unchanged. Try again. |
+| Save confirmation (`role="status"` announcement) | {stage} now uses {name}. |
+
 ### 2.8 Economics (Metrics + run console)
 
 Verification-economics strings (placement spec §3.3; decision E assigns them this

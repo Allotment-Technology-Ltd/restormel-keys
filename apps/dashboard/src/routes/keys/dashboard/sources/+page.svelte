@@ -1,5 +1,6 @@
 <script lang="ts">
   import ConnectGraphLibrary from "$lib/components/connect/ConnectGraphLibrary.svelte";
+  import ConnectPipelineSlotRows from "$lib/components/connect/pipeline/ConnectPipelineSlotRows.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import SourceHealthCards from "$lib/components/connect/sources/SourceHealthCards.svelte";
   import SourceExceptionsQueue from "$lib/components/connect/sources/SourceExceptionsQueue.svelte";
@@ -42,6 +43,11 @@
   // disclosure (plan §3.2 point 3). Reveal predicate: static Advanced disclosure,
   // licensed by the founder's "keep full control, collapsed" decision above.
   $: onboardingJourney = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).onboardingJourney;
+  // RES-113 PR-2 (placement spec §5 item 3): plug-point slot rows render inside
+  // THIS disclosure when the m1PlugPoints flag is ON and an active graph exists.
+  // Reveal predicate: disclosure open — otherwise zero pixels (test-pinned).
+  // Flag OFF (default): byte-identical, including the disclosure's content.
+  $: m1PlugPoints = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).m1PlugPoints;
   const DOMAIN_PACK_DESIGN_HREF = pipelineWizardHref("domain");
 </script>
 
@@ -163,12 +169,21 @@
           {/if}
         </button>
         {#if advancedOpen}
+          {@const activeGraph = m1PlugPoints ? (panels.graphs.find((g) => g.is_active) ?? null) : null}
           <div class="advanced-body">
             <p class="advanced-note">
               The guided flow gives you the full pipeline — extract, link, embed, validate,
               remediate, store — plus chunk and embedding knobs. Most sources never need it;
               it's here when you do.
             </p>
+            {#if activeGraph}
+              <!-- RES-113 PR-2: per-stage plug-point rows (one renderer, two hosts —
+                   decision C). Reconciled with ConnectGraphLibrary below per §3.1:
+                   the library owns graph STORES (packs & connections); these rows
+                   own the per-stage model choice. No active graph ⇒ absent, never
+                   disabled-and-teasing (ux-craft §2.4). -->
+              <ConnectPipelineSlotRows graphTargetId={activeGraph.id} bundle={activeGraph.bundle} />
+            {/if}
             {#if onboardingJourney}
               <!-- RES-113 PR-5: pack/schema design lives under Advanced — the Domain
                    step is off the Build spine (a built-in pack applies silently). -->

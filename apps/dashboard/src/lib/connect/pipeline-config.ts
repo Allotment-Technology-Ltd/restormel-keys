@@ -707,8 +707,39 @@ function currentOptionId(bundle: GraphTargetBundle, slot: PipelineSlotId): strin
   return recommendedSlotOptionId(slot);
 }
 
-/** The bundle shape the slot derivation reads (the non-null branch of `GraphTarget`). */
-type GraphTargetBundle = NonNullable<NonNullable<GraphTarget>["bundle"]> | undefined;
+/**
+ * The bundle shape the slot derivation reads (the non-null branch of `GraphTarget`).
+ * Exported for the PR-2 renderer + hosts (the contracts `ConnectGraphTarget["bundle"]`
+ * is structurally assignable to it).
+ */
+export type GraphTargetBundle = NonNullable<NonNullable<GraphTarget>["bundle"]> | undefined;
+
+/** Type guard for a plug-point slot id (PR-2: settings parsing + API validation). */
+export function isPipelineSlotId(value: unknown): value is PipelineSlotId {
+  return PIPELINE_SLOT_IDS.some((id) => id === value);
+}
+
+/**
+ * Parse a persisted `pipeline_slots` settings value (untyped JSONB) into the
+ * typed slot→option-id map. Unknown slot keys and non-string values are dropped;
+ * option ids are NOT validated here (the derivation falls back to the recommended
+ * default for an id it doesn't recognise, so a stale id can never render).
+ * Shared by the server bundle mapping and the pipeline-slots API (PR-2).
+ */
+export function parsePipelineSlotAssignments(value: unknown): Partial<Record<PipelineSlotId, string>> {
+  const out: Partial<Record<PipelineSlotId, string>> = {};
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return out;
+  for (const [k, v] of Object.entries(value)) {
+    if (isPipelineSlotId(k) && typeof v === "string" && v) out[k] = v;
+  }
+  return out;
+}
+
+/** Parse a persisted `reverted_slots` settings value into valid slot ids (PR-2). */
+export function parseRevertedSlots(value: unknown): PipelineSlotId[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isPipelineSlotId);
+}
 
 /**
  * Cross-family independence filter (REC-ADR-023 invariant 1), extracted as a pure,

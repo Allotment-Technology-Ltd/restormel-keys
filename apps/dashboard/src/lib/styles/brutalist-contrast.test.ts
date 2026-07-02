@@ -13,6 +13,8 @@ const PALETTE = {
   surface: "#fffef0",
   /** --color-ink-faint / --rm-dim — the dimmed journey-nav item text (RES-113 PR-4). */
   dim: "#7a7060",
+  /** --coral-alert (keys-tokens base.css) — the danger accent (RES-113 PR-2 slot-error). */
+  coralAlert: "#f25c54",
 } as const;
 
 function channelToLinear(value8bit: number): number {
@@ -64,6 +66,18 @@ describe("Neo-Brutalist palette contrast (WCAG)", () => {
 
   it("surface text on code block ink meets AAA", () => {
     expect(contrastRatio(PALETTE.surface, PALETTE.ink)).toBeGreaterThanOrEqual(AAA_NORMAL);
+  });
+
+  it("coral-alert danger accent as a non-text border on surface meets 3:1 (RES-113 PR-2 slot-error)", () => {
+    // slot-error carries the danger signal as a LEFT BORDER, not text — a non-text
+    // UI boundary only needs WCAG 1.4.11's 3:1, which coral-alert clears (~3.22:1).
+    expect(contrastRatio(PALETTE.coralAlert, PALETTE.surface)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("coral-alert as body TEXT on surface is BELOW AA — why slot-error uses ink text, not coral text (RES-113 PR-2)", () => {
+    // Guards against regressing back to `color: var(--coral-alert)` for the error
+    // message: ~3.22:1 fails WCAG 1.4.3's 4.5:1. The message text is ink (AAA).
+    expect(contrastRatio(PALETTE.coralAlert, PALETTE.surface)).toBeLessThan(AA_NORMAL);
   });
 
   it("dimmed journey-nav text (ink-faint) on the white sidebar meets AA (RES-113 PR-4)", () => {
