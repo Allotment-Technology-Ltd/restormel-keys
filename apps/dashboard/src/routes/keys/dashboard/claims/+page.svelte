@@ -59,8 +59,9 @@
 
   const explorerImport = () => import("$lib/components/connect/ConnectGraphExplorer.svelte");
 
-  // RES-113 verification-engine cluster flag — gates the dossier's §3.5
-  // passage-fidelity note (PR-7). Flag-OFF the explorer renders byte-identically.
+  // RES-113 verification-engine cluster flag — gates the dossier's §3.5 lines
+  // (PR-7 fidelity note + PR-6 first-contact lines). Flag-OFF the explorer
+  // renders byte-identically.
   $: m1PlugPoints = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).m1PlugPoints;
 
   let retrying = false;
