@@ -30,8 +30,9 @@ export type ModuleFlags = {
   /**
    * RES-113 verification-engine plug-points cluster (placement spec §5 — "one
    * flag, `m1PlugPoints`, default off"). Gates every Build-cluster render surface
-   * (slot rows, preset, receipts) and the PR-8 economics surfaces (Metrics rows +
-   * the run-console "Show details" line). Default OFF — flag-OFF is byte-identical.
+   * (slot rows, preset, receipts), the PR-8 economics surfaces (Metrics rows +
+   * the run-console "Show details" line), and the evidence-dossier §3.5
+   * passage-fidelity note (PR-7). Default OFF — flag-OFF is byte-identical.
    */
   m1PlugPoints: boolean;
   /** True when RESTORMEL_MODULE_FLAGS env override is active (skips PostHog). */

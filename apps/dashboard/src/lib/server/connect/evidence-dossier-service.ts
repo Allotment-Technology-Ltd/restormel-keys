@@ -15,6 +15,7 @@ import type { ConnectDomainPack } from "@restormel/contracts/connect";
 import type { GraphStore } from "@restormel/graphrag-core";
 import {
   canAcceptAsSupported,
+  normalizeEvidenceFidelity,
   normalizeEvidenceStatus,
   normalizeVerificationState,
   predatesEvidenceBinding,
@@ -76,6 +77,10 @@ export function composeEvidenceSummaryFromPostgresRow(
           end: row.spanEnd!,
           match: row.evidenceMatch ?? "exact",
           sourceHash: row.sourceHash ?? "",
+          // The Postgres spine records no locator kind yet, so every span
+          // normalizes to "spatial" — exactly today's rendering, no note
+          // (spec §3.2 PR-7; the §3.5 "renders exactly as today" pin).
+          fidelity: normalizeEvidenceFidelity(null),
         }
       : null,
     judgedBy: row.judgedBy,
@@ -119,7 +124,16 @@ export function composeEvidenceSummaryFromSurrealRow(
     verificationState,
     evidenceStatus,
     evidence: bound
-      ? { quote, start, end, match: match ?? "exact", sourceHash: sourceHash ?? "" }
+      ? {
+          quote,
+          start,
+          end,
+          match: match ?? "exact",
+          sourceHash: sourceHash ?? "",
+          // Reads the ingest writer's optional locator-kind marker; absent (all
+          // rows written before the discriminant existed) normalizes to "spatial".
+          fidelity: normalizeEvidenceFidelity(row.evidence_locator_kind),
+        }
       : null,
     judgedBy: null,
     judgedAt: null,

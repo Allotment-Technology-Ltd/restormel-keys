@@ -1,5 +1,7 @@
 <script lang="ts">
   import { invalidateAll } from "$app/navigation";
+  import { page } from "$app/stores";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import ConnectGraphPageSkeleton from "$lib/components/connect/ConnectGraphPageSkeleton.svelte";
   import ConnectSpineLedger from "$lib/components/connect/ConnectSpineLedger.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
@@ -57,6 +59,10 @@
 
   const explorerImport = () => import("$lib/components/connect/ConnectGraphExplorer.svelte");
 
+  // RES-113 verification-engine cluster flag — gates the dossier's §3.5
+  // passage-fidelity note (PR-7). Flag-OFF the explorer renders byte-identically.
+  $: m1PlugPoints = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).m1PlugPoints;
+
   let retrying = false;
   async function retry() {
     retrying = true;
@@ -104,7 +110,7 @@
       {#await explorerImport()}
         <ConnectGraphPageSkeleton />
       {:then { default: ConnectGraphExplorer }}
-        <ConnectGraphExplorer {graph} />
+        <ConnectGraphExplorer {graph} {m1PlugPoints} />
       {:catch}
         <!-- D2 (UXC §2 [R1] Claims): the section is "Claims", never "Graph explorer". -->
         <BrutalErrorBanner
