@@ -1226,6 +1226,19 @@
   color: var(--rm-muted);
   font-size: var(--text-sm);
 }
+/* RES-113 PR-4 (copy pack §2.7): the launch-panel configuration receipt — one
+   muted line rendered only when `bundle ≠ default`. Mirrors the expectation line;
+   the inline "Review choices" affordance is a plain underlined text link (§2.5:
+   no arrow, no button styling), inheriting the muted colour. */
+.connect-pipeline .journey-receipt {
+  margin: var(--space-1) 0 0;
+  color: var(--rm-muted);
+  font-size: var(--text-sm);
+}
+.connect-pipeline .journey-receipt-link {
+  color: inherit;
+  text-decoration: underline;
+}
 /* Copy pack §2.1 models line: muted, sits between the one field and Advanced. */
 .connect-pipeline .journey-models-line {
   margin: var(--space-3) 0 0;
