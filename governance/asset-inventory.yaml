@@ -130,6 +130,20 @@
 #   Forgejo) → suppliers.yaml UNCHANGED; only empty/synthetic data ever → ropa.yaml/data-inventory.yaml
 #   UNCHANGED. Plan of record REC-PLAN-022. last-reviewed UNCHANGED (founder re-approval on merge);
 #   the asset history above is append-only.
+# 2026-07-02 (docs/teasynaer-isms-registration): TEASYNAER — new fifth in-scope product
+#   registered (Teasynaer, a self-hostable manual QA regression runner being extracted from
+#   allotmentology.tech's web/src/lib/qa/ module per docs/decisions/0001-teasynaer-stack-and-
+#   extraction.md in the teasynaer repo). Added AST-033 (teasynaer repo, id bumped past the
+#   Hetzner LB entry already occupying AST-032 as of 2026-07-01) — the only asset that
+#   concretely exists at this stage (Forgejo repo scaffolded, no product code yet). Per the
+#   allotmentology.tech precedent (AST-015/016/017 — repo, domain, app as three separate
+#   assets), a teasynaer.dev domain asset and a K3s workload asset will be added in the SAME
+#   pattern once each is actually procured/deployed (doc 03 / Milestone 1) — not invented ahead
+#   of the fact. RISK-017/RISK-018 added in risk-register.yaml (internet-facing service once
+#   deployed; evidence store may hold sensitive screenshots/HAR/video). Scope statement above
+#   (line 15) still says four products — will be corrected to five in the same PR that adds the
+#   domain/workload assets, to keep this changelog line focused on what's true today.
+#   last-reviewed UNCHANGED pending founder review/merge of this PR.
 # 2026-06-30 (records/infra-alert-storm-node-rescale — REC-INC-028 / RES-123): NODE SWAP.
 #   AST-022 cluster: node3 (.167, the cx33 "surreal-forgejo" 8GiB box) was RETIRED and its Hetzner
 #   server DELETED, replaced by node4 — a cx43 (8c/16GiB, k8s name restormel-node4, public
@@ -863,6 +877,26 @@
       restormel-integration-train skill. [PLACEHOLDER — founder: confirm provisioning once the
       Wave-2 live ops above are applied (DB/role, /integration store, var, Argo apply, oauth2-proxy
       + DNS) and the first train run is green.]
+
+  - id: AST-033
+    asset: "teasynaer repo"
+    type: code/records
+    owner: founder
+    product: teasynaer
+    location: "Forgejo (canonical, git.allotmentology.tech/Allotment-Technology-Ltd/teasynaer) — public repo, no GitHub mirror configured yet"
+    notes: >
+      Source for Teasynaer, a self-hostable manual QA regression runner being extracted from
+      allotmentology.tech's web/src/lib/qa/ module (doc 00 scaffold pushed 2026-07-02, commit
+      c533311). UNLIKE restormel-keys/allotmentology.tech, this repo is PUBLIC/OSS (MIT licence,
+      consistent with company precedent — see docs/decisions/0001-teasynaer-stack-and-extraction.md
+      in-repo) — no secrets, internal hostnames, or references to other in-scope products may ever
+      land here (OSS-scrub rules in the same ADR). Branch protection on `main` mirrors this repo's
+      own rule shape (required CI status checks, 0 required approvals, apply_to_admins true, no
+      signed-commit requirement) — applied 2026-07-02. STATE: scaffold only, no product code, no
+      live deployment, no evidence data. GitHub push-mirror confirmed (Adam, 2026-07-02) and
+      configured to https://github.com/Allotment-Technology-Ltd/teasynaer (Forgejo push-mirror,
+      8h interval + sync_on_commit — same mechanism as restormel-keys/allotmentology.tech;
+      overwrote a placeholder "Initial commit" that pre-existed on the empty GitHub repo).
 
   - id: AST-032
     asset: "Hetzner Load Balancer (restormel-ingress) — public ingress front-end"
