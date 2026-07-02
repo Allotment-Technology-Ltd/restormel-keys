@@ -1,0 +1,71 @@
+# Merge → INTEGRATION auto-deploy (ADR §5.2 / §6 Phase 1, 2026-07-02).
+# ---------------------------------------------------------------------------------
+# On every app-affecting merge to `main`, deploy the merged-`main` image to the
+# INTEGRATION env — build ONCE per merge SHA, push BY DIGEST, bump the
+# restormel-integration manifests BY @sha256 digest. This is the NEW primary
+# integration path: integration now mirrors exactly what is in `main` (the go/no-go
+# gate), replacing the un-merged `stage`-batch train as the merged-main deploy path.
+#
+# HOW: a thin caller that reuses deploy-k3s.yml's existing `deploy-integration`
+# engine (rootless, split-token, digest-pinned, outbound-only) — identical to the
+# way integration-train.yml invokes it, but keyed to `main` instead of the disposable
+# `integration` branch. NO changes to deploy-k3s.yml itself; NO `if:` surgery.
+#
+#   * deploy-integration's `if:` already runs when `inputs.ref != ''`, gated on
+#     vars.INTEGRATION_TRAIN_ENABLED == '1'. So the EXISTING kill-switch arms this
+#     path too: INTEGRATION_TRAIN_ENABLED=0 disables both this and the train instantly.
+#   * `build integration` (REG token, push by digest) → `bump integration`
+#     (GITOPS token, @sha256 pin) is unchanged. Prod is untouched.
+#
+# CUTOVER / CO-EXISTENCE: this runs ALONGSIDE integration-train.yml during the
+# transition — both call deploy-k3s.yml (`concurrency: deploy-k3s`) so they serialize,
+# and both bump the SAME restormel-integration manifests by the same mechanism. Stop
+# applying the `stage` label and the train no-ops (has_batch=false). The train is
+# retired (deleted) in the follow-up PR-B, ONLY once this path is proven green — so
+# integration is never left without a deploy path mid-change.
+#
+# ROLLBACK: set INTEGRATION_TRAIN_ENABLED=0 (kills this + the train), or delete this
+# one file. Neither touches prod.
+#
+# TRUST NOTE: for a `main` push both the trusted-orchestration checkout (trunk) and
+# the build context resolve to `main` — i.e. already-merged, trusted code. The
+# split-token / untrusted-context machinery in deploy-k3s.yml still applies unchanged
+# (defense-in-depth); it simply has no untrusted tree to defend against here.
+
+name: Merge → integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/dashboard/**'
+      - 'packages/**'
+
+# Serialize merge→integration deploys; never cancel one mid-bump (a half-pushed
+# gitops commit is avoided by letting each run finish). deploy-k3s.yml has its own
+# `deploy-k3s` concurrency group too, so this also serializes against the train.
+concurrency:
+  group: merge-integration
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy merged main to integration (build-once, digest-pinned)
+    # Reuse the trusted integration build+bump engine. Resolved from THIS ref (main)
+    # — trunk, so the orchestration + bump script are trusted.
+    uses: ./.forgejo/workflows/deploy-k3s.yml
+    with:
+      ref: main
+      dry_run: false
+    # No blanket secret inheritance — pass ONLY what the integration build needs, each
+    # least-privilege (mirrors integration-train.yml's `build` job exactly):
+    #   FORGEJO_PM_TOKEN       — read-only source clone + restormel-gitops bump.
+    #   FORGEJO_REGISTRY_*     — write:package ONLY (image push).
+    #   TELEGRAM_*/POSTHOG_*   — failure alert only.
+    secrets:
+      FORGEJO_PM_TOKEN: ${{ secrets.FORGEJO_PM_TOKEN }}
+      FORGEJO_REGISTRY_USER: ${{ secrets.FORGEJO_REGISTRY_USER }}
+      FORGEJO_REGISTRY_TOKEN: ${{ secrets.FORGEJO_REGISTRY_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
