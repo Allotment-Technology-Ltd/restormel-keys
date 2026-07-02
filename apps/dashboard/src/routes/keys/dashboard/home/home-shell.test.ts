@@ -19,6 +19,13 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, waitFor } from "@testing-library/svelte";
 import { readable } from "svelte/store";
 import { tick } from "svelte";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+// RES-113 Track A A1: source-scan the component for the hero-settings-link
+// hit-target rule (mirrors evidence-dossier.pr6-lines.test.ts) — jsdom does not
+// apply scoped <style>, so the 44px floor is asserted against the source.
+const HOME_PAGE_SOURCE = readFileSync(resolve(__dirname, "./+page.svelte"), "utf8");
 
 // ── $app mocks ────────────────────────────────────────────────────────────
 const gotoSpy = vi.fn();
@@ -762,7 +769,7 @@ describe("HOME · journey shell load failure (flag ON)", () => {
 describe("flag OFF — legacy masthead unchanged (smoke)", () => {
   it("renders the legacy operator description + pulse panel; no journey hero", async () => {
     pageData = { moduleFlags: { onboardingJourney: false }, journeySignals: null };
-    const { getByText, queryByRole, getByRole } = render(HomePage, pageProps());
+    const { getByText, queryByRole, getByRole, queryByText } = render(HomePage, pageProps());
     await settle();
     expect(
       getByText("One screen for the daily loop — trust, review queue, last run, and live agent traffic."),
@@ -771,5 +778,111 @@ describe("flag OFF — legacy masthead unchanged (smoke)", () => {
     expect(getByRole("heading", { name: "Recent activity" })).toBeTruthy();
     // No journey hero.
     expect(queryByRole("heading", { name: "Your graph" })).toBeNull();
+    // RES-113 Track A A1: the hero "Workspace settings" link lives INSIDE the
+    // flag-ON `{#if onboardingJourney}` hero — it must be structurally absent
+    // flag-OFF (byte-identity guard for the legacy masthead).
+    expect(queryByText("Workspace settings")).toBeNull();
+  });
+});
+
+describe("HOME · hero 'Workspace settings' link (Track A A1, flag ON)", () => {
+  const A1_ARIA = "Workspace settings — providers, store, graph, routes, audit";
+
+  // The four HomeState renders — the link is state-independent chrome above the
+  // `home.kind` switch, so it must resolve identically in every one.
+  const STATES: { name: string; over: Record<string, unknown> }[] = [
+    {
+      name: "EMPTY",
+      over: {
+        scorecard: Promise.resolve(null),
+        hub: Promise.resolve(hubPayload({ stats: { units: 0, validation: { awaiting_triage: 0 } } })),
+      },
+    },
+    {
+      name: "INGEST_RUNNING",
+      over: {
+        scorecard: Promise.resolve(null),
+        hub: Promise.resolve(
+          hubPayload({
+            stats: { units: 0, validation: { awaiting_triage: 0 } },
+            latestJob: { id: "job-1", status: "running", currentStage: "extracting" },
+          }),
+        ),
+      },
+    },
+    {
+      name: "BUILT_NOT_CONNECTED",
+      over: {
+        graphName: "acme-graph",
+        scorecard: Promise.resolve(scorecard({ trust_score: 88, units: 1204 })),
+        hub: Promise.resolve(hubPayload({ stats: { units: 1204, validation: { awaiting_triage: 0 } } })),
+      },
+    },
+    {
+      name: "LIVE",
+      over: {
+        graphName: "acme-graph",
+        scorecard: Promise.resolve(scorecard({ units: 1204 })),
+        hub: Promise.resolve(hubPayload({ stats: { units: 1204, validation: { awaiting_triage: 0 } } })),
+        hasAppTraffic24h: true,
+        homeActivity: Promise.resolve([]),
+      },
+    },
+  ];
+
+  for (const state of STATES) {
+    it(`is present and targets /integrations in ${state.name}`, async () => {
+      setJourneyPageData(
+        state.name === "LIVE"
+          ? {
+              journeySignals: {
+                integrationCount: 0,
+                gatewayKeyCount: 2,
+                sourceCount: 12,
+                completedRunCount: 1,
+                flaggedClaimCount: 0,
+                connectionCount: 2,
+              },
+            }
+          : {},
+      );
+      const { getByRole } = render(HomePage, pageProps(state.over));
+      await settle();
+      const link = getByRole("link", { name: A1_ARIA });
+      expect(link.getAttribute("href")).toMatch(/\/integrations$/);
+    });
+  }
+
+  it("aria-label CONTAINS the visible text verbatim (WCAG 2.5.3 Label-in-Name)", async () => {
+    setJourneyPageData();
+    const { getByRole } = render(
+      HomePage,
+      pageProps({
+        scorecard: Promise.resolve(null),
+        hub: Promise.resolve(hubPayload({ stats: { units: 0, validation: { awaiting_triage: 0 } } })),
+      }),
+    );
+    await settle();
+    const link = getByRole("link", { name: A1_ARIA });
+    expect(link.textContent?.trim()).toBe("Workspace settings");
+    expect(link.getAttribute("aria-label")).toContain("Workspace settings");
+  });
+
+  it("carries the visible focus ring class and a ≥44px hit target (net-new focusable a11y floor)", async () => {
+    setJourneyPageData();
+    const { getByRole } = render(
+      HomePage,
+      pageProps({
+        scorecard: Promise.resolve(null),
+        hub: Promise.resolve(hubPayload({ stats: { units: 0, validation: { awaiting_triage: 0 } } })),
+      }),
+    );
+    await settle();
+    const link = getByRole("link", { name: A1_ARIA });
+    // Focus ring: the shared brut-focus utility (paired with an ink band in the
+    // scoped `.hero-settings-link:focus-visible` rule for 3:1 on cream).
+    expect(link.className).toContain("brut-focus");
+    // Hit target: jsdom applies no scoped CSS, so pin the 44px floor at source.
+    expect(HOME_PAGE_SOURCE).toMatch(/\.hero-settings-link\s*\{[^}]*min-height:\s*44px/);
   });
 });
