@@ -469,6 +469,10 @@ or on any journey surface; no tier or cache vocabulary anywhere; weekly-CI-gate 
 internal. Every count is a real counted unit; the populations are independent and are
 never summed into a single total (REC-ADR-016).
 
+The Metrics section heading reuses the §0 stage-table on-screen name **Checking against
+sources** — a reference, not a new string (same convention as §2.7's slot-row labels;
+registered here by PR-8, the first PR to render this section).
+
 | Metrics row label | First-contact gloss (hover/aria on the row) |
 |---|---|
 | Facts checked | How many facts were checked against the documents they came from. |

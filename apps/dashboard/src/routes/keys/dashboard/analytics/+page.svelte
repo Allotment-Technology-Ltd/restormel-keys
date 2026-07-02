@@ -5,6 +5,11 @@
   import UsageChartsSection from "$lib/components/dashboard/UsageChartsSection.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
+  import {
+    VERIFICATION_ECONOMICS_SECTION_HEADING,
+    resolveVerificationEconomicsRows,
+    type RunVerificationEconomics,
+  } from "$lib/connect/verification-economics";
 
   type Aggregate = {
     projectId: string | null;
@@ -45,6 +50,8 @@
       costByModel: { model: string; costUsd: number }[];
       costByModelSource: "database" | "mock";
     } | null;
+    /** RES-113 PR-8 — null while `m1PlugPoints` is OFF (flag-OFF byte-identical). */
+    verificationEconomics?: RunVerificationEconomics[] | null;
   };
 
   /** Legacy `$:` (not `$derived`) — dashboard uses `compilerOptions.runes: false`. */
@@ -115,6 +122,19 @@
   }
 
   $: gatewayProvidersOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).gatewayProviders;
+
+  // RES-113 PR-8 (copy pack §2.8). Reveal predicate: `m1PlugPoints` ON (server
+  // sends null when OFF) AND at least one recorded per-corpus measurement. A
+  // missing measurement renders its row ABSENT — never a fabricated 0 or "—"
+  // (REC-ADR-016; §2.8 honest-absence rule). Populations are independent and are
+  // never summed into a single total.
+  $: verificationEconomicsGroups = (data.verificationEconomics ?? [])
+    .map((m, i) => ({
+      key: m.corpus ?? `group-${i}`,
+      name: m.corpus ?? null,
+      rows: resolveVerificationEconomicsRows(m),
+    }))
+    .filter((g) => g.rows.length > 0);
 </script>
 
 <svelte:head>
@@ -167,6 +187,29 @@
       costByModel={data.usageCharts.costByModel}
       costByModelSource={data.usageCharts.costByModelSource}
     />
+  {/if}
+  {#if verificationEconomicsGroups.length > 0}
+    <!-- RES-113 PR-8: verification-economics rows (copy pack §2.8 verbatim). The
+         h2 reuses the §0 stage-table name — a reference, not a new string. Each
+         row's first-contact gloss rides hover (title) + AT (visually hidden). -->
+    <section class="section" aria-labelledby="verification-economics-heading">
+      <h2 id="verification-economics-heading" class="section-title">
+        {VERIFICATION_ECONOMICS_SECTION_HEADING}
+      </h2>
+      {#each verificationEconomicsGroups as group (group.key)}
+        {#if group.name && verificationEconomicsGroups.length > 1}
+          <h3 class="econ-group-name">{group.name}</h3>
+        {/if}
+        <ul class="econ-list">
+          {#each group.rows as row (row.key)}
+            <li class="econ-row" title={row.gloss}>
+              <span class="econ-label">{row.label}<span class="sr-only"> — {row.gloss}</span></span>
+              <span class="econ-value">{row.value}</span>
+            </li>
+          {/each}
+        </ul>
+      {/each}
+    </section>
   {/if}
   {#if data.aggregates.length === 0 && data.recentLogs.length === 0}
     <EmptyState
@@ -402,6 +445,34 @@
     list-style: none;
     padding: 0;
     margin: 0;
+  }
+  /* RES-113 PR-8 — §2.8 verification-economics rows (tokens only). */
+  .econ-group-name {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin: var(--space-3) 0 var(--space-1);
+  }
+  .econ-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-width: 28rem;
+  }
+  .econ-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-bottom: var(--border-thin);
+    font-size: var(--text-sm);
+  }
+  .econ-label {
+    color: var(--rm-text);
+  }
+  .econ-value {
+    color: var(--rm-muted);
+    font-variant-numeric: tabular-nums;
   }
   .period-links {
     font-size: var(--text-sm);

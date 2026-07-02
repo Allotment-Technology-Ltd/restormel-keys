@@ -3,6 +3,7 @@
  */
 import { buildAuditSummary, type KgAuditIssueDraft, type KgAuditMetrics } from "@restormel/connect-core";
 import { normalizeProviderToCanonicalApi } from "$lib/server/canonical-provider";
+import type { RunVerificationEconomics } from "$lib/connect/verification-economics";
 
 /**
  * K4 / K-P1-7: which provider family validated this run, disclosed on the report
@@ -56,6 +57,12 @@ export type RunQualityReport = {
   /** K4: validating-family disclosure; null until run attribution exists (K5). */
   validation_family: RunValidationFamilyDisclosure | null;
   next_actions: string[];
+  /**
+   * RES-113 PR-8: per-corpus verification-economics measurements (copy pack §2.8),
+   * recorded by the cascade's EconomicsRecorder once it wires into ingest. Optional
+   * per field — an unrecorded measurement is ABSENT, never 0 (REC-ADR-016).
+   */
+  verification_economics?: RunVerificationEconomics[];
 };
 
 export function buildRunQualityReport(args: {

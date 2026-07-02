@@ -54,6 +54,7 @@ export function getClientModuleFlagsFromPostHog(): ModuleFlags {
         false,
       monitor: posthog.isFeatureEnabled?.("restormel-module-monitor") ?? false,
       onboardingJourney: posthog.isFeatureEnabled?.("restormel-module-onboarding-journey") ?? false,
+      m1PlugPoints: posthog.isFeatureEnabled?.("restormel-module-m1-plug-points") ?? false,
       fromEnvOverride: false,
     };
   } catch {

@@ -45,6 +45,7 @@ function parseEnvOverride(raw: string | undefined): ModuleFlags | null {
     connectHostManagedGraphStore: false,
     monitor: false,
     onboardingJourney: false,
+    m1PlugPoints: false,
     fromEnvOverride: true,
   };
 
@@ -103,6 +104,10 @@ function parseEnvOverride(raw: string | undefined): ModuleFlags | null {
       case "onboarding-journey":
         flags.onboardingJourney = true;
         break;
+      case "m1_plug_points":
+      case "m1-plug-points":
+        flags.m1PlugPoints = true;
+        break;
       default:
         break;
     }
@@ -139,6 +144,7 @@ export function flagsFromPostHogPayload(payload: Record<string, unknown>): Modul
       payload[POSTHOG_CONNECT_HOST_MANAGED_GRAPH_STORE_LEGACY_KEY] === true,
     monitor: payload[POSTHOG_MODULE_FLAG_KEYS.monitor] === true,
     onboardingJourney: payload[POSTHOG_MODULE_FLAG_KEYS.onboardingJourney] === true,
+    m1PlugPoints: payload[POSTHOG_MODULE_FLAG_KEYS.m1PlugPoints] === true,
     fromEnvOverride: false,
   };
 }
@@ -224,6 +230,8 @@ export function isModuleEnabled(flags: ModuleFlags, key: ModuleFlagKey): boolean
       return flags.monitor;
     case "onboardingJourney":
       return flags.onboardingJourney;
+    case "m1PlugPoints":
+      return flags.m1PlugPoints;
     case "graph":
       return flags.graph !== "disabled";
     default:

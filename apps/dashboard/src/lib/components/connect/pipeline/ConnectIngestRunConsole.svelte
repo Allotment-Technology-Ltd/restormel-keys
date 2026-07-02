@@ -38,6 +38,10 @@
     preflightIssueCopy,
     type ConnectRunPreflightResult,
   } from "$lib/connect/run-preflight";
+  import {
+    buildRunEconomicsSummary,
+    parseRunVerificationEconomics,
+  } from "$lib/connect/verification-economics";
 
   type GraphRepairProgress = {
     job_kind: "graph_revalidate";
@@ -100,6 +104,11 @@
       units?: number;
       /** Validation breakdown; its sum is the fallback unit count when `units` is absent. */
       validation?: { ok: number; weak: number; unsupported: number; unvalidated: number };
+      /**
+       * RES-113 PR-8: per-corpus verification-economics measurements (copy pack
+       * §2.8) — absent until the cascade records them; parsed defensively below.
+       */
+      verification_economics?: unknown;
       /** K4/K-P1-7: validating-family disclosure; absent until K5 persists attribution. */
       validation_family?: {
         validation_provider?: string;
@@ -149,6 +158,15 @@
    * keep the operator console even with the flag ON — they are advanced surfaces.
    */
   export let onboardingJourney = false;
+  /**
+   * RES-113 PR-8 (placement spec §5 item 9; copy pack §2.8): render the ONE
+   * per-run economics summary line inside the existing "Show details"
+   * disclosure. DEFAULT false — flag OFF, this console renders byte-for-byte
+   * unchanged. Even flag-ON, the line renders ONLY when the run actually
+   * recorded economics (honest absence — a run without measurements renders no
+   * line at all, never zeros).
+   */
+  export let m1PlugPoints = false;
 
 
   let job: Job | null = null;
@@ -396,6 +414,17 @@
   // after that (never one-way `open={expr}`, which a poll would keep resetting).
   let journeyDetailsOpen = false;
   let journeyDetailsAutoOpened = false;
+
+  // RES-113 PR-8 — the ONE per-run economics summary line (copy pack §2.8,
+  // verbatim template + segment singulars, built in verification-economics.ts).
+  // Predicate: m1PlugPoints ON AND the run recorded economics; each segment
+  // renders independently (absent-not-zero), so an unrecorded run yields null
+  // and the disclosure body is unchanged.
+  $: runEconomicsLine = m1PlugPoints
+    ? buildRunEconomicsSummary(
+        parseRunVerificationEconomics(job?.progress?.quality_report?.verification_economics),
+      )
+    : null;
   $: if (
     journeyConsole &&
     !journeyDetailsAutoOpened &&
@@ -1416,6 +1445,11 @@
               <p class="run-live-degraded" role="status">
                 Live updates degraded to polling — refreshing every ~2.5s instead. The run is unaffected.
               </p>
+            {/if}
+            {#if runEconomicsLine}
+              <!-- RES-113 PR-8: the §2.8 per-run summary — the ONLY economics
+                   surface in this console, inside the opened disclosure only. -->
+              <p class="journey-economics-line">{runEconomicsLine}</p>
             {/if}
             {@render completionLedgerBlock(job)}
             {@render runGridBlock(job)}
@@ -2754,5 +2788,12 @@
     flex-direction: column;
     gap: var(--space-4);
     padding-top: var(--space-3);
+  }
+  /* RES-113 PR-8 — the §2.8 per-run economics summary: one muted line. */
+  .journey-economics-line {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-muted);
   }
 </style>
