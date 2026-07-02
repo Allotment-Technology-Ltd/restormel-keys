@@ -21,6 +21,10 @@ import {
 } from "$lib/server/credential-crypto";
 import { resolveModuleFlagsSync } from "$lib/server/module-flags";
 import {
+  parseRunVerificationEconomics,
+  type RunVerificationEconomics,
+} from "$lib/connect/verification-economics";
+import {
   normalizeAccess,
   normalizeConnectionType,
   normalizeTarget,
@@ -5821,6 +5825,12 @@ export type ConnectIngestJobQualityReport = {
   /** Validation breakdown counts (retained for the public quality_report projection). */
   validation?: { ok: number; weak: number; unsupported: number; unvalidated: number };
   units?: number;
+  /**
+   * RES-113 PR-8: per-corpus verification-economics measurements recorded by the
+   * cascade (copy pack §2.8). Optional per field — an unrecorded measurement is
+   * ABSENT, never 0. Absent entirely until the cascade wires into ingest.
+   */
+  verification_economics?: RunVerificationEconomics[];
 };
 
 export type GraphRepairJobProgress = {
@@ -5938,6 +5948,7 @@ function parseConnectIngestJobQualityReport(raw: unknown): ConnectIngestJobQuali
       unvalidated: num("unvalidated"),
     };
   }
+  const verification_economics = parseRunVerificationEconomics(rec.verification_economics);
   const report: ConnectIngestJobQualityReport = {
     ...(typeof rec.preset === "string" ? { preset: rec.preset } : {}),
     ...(typeof rec.ok_pct === "number" ? { ok_pct: rec.ok_pct } : {}),
@@ -5958,6 +5969,7 @@ function parseConnectIngestJobQualityReport(raw: unknown): ConnectIngestJobQuali
     ...(next_actions && next_actions.length > 0 ? { next_actions } : {}),
     ...(validation ? { validation } : {}),
     ...(typeof rec.units === "number" ? { units: rec.units } : {}),
+    ...(verification_economics.length > 0 ? { verification_economics } : {}),
   };
   return Object.keys(report).length > 0 ? report : undefined;
 }

@@ -9,6 +9,8 @@ import {
   listProjectsByWorkspace,
   listRequestLogs,
 } from "$lib/server/db";
+import { loadVerificationEconomicsByCorpus } from "$lib/server/connect/verification-economics-source";
+import type { RunVerificationEconomics } from "$lib/connect/verification-economics";
 
 const DEFAULT_DAYS = 7;
 const MAX_DAYS = 90;
@@ -206,6 +208,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
         projects: [] as { id: string; name: string }[],
         error: "Unauthorized" as string | null,
         usageCharts: null as UsageChartsPayload | null,
+        verificationEconomics: null as RunVerificationEconomics[] | null,
       };
     }
 
@@ -243,6 +246,17 @@ export const load: PageServerLoad = async ({ url, locals }) => {
       projectId,
       useAnalyticsMockFallback(),
     );
+    // RES-113 PR-8 (copy pack §2.8): verification-economics rows are fetched ONLY
+    // behind the m1PlugPoints flag — flag OFF, the load path and payload render
+    // byte-identically (`null`, nothing rendered).
+    const verificationEconomics = locals.moduleFlags?.m1PlugPoints
+      ? await loadVerificationEconomicsByCorpus({
+          workspaceId: ctx.workspaceId,
+          sinceMs: since,
+          untilMs: until,
+          projectId,
+        }).catch(() => [] as RunVerificationEconomics[])
+      : null;
     return {
       aggregates,
       recentLogs,
@@ -252,6 +266,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
       projects: projects.map((p) => ({ id: p.id, name: p.name })),
       error: null,
       usageCharts,
+      verificationEconomics,
     };
   } catch (e) {
     console.error("[analytics] load failed:", e);
@@ -264,6 +279,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
       projects: [] as { id: string; name: string }[],
       error: "Unable to load analytics",
       usageCharts: null as UsageChartsPayload | null,
+      verificationEconomics: null as RunVerificationEconomics[] | null,
     };
   }
 };

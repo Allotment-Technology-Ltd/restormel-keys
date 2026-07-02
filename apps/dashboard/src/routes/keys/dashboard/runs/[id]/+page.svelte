@@ -33,6 +33,8 @@
   $: statusApi = DASHBOARD_BASE + "/api/connect/ingest/jobs/" + jobId + "/status";
   // RES-113 PR-C: opt the run console into the friendly M1 reskin (default OFF).
   $: onboardingJourney = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).onboardingJourney;
+  // RES-113 PR-8: the §2.8 per-run economics line inside "Show details" (default OFF).
+  $: m1PlugPoints = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).m1PlugPoints;
 </script>
 
 <svelte:head>
@@ -62,7 +64,7 @@
     {/if}
   </p>
 
-  <ConnectIngestRunConsole {jobId} statusApiBase={statusApi} {fromPipeline} {fromGraph} {fromHub} {graphTask} {onboardingJourney} />
+  <ConnectIngestRunConsole {jobId} statusApiBase={statusApi} {fromPipeline} {fromGraph} {fromHub} {graphTask} {onboardingJourney} {m1PlugPoints} />
 </section>
 
 <style>

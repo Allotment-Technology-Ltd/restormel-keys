@@ -27,6 +27,13 @@ export type ModuleFlags = {
    * release. Default OFF — the live north-star IA is unchanged until the cut flips on.
    */
   onboardingJourney: boolean;
+  /**
+   * RES-113 verification-engine plug-points cluster (placement spec §5 — "one
+   * flag, `m1PlugPoints`, default off"). Gates every Build-cluster render surface
+   * (slot rows, preset, receipts) and the PR-8 economics surfaces (Metrics rows +
+   * the run-console "Show details" line). Default OFF — flag-OFF is byte-identical.
+   */
+  m1PlugPoints: boolean;
   /** True when RESTORMEL_MODULE_FLAGS env override is active (skips PostHog). */
   fromEnvOverride: boolean;
 };
@@ -43,7 +50,8 @@ export type ModuleFlagKey =
   | "catalogExternalSignals"
   | "connectHostManagedGraphStore"
   | "monitor"
-  | "onboardingJourney";
+  | "onboardingJourney"
+  | "m1PlugPoints";
 
 /** PostHog feature flag keys (EU project 123553). */
 export const POSTHOG_MODULE_FLAG_KEYS = {
@@ -59,6 +67,7 @@ export const POSTHOG_MODULE_FLAG_KEYS = {
   connectHostManagedGraphStore: "restormel-module-connect-host-managed-graph-store",
   monitor: "restormel-module-monitor",
   onboardingJourney: "restormel-module-onboarding-journey",
+  m1PlugPoints: "restormel-module-m1-plug-points",
 } as const;
 
 /**
@@ -86,6 +95,8 @@ export const MVP_MODULE_DEFAULTS: ModuleFlags = {
   monitor: false,
   // RES-113: onboarding redesign stays OFF in prod until the one-cut flip (REC-ADR-021 §4).
   onboardingJourney: false,
+  // RES-113 verification-engine plug-points: OFF until the cluster's one-cut flip.
+  m1PlugPoints: false,
   fromEnvOverride: false,
 };
 
