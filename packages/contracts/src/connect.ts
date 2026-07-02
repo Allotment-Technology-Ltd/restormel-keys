@@ -1566,3 +1566,156 @@ export const ConnectPipelineProfileUpsertSchema = z.object({
 });
 
 export type ConnectPipelineProfileUpsert = z.infer<typeof ConnectPipelineProfileUpsertSchema>;
+
+// ─── Ingest-connector contract (instance #1: extraction) ─────────────────────
+//
+// REC-ADR-023 (Decision 1) / REC-TECH-014: every ingest stage sits behind a
+// connector contract, not a hardcoded component. This is the contract the
+// verification spine consumes from ANY extractor. It is model-agnostic — the
+// managed default (PaddleOCR-VL) and the curated alternative (Mistral OCR API,
+// pure-extraction) both produce this exact shape. Designed as instance #1 of a
+// general pattern: the embedding/retrieval connector (instance #2, voyage-context-4)
+// reuses `source_locator` unchanged.
+//
+// The through-line is `source_locator`: it must survive extraction → chunking →
+// embedding → retrieval → verification so a verified claim traces to the exact
+// source span (ADR invariant 2). It is door-agnostic — `source_locator` +
+// `version_hash_inputs` are also what enable proxy Tier P2 (full-depth verification
+// over third-party sources).
+
+/**
+ * Offset unit for textual locators. Declared explicitly and stored in the
+ * document so a locator is never resolved against implicit JS `.length` semantics
+ * (a single emoji is length 1 in Python code points, 2 in JS UTF-16 units).
+ * `utf16` is the JS-native `String.prototype.slice` unit; `unicode` is Python-style
+ * code points. Restormel canonical text uses `utf16` (native slice), declared so
+ * any cross-runtime consumer converts deliberately.
+ */
+export const ConnectOffsetUnitSchema = z.enum(['utf16', 'unicode', 'utf8_bytes']);
+export type ConnectOffsetUnit = z.infer<typeof ConnectOffsetUnitSchema>;
+
+/**
+ * Provenance capability tier. Set from the locator kind the extractor ACTUALLY
+ * produced — never inflated (ADR invariant 2, honest tier-labelling).
+ *   - `spatial` = Tier A: bounding boxes, full visual click-through-to-span.
+ *   - `textual` = Tier B: offsets only, text-anchored, no visual highlight.
+ */
+export const ConnectCapabilityTierSchema = z.enum(['spatial', 'textual']);
+export type ConnectCapabilityTier = z.infer<typeof ConnectCapabilityTierSchema>;
+
+/** A bounding box on a page, normalized to [0,1] in page coordinates. */
+export const ConnectBBoxSchema = z.object({
+  x0: z.number().min(0).max(1),
+  y0: z.number().min(0).max(1),
+  x1: z.number().min(0).max(1),
+  y1: z.number().min(0).max(1)
+});
+export type ConnectBBox = z.infer<typeof ConnectBBoxSchema>;
+
+/**
+ * The provenance anchor. Discriminated on `kind` so the tier a locator supports
+ * is a type-level fact, not a runtime guess:
+ *   - `spatial` (Tier A): page + bbox for visual click-through.
+ *   - `textual` (Tier B): offset + length into the document's canonical text,
+ *     in the document's declared `offset_unit`; optional `path` (e.g. a DOM/JSON
+ *     pointer) for structured sources.
+ */
+export const ConnectSourceLocatorSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('spatial'),
+    page: z.number().int().nonnegative(),
+    bbox: ConnectBBoxSchema,
+    /**
+     * Spatial locators STILL carry textual offsets into canonical text so the
+     * quote-in-doc re-match fallback works and chunking/verification are
+     * offset-driven regardless of tier. Absent only if the extractor cannot
+     * place the unit in the canonical text stream.
+     */
+    offset: z.number().int().nonnegative().optional(),
+    length: z.number().int().nonnegative().optional()
+  }),
+  z.object({
+    kind: z.literal('textual'),
+    offset: z.number().int().nonnegative(),
+    length: z.number().int().nonnegative(),
+    path: z.string().max(500).optional()
+  })
+]);
+export type ConnectSourceLocator = z.infer<typeof ConnectSourceLocatorSchema>;
+
+/** Structural block type of a text unit (best-effort; extractor-supplied). */
+export const ConnectBlockTypeSchema = z.enum([
+  'title',
+  'heading',
+  'paragraph',
+  'list_item',
+  'table',
+  'table_cell',
+  'caption',
+  'footnote',
+  'code',
+  'other'
+]);
+export type ConnectBlockType = z.infer<typeof ConnectBlockTypeSchema>;
+
+/**
+ * A single extracted unit. `text` is VERBATIM — no LLM reshaping, no cleaning.
+ * Any harmonization (whitespace collapse, Unicode folding) belongs downstream in
+ * the eval harness or in an offset-preserving transform, never in stored `text`.
+ */
+export const ConnectTextUnitSchema = z.object({
+  /** Verbatim, faithful text — the material for span-binding. No transformation. */
+  text: z.string(),
+  source_locator: ConnectSourceLocatorSchema,
+  /** Per-unit extractor confidence in [0,1]; feeds ingest-level abstention. */
+  confidence: z.number().min(0).max(1),
+  block_type: ConnectBlockTypeSchema.optional(),
+  /** Reading-order rank within the document (0-based); enables order assertions. */
+  reading_order: z.number().int().nonnegative().optional()
+});
+export type ConnectTextUnit = z.infer<typeof ConnectTextUnitSchema>;
+
+/**
+ * Document-level extraction metadata. `version_hash_inputs` are the exact strings
+ * hashed to produce the source-version hash (canonical extracted text hash AND raw
+ * file hash) — stored so a verdict's cache key and a claim's provenance both pin to
+ * a deterministic, re-computable version, and an extractor swap re-versions the hash
+ * (invalidating dependent verdicts by construction).
+ */
+export const ConnectExtractedDocumentSchema = z.object({
+  source_id: z.string().min(1),
+  /**
+   * The inputs hashed for the source-version hash. `canonical_text_sha256` binds
+   * verdicts to the exact extracted text; `raw_file_sha256` binds to the byte source.
+   * `extractor_id` + `extractor_version` are included so swapping the extractor
+   * re-versions the hash (REC-PLAN-023 cache discipline: extractor swap invalidates
+   * dependents).
+   */
+  version_hash_inputs: z.object({
+    canonical_text_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    raw_file_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    extractor_id: z.string().min(1),
+    extractor_version: z.string().min(1)
+  }),
+  language: z.string().min(2).max(35).optional(),
+  page_count: z.number().int().nonnegative().optional(),
+  /** Honest tier label — the highest fidelity EVERY unit supports, not the best-case. */
+  capability_tier: ConnectCapabilityTierSchema,
+  /** The unit all textual offsets in this document are expressed in. */
+  offset_unit: ConnectOffsetUnitSchema
+});
+export type ConnectExtractedDocument = z.infer<typeof ConnectExtractedDocumentSchema>;
+
+/**
+ * The full `extract(source_document)` return shape — the core deliverable.
+ * Consumed identically by the verification spine regardless of which connector
+ * (managed default / curated alternative / textual fallback) produced it.
+ */
+export const ConnectExtractionResultSchema = z.object({
+  document: ConnectExtractedDocumentSchema,
+  text_units: z.array(ConnectTextUnitSchema)
+});
+export type ConnectExtractionResult = z.infer<typeof ConnectExtractionResultSchema>;
+
+/** Canonical connect canonical-text offset unit: JS-native slice semantics. */
+export const CONNECT_CANONICAL_OFFSET_UNIT: ConnectOffsetUnit = 'utf16';

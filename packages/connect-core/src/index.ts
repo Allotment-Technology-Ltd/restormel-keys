@@ -250,6 +250,72 @@ export {
 
 export { extractLinks, parseSitemapUrls, sitemapUrlFor } from "./ingest/crawl.js";
 
+// Ingest-connector abstraction — instance #1: extraction (REC-TECH-014, build step 1A).
+export {
+  ExtractionError,
+  deriveCapabilityTier,
+  CANONICAL_OFFSET_UNIT,
+  type ExtractionConnector,
+  type ExtractionSourceDocument,
+} from "./ingest/extraction-connector.js";
+
+export {
+  buildCanonicalText,
+  computeVersionHashInputs,
+  sourceVersionHash,
+  locatorOffsets,
+  reresolveLocator,
+  assertProvenanceRoundTrip,
+  type VersionHashInputs,
+  type LocatorResolution,
+  type RoundTripReport,
+} from "./ingest/extraction-provenance.js";
+
+export {
+  TextualFallbackExtractionConnector,
+  textualFallbackExtractionConnector,
+} from "./ingest/extraction-connectors/textual-fallback.js";
+
+export {
+  PaddleOcrVlExtractionConnector,
+  createPaddleOcrVlConnector,
+  type PaddleOcrVlResponse,
+  type PaddleOcrVlTransport,
+} from "./ingest/extraction-connectors/paddleocr-vl.js";
+
+export {
+  MistralOcrExtractionConnector,
+  createMistralOcrConnector,
+  type MistralOcrResponse,
+  type MistralOcrTransport,
+} from "./ingest/extraction-connectors/mistral-ocr.js";
+
+export {
+  EXTRACTION_CONNECTOR_KEYS,
+  selectExtractionConnector,
+  type ExtractionConnectorKey,
+  type ExtractionTransports,
+} from "./ingest/extraction-selection.js";
+
+export {
+  runConformance,
+  type ConformanceCase,
+  type ConformanceFindings,
+} from "./ingest/extraction-conformance.js";
+
+export {
+  runSwapTest,
+  type ConnectorRunSummary,
+  type SwapTestDelta,
+} from "./ingest/extraction-swap-test.js";
+
+export {
+  runIndicativeValidation,
+  type IndicativeCorpusItem,
+  type IndicativeItemResult,
+  type IndicativeReport,
+} from "./ingest/extraction-validation-harness.js";
+
 export {
   extractSourceMetadataFromHtml,
   formatSourceProvenancePreview,
