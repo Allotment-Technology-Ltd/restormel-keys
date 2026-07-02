@@ -21,6 +21,8 @@ vi.mock("$lib/server/db", () => ({
   listRoutes: vi.fn().mockResolvedValue([]),
   listRequestLogs: vi.fn().mockResolvedValue([]),
   listPolicyBindingsForWorkspace: vi.fn().mockResolvedValue([]),
+  // RES-113 PR-3: connection-name attribution for the flag-ON activity rows.
+  listApiKeysByWorkspace: vi.fn().mockResolvedValue([]),
 }));
 
 // R2: the relocated hub-home panel loads are mocked at their boundary — this
@@ -263,5 +265,116 @@ describe("load signed-out guard", () => {
     expect(result.connectCompletion.storeConnected).toBe(false);
     expect(result.connectCompletion.agentReady).toBe(false);
     await expect(result.trustStrip).resolves.toBe(null);
+  });
+});
+
+// ── 4. RES-113 PR-3 — flag-gated journey additions (graphName + homeActivity) ─
+
+type JourneyLoadResult = LoadResult & {
+  graphName: string | null;
+  homeActivity: Promise<
+    { id: string; connectionName: string; createdAt: number }[] | null
+  >;
+};
+
+describe("RES-113 PR-3 load additions — flag-gated, inert when OFF", () => {
+  it("flag OFF: graphName is null, homeActivity resolves null, no key query issued", async () => {
+    const { listApiKeysByWorkspace } = await import("$lib/server/db");
+    vi.mocked(listApiKeysByWorkspace).mockClear();
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: { user: { uid: "u-off", authType: "session" } }, // no moduleFlags ⇒ defaults (flag OFF)
+    } as never);
+    const result = rawResult as JourneyLoadResult;
+
+    expect(result.graphName).toBeNull();
+    await expect(result.homeActivity).resolves.toBeNull();
+    expect(listApiKeysByWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("flag ON: graphName quotes the graph target label (never fabricated)", async () => {
+    const { getGraphTargetForUi } = await import("$lib/server/connect/graph-target-service");
+    vi.mocked(getGraphTargetForUi).mockResolvedValueOnce({
+      status: "ok",
+      label: "acme-graph",
+    } as never);
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: {
+        user: { uid: "u-on", authType: "session" },
+        moduleFlags: { onboardingJourney: true },
+      },
+    } as never);
+    const result = rawResult as JourneyLoadResult;
+
+    expect(result.graphName).toBe("acme-graph");
+  });
+
+  it("flag ON: graphName is null (not a placeholder) when the target has no label", async () => {
+    const { getGraphTargetForUi } = await import("$lib/server/connect/graph-target-service");
+    vi.mocked(getGraphTargetForUi).mockResolvedValueOnce({ status: "ok" } as never);
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: {
+        user: { uid: "u-on2", authType: "session" },
+        moduleFlags: { onboardingJourney: true },
+      },
+    } as never);
+
+    expect((rawResult as JourneyLoadResult).graphName).toBeNull();
+  });
+
+  it("flag ON: homeActivity attributes rows to connection names and EXCLUDES ingest traffic", async () => {
+    const { listRequestLogs, listApiKeysByWorkspace } = await import("$lib/server/db");
+    const now = Date.now();
+    vi.mocked(listRequestLogs).mockResolvedValue([
+      { id: "r1", gatewayKeyId: "k1", source: null, createdAt: now - 60000 },
+      // Ingest traffic is the pipeline WRITING, not the app asking — excluded.
+      { id: "r2", gatewayKeyId: "k1", source: "connect_ingest", createdAt: now - 120000 },
+      // Unattributed request → honest generic name, never a fabricated key.
+      { id: "r3", gatewayKeyId: null, source: null, createdAt: now - 180000 },
+    ] as never);
+    vi.mocked(listApiKeysByWorkspace).mockResolvedValue([
+      { id: "k1", label: "support-agent", keyPrefix: "rk_abc12345" },
+    ] as never);
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: {
+        user: { uid: "u-on3", authType: "session" },
+        moduleFlags: { onboardingJourney: true },
+      },
+    } as never);
+    const rows = await (rawResult as JourneyLoadResult).homeActivity;
+
+    expect(rows).not.toBeNull();
+    expect(rows!.map((r) => r.id)).toEqual(["r1", "r3"]);
+    expect(rows![0].connectionName).toBe("support-agent");
+    expect(rows![1].connectionName).toBe("Your app");
+
+    // Restore the shared mock for other tests.
+    vi.mocked(listRequestLogs).mockResolvedValue([] as never);
+    vi.mocked(listApiKeysByWorkspace).mockResolvedValue([] as never);
+  });
+
+  it("flag ON: homeActivity resolves null (recovery state) when the log read fails", async () => {
+    const { listRequestLogs } = await import("$lib/server/db");
+    // The load calls listRequestLogs several times (anyLogs / livePulse / activity);
+    // reject them all — every consumer of this mock is failure-tolerant.
+    vi.mocked(listRequestLogs).mockRejectedValue(new Error("store unavailable"));
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: {
+        user: { uid: "u-on4", authType: "session" },
+        moduleFlags: { onboardingJourney: true },
+      },
+    } as never);
+    await expect((rawResult as JourneyLoadResult).homeActivity).resolves.toBeNull();
+
+    vi.mocked(listRequestLogs).mockResolvedValue([] as never);
   });
 });

@@ -44,6 +44,13 @@
    * graph" after ingest. Default false ⇒ the shipped Answer Console is unchanged.
    */
   export let onboarding = false;
+  /**
+   * RES-113 PR-3 — a question handed off from Home's ask box (`?q=`), asked
+   * immediately on mount so the user never re-types it (WCAG 3.3.7). The proof
+   * load supplies it ONLY when `onboardingJourney` is on; the default null keeps
+   * the flag-OFF console byte-for-byte unchanged.
+   */
+  export let initialQuestion: string | null = null;
 
   /** First-run strip is shown until dismissed; only meaningful over the demo graph. */
   let firstRunDismissed = false;
@@ -322,6 +329,10 @@
   onMount(() => {
     void loadSuggestions();
     if (!noRoutes) void refreshRoutingContext();
+    // RES-113 PR-3: ask the handed-off Home question immediately (see the prop
+    // doc-comment above) — same flow as a typed question, nothing bespoke.
+    const handoff = initialQuestion?.trim();
+    if (handoff && !noRoutes) void ask(handoff);
   });
 
   onDestroy(() => {

@@ -34,6 +34,7 @@ import {
   listRoutes,
   listRequestLogs,
   listPolicyBindingsForWorkspace,
+  listApiKeysByWorkspace,
 } from "$lib/server/db";
 import { getWorkspaceEntitlements } from "$lib/server/entitlements";
 import {
@@ -49,6 +50,7 @@ import type { ConnectReadinessStatus } from "$lib/connect/verified-readiness";
 import { getGraphTargetForUi } from "$lib/server/connect/graph-target-service";
 import { listConnectIngestJobsForWorkspace } from "$lib/server/neon";
 import { isSignedInSession } from "$lib/server/session-user";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
 /**
  * True when this instance is running in a non-production (self-host / dev) context.
@@ -80,6 +82,20 @@ export type ConnectReadinessSummary = {
   status: ConnectReadinessStatus;
 };
 
+/**
+ * RES-113 PR-3 (flag-ON only): one row of the LIVE-state "Recent activity" panel —
+ * a real gateway request attributed to the connection (gateway key) that made it.
+ * Ingest traffic (`source === "connect_ingest"`) is excluded: the panel shows the
+ * app/agent ASKING, not the pipeline writing (honesty, REC-ADR-016).
+ */
+export type HomeActivityRow = {
+  id: string;
+  /** Connection (gateway key) label; "Your app" when the request carries no key attribution. */
+  connectionName: string;
+  /** Request timestamp (ms epoch) for the "{relative time} ago" render. */
+  createdAt: number;
+};
+
 export type ConnectCompletionSignals = {
   /** A graph store has been connected (Neon or SurrealDB). */
   storeConnected: boolean;
@@ -93,6 +109,10 @@ export type ConnectCompletionSignals = {
 
 export const load: PageServerLoad = async (event) => {
   const { locals } = event;
+  // RES-113 PR-3: the journey Home shell (flag-ON only) needs a graph display name
+  // and the LIVE-state activity rows. Both are computed ONLY when the flag is on —
+  // the flag-OFF path issues the exact same queries as before (byte-identity).
+  const journeyOn = Boolean((locals.moduleFlags ?? MVP_MODULE_DEFAULTS).onboardingJourney);
   if (!locals.user) {
     return {
       projects: [],
@@ -116,6 +136,9 @@ export const load: PageServerLoad = async (event) => {
       // Streamed — null until resolved; page renders without it.
       trustStrip: Promise.resolve(null) as Promise<import("@restormel/contracts").ConnectTrustScorecard | null>,
       connectReadiness: Promise.resolve(null) as Promise<ConnectReadinessSummary | null>,
+      // RES-113 PR-3 (flag-ON only; inert null on flag-OFF / signed-out).
+      graphName: null as string | null,
+      homeActivity: Promise.resolve(null) as Promise<HomeActivityRow[] | null>,
       ...signedOutHubDefaults(),
     };
   }
@@ -306,6 +329,30 @@ export const load: PageServerLoad = async (event) => {
       };
     })();
 
+    // RES-113 PR-3 (flag-ON only): the LIVE-state activity rows — the most recent
+    // gateway requests attributed to their connection (gateway key) names. Streamed;
+    // resolves to null on failure (the shell renders its error state with a retry).
+    // Ingest traffic is excluded — the panel shows the app ASKING, never the
+    // pipeline writing. Flag-OFF: no queries issued, resolves null (inert).
+    const homeActivityPromise: Promise<HomeActivityRow[] | null> = journeyOn
+      ? (async () => {
+          const [logs, keys] = await Promise.all([
+            listRequestLogs(wsId, { limit: 25 }),
+            listApiKeysByWorkspace(wsId).catch(() => []),
+          ]);
+          const nameByKeyId = new Map(keys.map((k) => [k.id, k.label ?? k.keyPrefix]));
+          return logs
+            .filter((l) => l.source !== "connect_ingest")
+            .slice(0, 5)
+            .map((l) => ({
+              id: l.id,
+              connectionName:
+                (l.gatewayKeyId ? nameByKeyId.get(l.gatewayKeyId) : null) ?? "Your app",
+              createdAt: l.createdAt,
+            }));
+        })().catch(() => null)
+      : Promise.resolve(null);
+
     // Trust strip: peek only — never blocks the page shell (statsMode: "peek").
     // The Overview QUOTES the scorecard service score; it never recomputes.
     // A test in activity.test.ts asserts no second formula exists here.
@@ -385,6 +432,11 @@ export const load: PageServerLoad = async (event) => {
       trustStrip: trustStripPromise,
       // Streamed — K4 readiness summary chip for the Verified context journey section.
       connectReadiness: connectReadinessPromise,
+      // RES-113 PR-3 (flag-ON only): graph display name for the persistent hero.
+      // The graph target's label is the closest real user-facing graph name today;
+      // null (⇒ the shell renders "Your graph") when absent — never fabricated.
+      graphName: journeyOn ? (target?.label ?? null) : null,
+      homeActivity: homeActivityPromise,
       ...hubPanels,
     };
   } catch (e) {
@@ -411,6 +463,8 @@ export const load: PageServerLoad = async (event) => {
       } as ConnectCompletionSignals,
       trustStrip: Promise.resolve(null),
       connectReadiness: Promise.resolve(null) as Promise<ConnectReadinessSummary | null>,
+      graphName: null as string | null,
+      homeActivity: Promise.resolve(null) as Promise<HomeActivityRow[] | null>,
       ...hubPanels,
     };
   }

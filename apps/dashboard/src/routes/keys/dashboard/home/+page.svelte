@@ -22,20 +22,23 @@
   import ConnectSpineLedger from "$lib/components/connect/ConnectSpineLedger.svelte";
   import ConnectGraphSwitcher from "$lib/components/connect/ConnectGraphSwitcher.svelte";
   import ConnectTrustScorecard from "$lib/components/connect/ConnectTrustScorecard.svelte";
-  import M2VerifyHub from "$lib/components/connect/m2/M2VerifyHub.svelte";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
-  import type { MakeReadySignals } from "$lib/connect/make-ready-hub";
   import BrutalPageHeader from "$lib/components/brutalist/BrutalPageHeader.svelte";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import TrustSparkline from "./TrustSparkline.svelte";
   import { isActiveIngestJobStatus } from "$lib/connect/connect-journey";
-  import { invalidateAll } from "$app/navigation";
+  import { deriveHomeState, type HomeStateSignals } from "$lib/connect/home-state";
+  import { journeyStageName } from "$lib/connect/stage-vocabulary";
+  import { invalidateAll, goto } from "$app/navigation";
   import {
+    ANSWER_CONSOLE_HREF,
     CLAIMS_MEMORY_HREF,
+    CONNECT_HUB_HREF,
     INGEST_FLOW_HREF,
     RUNS_HREF,
+    VERIFY_HREF,
   } from "$lib/nav-config";
   import {
     PROVE_LINK_CLASS,
@@ -48,7 +51,11 @@
     ConnectEvalVerdictEntry,
   } from "@restormel/contracts";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import type { ConnectCompletionSignals, ConnectReadinessSummary } from "./+page.server";
+  import type {
+    ConnectCompletionSignals,
+    ConnectReadinessSummary,
+    HomeActivityRow,
+  } from "./+page.server";
 
   const LOGS_AGENT_HREF = DASHBOARD_BASE + "/logs?source=agent";
 
@@ -123,44 +130,114 @@
     graphPulse: Promise<ConnectGraphPulse | null>;
     scorecard: Promise<ConnectTrustScorecardData | null>;
     qualityHistory: Promise<ConnectEvalVerdictEntry[]>;
+    /** RES-113 PR-3 (flag-ON only; null flag-OFF): graph display name for the hero. */
+    graphName: string | null;
+    /** RES-113 PR-3 (flag-ON only; resolves null flag-OFF): LIVE-state activity rows. */
+    homeActivity: Promise<HomeActivityRow[] | null>;
   };
 
   const isFree = data.entitlements?.plan === "free";
 
-  // RES-113 (PR-D): the M2 "Verify" make-ready hub reskins this verified-context
-  // masthead behind the onboarding flag. Default OFF → the existing masthead below
-  // renders byte-for-byte unchanged (the {:else} branch).
+  // RES-113 PR-3 (REC-ADR-022): the journey Home shell — a single state switch over
+  // `deriveHomeState()` — supersedes the M2VerifyHub mount behind the onboarding
+  // flag. Default OFF → the existing masthead below renders byte-for-byte unchanged
+  // (the {:else} branch).
   $: onboardingJourney = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).onboardingJourney;
 
-  /** Map the streamed scorecard + hub graph-stats onto the M2 make-ready signals. */
-  function makeReadySignals(
+  // Journey-nav signals hoisted by the layout (PR-2). Flag-ON only; the extra
+  // counts are null on the flag-OFF path (inert there — never read).
+  $: journeyNavSignals = ($page.data.journeySignals ?? null) as {
+    sourceCount: number | null;
+    connectionCount: number | null;
+  } | null;
+  $: journeyConnectionCount = journeyNavSignals?.connectionCount ?? 0;
+  $: journeySourceCount = journeyNavSignals?.sourceCount ?? null;
+
+  /**
+   * Map the streamed scorecard + hub payload onto the `deriveHomeState` signals
+   * (home-state.ts, PR-2). Reveal predicates (ux-craft 2.1): the Verify ghost tile
+   * renders only on `homeState.showVerifyGhost` (graph built AND flagged > 0 —
+   * `resolveM2Surface` would read "triage"); the ask box mounts from BUILT onward;
+   * the activity panel mounts inside LIVE only (copy pack §1).
+   */
+  function homeSignals(
     card: ConnectTrustScorecardData | null,
     hub: ConnectHubPayload | null,
-  ): MakeReadySignals {
+    connectionCount: number,
+  ): HomeStateSignals {
     const stats = hub?.journey.stats ?? null;
-    const v = stats?.validation;
     return {
       trustScore: card?.trust_score ?? null,
-      lastVerifiedAt: card?.last_verified_at ?? null,
       units: card?.units ?? stats?.units ?? 0,
-      embedded: card?.embedding.embedded ?? stats?.embedded ?? 0,
-      evidence: card
-        ? {
-            bound: card.evidence.bound,
-            unbound: card.evidence.unbound,
-            noEvidence: card.evidence.no_evidence,
-            boundPct: card.evidence.bound_pct,
-          }
-        : null,
-      validation: {
-        ok: v?.ok ?? 0,
-        weak: v?.weak ?? 0,
-        unsupported: v?.unsupported ?? 0,
-        unvalidated: v?.unvalidated ?? 0,
-        awaitingTriage: v?.awaiting_triage ?? 0,
-        unsupportedUntriaged: v?.unsupported_untriaged ?? 0,
-      },
+      awaitingTriage: stats?.validation.awaiting_triage ?? 0,
+      connectionCount,
+      latestJob: hub?.journey.latestJob ?? null,
     };
+  }
+
+  /**
+   * Hero connection chip (copy pack §1 Hero). `LIVE` renders ONLY from real
+   * observed traffic (REC-ADR-016 honesty rule — same as Connect S2); a mere
+   * existing connection reads `CONNECTED`.
+   */
+  function connectionChip(
+    connectionCount: number,
+    requestCount24h: number,
+  ): { label: string; aria: string; live: boolean } {
+    if (connectionCount > 0 && requestCount24h > 0) {
+      return { label: "LIVE", aria: "Live — serving answers to your app", live: true };
+    }
+    if (connectionCount > 0) {
+      return { label: "CONNECTED", aria: "Connected — no requests served yet", live: false };
+    }
+    return { label: "NOT CONNECTED", aria: "Not connected — no app is using this graph yet", live: false };
+  }
+
+  /** Ask box (mounts from BUILT onward): hands the question to the Answer Console. */
+  let askQuestion = "";
+  function submitAsk() {
+    const q = askQuestion.trim();
+    if (!q) return;
+    void goto(`${ANSWER_CONSOLE_HREF}?q=${encodeURIComponent(q)}`);
+  }
+
+  // Focus relocation targets: the {#await}/{#if} swaps below destroy the retry
+  // buttons mid-action, so each retry explicitly relocates focus (a11y skill —
+  // never let focus drop to <body> on a conditional swap).
+  let heroHeadingEl: HTMLHeadingElement | null = null;
+  let journeyErrorEl: HTMLDivElement | null = null;
+  let activityHeadingEl: HTMLHeadingElement | null = null;
+
+  let retryingJourney = false;
+  async function retryJourney() {
+    retryingJourney = true;
+    try {
+      await invalidateAll();
+    } finally {
+      retryingJourney = false;
+      requestAnimationFrame(() => (journeyErrorEl ?? heroHeadingEl)?.focus());
+    }
+  }
+
+  let retryingActivity = false;
+  async function retryActivity() {
+    retryingActivity = true;
+    try {
+      await invalidateAll();
+    } finally {
+      retryingActivity = false;
+      requestAnimationFrame(() => activityHeadingEl?.focus());
+    }
+  }
+
+  /** "9m" / "2h" / "3d" from a ms-epoch timestamp (activity rows). */
+  function fmtAgoFromMs(ms: number): string {
+    if (!Number.isFinite(ms)) return "";
+    const mins = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 48) return `${hrs}h`;
+    return `${Math.round(hrs / 24)}d`;
   }
 
   let retryingHub = false;
@@ -249,10 +326,60 @@
   <title>Home – Restormel Dashboard</title>
 </svelte:head>
 
-<BrutalPageHeader
-  title="Home"
-  description="One screen for the daily loop — trust, review queue, last run, and live agent traffic."
-/>
+{#if onboardingJourney}
+  <!-- RES-113 PR-3: state-derived copy lives in the states below — the legacy
+       operator-loop description is jargon-first for a novice (copy pack §1). -->
+  <BrutalPageHeader title="Home" />
+{:else}
+  <BrutalPageHeader
+    title="Home"
+    description="One screen for the daily loop — trust, review queue, last run, and live agent traffic."
+  />
+{/if}
+
+{#snippet homeAskBox(primary: boolean)}
+  <!-- Ask box (copy pack §1.3): mounts from BUILT onward. Submit is secondary-styled
+       in BUILT and becomes the ONE yellow primary in LIVE (Appendix A-6). Submission
+       hands the question to the Answer Console (`?q=`) — the console asks it
+       immediately, so the user never re-types it (WCAG 3.3.7). -->
+  <div class="panel ask-box">
+    {#if primary}
+      <h3 class="state-headline ask-heading">Ask your graph</h3>
+    {/if}
+    <form class="ask-form" on:submit|preventDefault={submitAsk}>
+      <label class="ask-label" for="home-ask-input">Your question</label>
+      <div class="ask-row">
+        <input
+          id="home-ask-input"
+          class="input brut-focus"
+          type="text"
+          bind:value={askQuestion}
+        />
+        <button type="submit" class="btn {primary ? 'btn-primary' : 'btn-outline'}">Ask</button>
+      </div>
+      <p class="ask-helper">
+        Every answer comes with citations — links to the exact passages it came from.
+      </p>
+    </form>
+  </div>
+{/snippet}
+
+{#snippet verifyGhostTile(count: number)}
+  <!-- Verify ghost tile (copy pack §3.4, triage row): the SOLE M2 presence on Home.
+       Reveal predicate: graph built AND flagged > 0 (`homeState.showVerifyGhost` —
+       the state where `resolveM2Surface` reads "triage"). Always ghost, no dot —
+       the text carries the state (Appendix A-3). -->
+  <div class="panel ghost-tile">
+    <p class="tile-line">
+      {count === 1
+        ? "1 fact couldn't be matched to a source yet."
+        : `${count.toLocaleString()} facts couldn't be matched to a source yet.`}
+    </p>
+    <a class="tile-link brut-focus" href={VERIFY_HREF}>
+      {count === 1 ? "Review 1 fact" : `Review ${count.toLocaleString()} facts`}
+    </a>
+  </div>
+{/snippet}
 
 {#if data.projectsError}
   <p class="error-msg" role="alert">
@@ -270,14 +397,173 @@
   {/if}
 
   {#if onboardingJourney}
-    <!-- RES-113 M2: the make-ready hub supersedes the verified-context masthead.
-         Reuses the SAME streamed scorecard + readiness ledger + graph stats. -->
-    {#await Promise.all([data.scorecard, data.hub]) then [card, hub]}
-      <M2VerifyHub
-        signals={makeReadySignals(card, hub)}
-        scorecard={data.scorecard}
-        readiness={hub?.readiness ?? null}
-      />
+    <!-- ── RES-113 PR-3 (REC-ADR-022): the journey Home shell ─────────────────
+         ONE exhaustive switch over `deriveHomeState()` (home-state.ts). An empty
+         workspace renders ONLY the M0/M1 invitation; the full M2VerifyHub no
+         longer mounts on Home — its `resolveM2Surface` gate reads "hidden" on
+         EMPTY, and in triage the sole M2 presence is the ghost Verify tile
+         (copy pack §3.4). All strings verbatim from the copy pack (§1). -->
+    {#await Promise.all([data.scorecard, data.hub])}
+      <ConnectPageSkeleton variant="hub" />
+    {:then [card, hub]}
+      {#if !hub?.journey}
+        <div class="journey-error" tabindex="-1" bind:this={journeyErrorEl}>
+          <BrutalErrorBanner
+            title="Workspace unavailable"
+            message="Could not load your workspace. Your data is unaffected — this is a load failure."
+          >
+            {#snippet actions()}
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                disabled={retryingJourney}
+                on:click={retryJourney}
+              >
+                {retryingJourney ? "Retrying…" : "Try again"}
+              </button>
+            {/snippet}
+          </BrutalErrorBanner>
+        </div>
+      {:else}
+        {@const home = deriveHomeState(homeSignals(card, hub, journeyConnectionCount))}
+        {@const chip = connectionChip(home.connectionCount, data.livePulse?.requestCount24h ?? 0)}
+
+        <!-- Persistent graph hero (copy pack §1 Hero): name + real counts + chip.
+             EMPTY renders no metric row — nothing is fabricated (§2.3). -->
+        <section class="graph-hero" aria-labelledby="graph-hero-h">
+          <div class="hero-row">
+            <h2 id="graph-hero-h" class="hero-title" tabindex="-1" bind:this={heroHeadingEl}>
+              {home.kind === "empty" ? "Your graph" : (data.graphName ?? "Your graph")}
+            </h2>
+            <span class="hero-chip" class:hero-chip--live={chip.live} role="img" aria-label={chip.aria}>
+              {#if chip.live}<span class="hero-chip-dot" aria-hidden="true"></span>{/if}{chip.label}
+            </span>
+          </div>
+          {#if home.units > 0}
+            <p class="hero-metrics">
+              <span>{home.units.toLocaleString()} {home.units === 1 ? "fact" : "facts"}</span>
+              {#if journeySourceCount !== null}
+                <span aria-hidden="true">·</span>
+                <span>{journeySourceCount.toLocaleString()} {journeySourceCount === 1 ? "source" : "sources"}</span>
+              {/if}
+              {#if home.trustScore !== null}
+                <!-- trustScore null ⇒ this segment is ABSENT (never a "—"). -->
+                <span aria-hidden="true">·</span>
+                <span
+                  class="hero-trust"
+                  title="Trust score {home.trustScore} of 100 — how strongly your answers are backed by your documents. Quoted from your trust scorecard."
+                >trust score {home.trustScore}<span class="sr-only">
+                    of 100 — how strongly your answers are backed by your documents. Quoted from
+                    your trust scorecard.</span></span>
+              {/if}
+            </p>
+          {/if}
+        </section>
+
+        {#if home.kind === "empty"}
+          <!-- HOME · EMPTY (copy pack §1.1): hero + one sentence + one CTA. NOTHING
+               else mounts — no meter, gates, triage, ledger, scorecard, activity. -->
+          <section class="home-state" aria-labelledby="home-empty-h">
+            <h3 id="home-empty-h" class="state-headline">
+              Turn your documents into answers you can check
+            </h3>
+            <p class="state-body">
+              Add a few documents. Restormel links the facts inside them into a graph — your
+              documents, connected — so every answer can show exactly where it came from.
+            </p>
+            <a class="btn btn-primary" href={INGEST_FLOW_HREF}>
+              Add your documents <span aria-hidden="true">→</span>
+            </a>
+            <p class="state-muted">Usually a few minutes from first document to first answer.</p>
+          </section>
+        {:else if home.kind === "ingest_running"}
+          <!-- HOME · INGEST RUNNING (copy pack §1.2): one honest run-status block
+               naming the real stage (shared stage table §0 — never a raw stage key). -->
+          <section class="home-state" aria-labelledby="home-run-h">
+            <h3 id="home-run-h" class="state-headline">Building your graph</h3>
+            <p class="state-body" role="status">
+              {journeyStageName(home.runStage)}… usually 1–3 minutes.
+            </p>
+            <a
+              class="btn btn-primary"
+              href={home.runJobId ? `${RUNS_HREF}/${home.runJobId}?from=home` : RUNS_HREF}
+            >
+              View progress <span aria-hidden="true">→</span>
+            </a>
+            <p class="state-muted">
+              You can leave this page — we'll keep working and show progress here.
+            </p>
+          </section>
+        {:else if home.kind === "built_not_connected"}
+          <!-- HOME · BUILT, NOT CONNECTED (copy pack §1.3): next-step block + ask box
+               (secondary submit) + Verify ghost tile only when flagged > 0. -->
+          <section class="home-state" aria-labelledby="home-built-h">
+            <h3 id="home-built-h" class="state-headline">
+              Try a question, then connect your app
+            </h3>
+            <p class="state-body">
+              Ask below to see your graph answer from your documents — then connect your app or
+              AI agent so it can do the same.
+            </p>
+            <a class="btn btn-primary" href={CONNECT_HUB_HREF}>
+              Connect your app or agent <span aria-hidden="true">→</span>
+            </a>
+            <p class="state-muted">Takes about two minutes — you get a key your app can use.</p>
+          </section>
+          {@render homeAskBox(false)}
+          {#if home.showVerifyGhost}
+            {@render verifyGhostTile(home.flaggedCount)}
+          {/if}
+        {:else}
+          <!-- HOME · LIVE (copy pack §1.4): ask box promoted to primary + Verify ghost
+               tile only while flagged > 0 + Connect tile (ghost) + activity panel
+               (this state ONLY — moved inside LIVE per plan §3.1). -->
+          {@render homeAskBox(true)}
+          {#if home.showVerifyGhost}
+            {@render verifyGhostTile(home.flaggedCount)}
+          {/if}
+          <div class="panel ghost-tile">
+            <p class="tile-line">
+              Connected · {home.connectionCount === 1
+                ? "1 connection"
+                : `${home.connectionCount.toLocaleString()} connections`}
+            </p>
+            <a class="tile-link brut-focus" href={CONNECT_HUB_HREF}>Manage connections</a>
+          </div>
+          <section class="panel activity-panel" aria-labelledby="home-activity-h">
+            <h3 id="home-activity-h" class="cell-h" tabindex="-1" bind:this={activityHeadingEl}>
+              Recent activity
+            </h3>
+            {#await data.homeActivity}
+              <p class="state-muted">Loading activity… usually a few seconds.</p>
+            {:then rows}
+              {#if rows === null}
+                <p class="state-muted">We couldn't load recent activity. Try again.</p>
+                <button
+                  type="button"
+                  class="btn btn-outline btn-sm"
+                  disabled={retryingActivity}
+                  on:click={retryActivity}
+                >
+                  {retryingActivity ? "Retrying…" : "Try again"}
+                </button>
+              {:else if rows.length === 0}
+                <p class="state-muted">
+                  No requests yet. When your app asks a question, it shows up here.
+                </p>
+              {:else}
+                <ul class="activity-list">
+                  {#each rows as row (row.id)}
+                    <li class="activity-row">
+                      {row.connectionName} asked · {fmtAgoFromMs(row.createdAt)} ago
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            {/await}
+          </section>
+        {/if}
+      {/if}
     {/await}
   {:else}
   <!-- ── 1. Trust cap — the masthead numeral (NS §3.3 / rubric R3-V1, R3-V2) ──
@@ -512,16 +798,20 @@
   {/await}
   {/if}
 
-  <!-- Live gateway pulse — the request console below the masthead. -->
-  <section class="panel pulse-panel" aria-labelledby="pulse-h">
-    <h2 id="pulse-h" class="cell-h">Recent activity</h2>
-    {#if isFree && (!data.livePulse || data.livePulse.requestCount24h === 0)}
-      <p class="empty-msg">No requests yet. Make your first test request to see activity here.</p>
-      <a class="btn btn-primary btn-sm" href={DASHBOARD_BASE + "/sandbox"}>Try a test request →</a>
-    {:else}
-      <LivePulse pulse={data.livePulse} isFreeTier={isFree} />
-    {/if}
-  </section>
+  {#if !onboardingJourney}
+    <!-- Live gateway pulse — the request console below the masthead. Flag-OFF only:
+         the journey shell renders its activity panel INSIDE the LIVE state above
+         (RES-113 PR-3 / plan §3.1). -->
+    <section class="panel pulse-panel" aria-labelledby="pulse-h">
+      <h2 id="pulse-h" class="cell-h">Recent activity</h2>
+      {#if isFree && (!data.livePulse || data.livePulse.requestCount24h === 0)}
+        <p class="empty-msg">No requests yet. Make your first test request to see activity here.</p>
+        <a class="btn btn-primary btn-sm" href={DASHBOARD_BASE + "/sandbox"}>Try a test request →</a>
+      {:else}
+        <LivePulse pulse={data.livePulse} isFreeTier={isFree} />
+      {/if}
+    </section>
+  {/if}
 {:else}
   <!-- Signed-out shell: W4.6 owns the redirect decision; here we offer a next action. -->
   <section class="panel" aria-labelledby="signed-out-h">
@@ -536,6 +826,202 @@
     color: var(--coral-alert, #e05533);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-4);
+  }
+
+  /* ── RES-113 PR-3 — journey Home shell (flag-ON only) ─────────────────────
+     Tokens only (no literals); hard borders + offset shadows per the brutalist
+     skill; every interactive target ≥44px; yellow appears ONLY on the one
+     primary CTA per state (.btn-primary carries its own ink border). */
+  .journey-error:focus {
+    /* Programmatic-only focus target (retry relocation) — no visible ring. */
+    outline: none;
+  }
+  .graph-hero {
+    border: var(--border);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-4);
+    margin: 0 0 var(--space-5);
+  }
+  .hero-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: var(--text-display-md);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: var(--text-display-tracking);
+    line-height: var(--text-display-line-height);
+    margin: 0;
+    color: var(--color-ink);
+  }
+  .hero-title:focus {
+    /* Programmatic-only focus target (retry relocation) — no visible ring. */
+    outline: none;
+  }
+  .hero-chip {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    border: var(--border-thin);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    padding: 4px 10px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .hero-chip--live {
+    background: var(--color-bg-deep);
+  }
+  .hero-chip-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-ink);
+    display: inline-block;
+    margin-right: 6px;
+    animation: hero-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes hero-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.25;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-chip-dot {
+      /* Static informative fallback (X9): the solid dot + the chip TEXT carry
+         the live signal — never the animation alone. */
+      animation: none;
+    }
+  }
+  .hero-metrics {
+    margin: var(--space-3) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    color: var(--color-ink);
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .home-state {
+    border: var(--border);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-5) var(--space-4);
+    margin: 0 0 var(--space-5);
+  }
+  .state-headline {
+    font-family: var(--font-display);
+    font-size: var(--text-display-sm);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: var(--text-display-tracking);
+    line-height: 1;
+    margin: 0 0 var(--space-3);
+    color: var(--color-ink);
+  }
+  .state-body {
+    margin: 0 0 var(--space-4);
+    max-width: 46rem;
+    color: var(--color-ink);
+  }
+  .state-muted {
+    margin: var(--space-3) 0 0;
+    font-size: var(--text-body-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .ask-heading {
+    margin-bottom: var(--space-3);
+  }
+  .ask-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-md);
+    font-weight: 700;
+    letter-spacing: var(--text-mono-tracking);
+    text-transform: uppercase;
+    color: var(--color-ink);
+    margin: 0 0 var(--space-2);
+  }
+  .ask-row {
+    display: flex;
+    gap: var(--space-3);
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .ask-row .input {
+    flex: 1 1 240px;
+    width: auto;
+  }
+  .ask-helper {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-body-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .ghost-tile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    border: var(--border-thin);
+    box-shadow: none;
+  }
+  .tile-line {
+    margin: 0;
+    font-size: var(--text-body-sm);
+    color: var(--color-ink-muted);
+  }
+  .tile-link {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    font-weight: 700;
+    color: var(--color-ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .activity-panel .cell-h:focus {
+    /* Programmatic-only focus target (retry relocation) — no visible ring. */
+    outline: none;
+  }
+  .activity-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: var(--border);
+    background: var(--color-surface);
+  }
+  .activity-row {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: var(--border-thin);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-lg);
+    color: var(--color-ink);
+  }
+  .activity-row:last-child {
+    border-bottom: none;
   }
 
   /* ── Trust cap ─────────────────────────────────────────────────────────── */
