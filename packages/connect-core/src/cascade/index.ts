@@ -67,6 +67,17 @@ export {
   VerifierCascade,
 } from "./cascade.js";
 
+// Cascade → triage feeder (RES-113 verification-UI PR-0; placement spec §3.2). Server-only
+// bridge: cascade verdicts → EBV states + `MakeReadyValidation.awaitingTriage`; abstention →
+// EBV `unverified` (write-side mirror of the shipped `abstained` inbound alias).
+export {
+  type CascadeClaimOutcome,
+  type TriageFeed,
+  ebvStateFromVerdict,
+  verdictAwaitsTriage,
+  buildTriageFeed,
+} from "./triage-feeder.js";
+
 export {
   type DefaultCascadeOptions,
   type DefaultCascadeBuild,
