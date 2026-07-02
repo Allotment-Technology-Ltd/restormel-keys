@@ -53,12 +53,18 @@ export function resolveLegacyDashboardRedirect(pathname: string, search = ""): s
 
   // ── RES-113 journey IA section-aliases (REC-ADR-021; 02_IA_AND_NAV.md §3) ──
   // `/build` and `/verify` are additive verb-spine routes surfaced only via the
-  // journey nav (onboardingJourney ON). As section-aliases they resolve to the
-  // milestone hub at its canonical route, which itself reskins under the flag:
-  //   Build (M1) → the ingest guided flow; Verify (M2) → the make-ready / stamping
-  //   desk. (Connect's `/connect` is flag-aware in the catch-all so the flag-OFF
-  //   `/connect → /home` behaviour is preserved byte-for-byte.)
+  // journey nav (onboardingJourney ON). `/build` resolves as a section-alias to
+  // the milestone hub at its canonical route (the ingest guided flow, which
+  // itself reskins under the flag). (Connect's `/connect` is flag-aware in the
+  // catch-all so the flag-OFF `/connect → /home` behaviour is preserved
+  // byte-for-byte.)
   if (path === BUILD_HREF) return withSearch(INGEST_FLOW_HREF, search);
+  // RETAINED-UNUSED since PR-6: `/verify` is a REAL page now
+  // (routes/keys/dashboard/verify/+page.server.ts — flag-ON renders the M2 hub,
+  // flag-OFF 404s), so no route load reaches this mapper with `/verify` any
+  // more; the flag-ON 308-to-/claims this row once produced is gone. The row is
+  // kept only so this pure map stays total over the §2.3/§A alias tables — do
+  // NOT wire a load back to it.
   if (path === VERIFY_HREF) return withSearch(CLAIMS_HREF, search);
 
   // ── Connect hub sections → top-level sections ─────────────────────────

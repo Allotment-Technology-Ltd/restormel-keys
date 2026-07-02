@@ -1,443 +1,395 @@
 <script lang="ts">
   /**
-   * M2 "Verify" make-ready hub (RES-113 PR-D, gated behind `onboardingJourney`).
+   * M2 "Verify" hub (RES-113 PR-6 — copy pack §3.2/§3.3, plan §3.3).
    *
-   * Reskins the existing verify surfaces — ConnectTrustScorecard (factor rails) +
-   * ConnectVerifiedReadiness (the K4 ledger) + the ClaimsStampingDesk triage queue
-   * — as the make-ready HUB the M0–M4 design asks for: a trust meter, three honest
-   * gates (Sources · Embed · Validate), and a "mark ready" that is honestly guarded.
+   * Queue-led reshape of the PR-D make-ready shell, driven by `resolveM2Surface`:
+   * the parent mounts this ONLY in `triage` or `ready` (in `hidden` the surface
+   * renders zero pixels — the `/verify` route shows its own empty card instead).
+   * All strings verbatim from the copy pack (§3); decisions (which gate leads,
+   * what collapses, the honest headline count) live in `buildVerifyTriageModel`
+   * (make-ready-hub.ts) so they stay pure and unit-tested.
    *
-   * This is a presentational SHELL (PR-J wires the real EBV recompute). Two honesty
-   * rules it never breaks, both owned by `make-ready-hub.ts`:
-   *   1. "Ready" = every claim TRIAGED, not all-green (accept-guard). Weak claims
-   *      are allowed in a production-grade graph once a human has judged them.
-   *   2. The trust meter shows a deferred / verified STATE (a StateChip), never an
-   *      animated number climbing on its own (REC-ADR-016).
+   * Visual-lens fixes carried from plan §3.3 / copy pack Appendix A-3:
+   *   • no status dot duplicating status text — the words carry the state;
+   *   • auto-cleared gates collapse to ONE combined receipt line (no checklist
+   *     beside the CTA); only the lead gate (priority rule: pipeline order —
+   *     Sources, then Searchable, then Review) renders expanded;
+   *   • the full scorecard + K4 ledger sit behind ONE closed-by-default muted
+   *     text disclosure ("Show the full scorecard").
    *
-   * It is additive and only ever mounts behind the flag — when the flag is OFF this
-   * component is never rendered and the live verify UI is byte-for-byte unchanged.
+   * Honesty (REC-ADR-016): the headline count is real work needing the user;
+   * when nothing does but a gate is still running, the surface is a QUIET
+   * "Building your graph" state (no yellow primary — copy pack §0 allows a
+   * primary-less steady state), never a fabricated "0 facts need your review".
+   *
+   * Flag-gated by construction: only `/verify` (flag-ON route) mounts this.
    */
-  import StateChip from "$lib/components/brutalist/StateChip.svelte";
-  import BrutalCard from "$lib/components/brutalist/BrutalCard.svelte";
   import ConnectTrustScorecard from "$lib/components/connect/ConnectTrustScorecard.svelte";
   import ConnectVerifiedReadiness from "$lib/components/connect/ConnectVerifiedReadiness.svelte";
   import type { ConnectTrustScorecard as ConnectTrustScorecardData } from "@restormel/contracts";
   import type { ConnectVerifiedReadiness as ConnectVerifiedReadinessData } from "$lib/connect/verified-readiness";
-  import { CLAIMS_HREF } from "$lib/nav-config";
+  import { CLAIMS_HREF, HOME_HREF } from "$lib/nav-config";
   import { proveClaimsFilterHref } from "$lib/prove-it";
-  import { MILESTONE_LABEL } from "$lib/connect/connect-journey";
+  import { journeyStageName } from "$lib/connect/stage-vocabulary";
   import {
-    buildMakeReadyGates,
-    buildTrustMeter,
-    resolveMarkReady,
-    makeReadySummary,
-    type MakeReadyGate,
+    buildVerifyTriageModel,
+    type MakeReadyGateId,
     type MakeReadySignals,
   } from "$lib/connect/make-ready-hub";
 
+  /** `triage` | `ready` — resolved by the caller via `resolveM2Surface` (never `hidden` here). */
+  export let surface: "triage" | "ready";
   /** The same honest signals the scorecard + ledger + stamping desk already load. */
   export let signals: MakeReadySignals;
-  /** Streamed scorecard → the factor rails (capped). Null when no graph to score yet. */
+  /** Streamed scorecard → the disclosure's factor rails. Null when no graph to score yet. */
   export let scorecard: Promise<ConnectTrustScorecardData | null>;
   /** The K4 readiness ledger (null = read failure → the panel shows its own error). */
   export let readiness: ConnectVerifiedReadinessData | null = null;
-  /** Deep-link to the triage queue (the Validate gate / stamping desk surface). */
+  /** Deep-link to the triage queue (the Review gate / stamping desk surface). */
   export let triageHref: string = proveClaimsFilterHref("review");
-  /** Where "Mark ready" returns to once the bar is clear (Home). */
-  export let markReadyHref: string = CLAIMS_HREF;
+  /**
+   * Deep-link to the Sources gate's fix surface: the graph Tools workspace,
+   * where the readiness wizard's "Link sources" step matches facts to source
+   * text. `?workspace=tools` is a LIVE explorer param (ConnectGraphExplorer
+   * parses it) — never a dead token like the retired `?focus=sources`
+   * (prove-it doctrine / 5-lens review, lens 5 fix).
+   */
+  export let sourcesHref: string = CLAIMS_HREF + "?workspace=tools";
+  /** Where the ready state's "Back to Home" CTA returns to (copy pack §3.3). */
+  export let readyHomeHref: string = HOME_HREF;
+  /**
+   * Focus-relocation hook (a11y skill "no focus loss"): the parent's retry
+   * flow claims focus and the remounted heading consumes it via this action —
+   * same pattern as home/+page.svelte's hero heading. Default no-op.
+   */
+  export let headingAction: (node: HTMLElement) => void = () => {};
 
-  $: gates = buildMakeReadyGates(signals);
-  $: meter = buildTrustMeter(signals);
-  $: verdict = resolveMarkReady(signals);
-  $: summary = makeReadySummary(signals);
+  /** Copy pack §3 gate table — mono operational names (X12) + one-liners. */
+  const GATE_LABEL: Record<MakeReadyGateId, string> = {
+    sources: "SOURCES",
+    embed: "SEARCHABLE",
+    validate: "REVIEW",
+  };
+  const GATE_SENTENCE_NAME: Record<MakeReadyGateId, string> = {
+    sources: "Sources",
+    embed: "Searchable",
+    validate: "Review",
+  };
+  const GATE_ONE_LINER: Record<MakeReadyGateId, string> = {
+    sources: "Every fact needs a source.",
+    embed: "Every fact needs to be findable when you ask.",
+    validate: "Facts we weren't sure about need your verdict.",
+  };
 
-  /** The Validate gate routes to triage; the others open their own detail surface. */
-  function gateHref(g: MakeReadyGate): string {
-    if (g.id === "validate") return triageHref;
-    return CLAIMS_HREF + (g.id === "sources" ? "?focus=sources" : "?focus=embed");
+  /**
+   * Primary-CTA labels per lead gate (copy pack §3.2): the label and the href
+   * must name the SAME action — a Sources-led frame never carries the Review
+   * gate's claim-verb (5-lens review, lens 3 fix). Searchable never leads
+   * (it runs itself, `needsYou` is always false), so it maps to the Review
+   * label purely as an exhaustiveness fallback.
+   */
+  const LEAD_CTA_LABEL: Record<MakeReadyGateId, string> = {
+    sources: "Link facts to sources",
+    embed: "Review the first claim",
+    validate: "Review the first claim",
+  };
+
+  $: triage = surface === "triage" ? buildVerifyTriageModel(signals) : null;
+
+  /** Disclosure open state — closed by default; the body mounts only when open. */
+  let scorecardOpen = false;
+
+  const num = (n: number) => Math.max(0, Math.round(n)).toLocaleString();
+
+  /** The single primary CTA opens the LEAD gate's fix surface (priority rule). */
+  function leadHref(id: MakeReadyGateId): string {
+    if (id === "sources") return sourcesHref;
+    return triageHref;
   }
-  function gateCta(g: MakeReadyGate): string {
-    return g.needsYou ? "Open" : "View";
+
+  /**
+   * ONE combined receipt line for the auto-cleared gates (copy pack §3.2 /
+   * Appendix A-3). The canonical two-gate pair keeps the pack's literal line;
+   * other combinations use the pack's single-gate template, joined.
+   */
+  function clearedLine(ids: MakeReadyGateId[]): string | null {
+    if (ids.length === 0) return null;
+    if (ids.length === 2 && ids.includes("sources") && ids.includes("embed")) {
+      return "Sources and searchability checked automatically — nothing needed from you.";
+    }
+    const names = ids.map((id) => GATE_SENTENCE_NAME[id]).join(" and ");
+    return `${names} checked automatically — nothing needed from you.`;
+  }
+
+  /**
+   * Honest stage line for a still-running collapsed gate, in the copy pack's
+   * §1.2 stage grammar ("{Stage name} — {done} of {total} {units}.") — never
+   * the engineering receipt ("vectorised" is banned vocabulary, ux-craft §5).
+   */
+  function workingLine(id: MakeReadyGateId): string {
+    if (id === "embed") {
+      return `${journeyStageName("embedding")} — ${num(signals.embedded)} of ${num(signals.units)} facts.`;
+    }
+    if (id === "sources") {
+      return "Reading source links…";
+    }
+    return `${journeyStageName(null)}…`;
   }
 </script>
 
-<section class="mr-hub" aria-labelledby="mr-hub-h" data-testid="m2-verify-hub">
-  <header class="mr-head">
-    <div class="mr-head-titles">
-      <StateChip state="running" dot={false} label={`M2 · ${MILESTONE_LABEL.m2}`} />
-      <h2 id="mr-hub-h" class="mr-h">Make ready</h2>
-      <p class="mr-sub">
-        The home you return to — three honest gates that stand between your graph and
-        production-grade. Do them in any order; the page always says what still needs you.
+<section class="verify-hub" aria-labelledby="verify-hub-h" data-testid="m2-verify-hub">
+  {#if surface === "triage" && triage}
+    {#if signals.trustScore !== null}
+      <!-- Trust line quotes the scorecard (W2.3 single source) — absent, never "—",
+           when there is no score yet (copy pack §0 / §3.2). -->
+      <p class="trust-line" data-testid="verify-trust-line">
+        Trust score {signals.trustScore} of 100 — how strongly your answers are backed by your
+        documents.
       </p>
-    </div>
-    <span class="mr-need" data-testid="mr-need">{summary.line}</span>
-  </header>
+    {/if}
 
-  <!-- Trust meter — quoted score + a DEFERRED recompute state (no climbing number). -->
-  <BrutalCard fill="white">
-    <div class="mr-meter" data-testid="mr-meter">
-      <div class="mr-meter-readout" role="group" aria-label="Trust score">
-        <span class="mr-meter-num">{meter.score ?? "—"}</span>
-        <span class="mr-meter-denom">/100</span>
-      </div>
-      <div class="mr-meter-state">
-        <StateChip
-          state={meter.recomputeState}
-          label={meter.recomputeLabel}
-          dot={meter.recomputeState === "running"}
-        />
-        <span class="mr-meter-foot">
-          {#if meter.recomputeState === "running"}
-            Trust recomputes once you finish triage — it doesn't climb live.
-          {:else if meter.recomputeState === "done"}
-            Last verified {meter.lastVerifiedAt ?? "—"}.
-          {:else}
-            Run an ingest to build a graph to score.
-          {/if}
-        </span>
-      </div>
-    </div>
-  </BrutalCard>
-
-  <!-- Three gates — Sources · Embed · Validate. -->
-  <div class="mr-gates" role="list" aria-label="Make-ready gates">
-    {#each gates as g (g.id)}
-      <div class="mr-gate mr-gate--{g.state}" role="listitem" data-testid="mr-gate-{g.id}" data-state={g.state}>
-        <div class="mr-gate-top">
-          <h3 class="mr-gate-title">{g.title}</h3>
-          <StateChip state={g.chipState} label={g.chipLabel} dot={g.chipState === "running"} />
-        </div>
-        <p class="mr-gate-blurb">{g.blurb}</p>
-        {#if g.pct !== null}
-          <div class="mr-gate-bar" role="img" aria-label="{g.pct}% complete">
-            <span class="mr-gate-fill mr-gate-fill--{g.chipState}" style={`width:${g.pct}%`}></span>
-          </div>
-        {/if}
-        <div class="mr-gate-foot">
-          <span class="mr-gate-detail">{g.detail}</span>
-          <a class="mr-gate-cta brut-focus" href={gateHref(g)}>{gateCta(g)} →</a>
-        </div>
-      </div>
-    {/each}
-  </div>
-
-  <!-- Triage summary (the Validate gate's work) — honest counts, NOT a "0 weak" goal. -->
-  <BrutalCard fill="white">
-    <div class="mr-triage" data-testid="mr-triage">
-      <div class="mr-triage-head">
-        <h3 class="mr-gate-title">Triage queue</h3>
-        <StateChip
-          state={verdict.outstandingTriage > 0 ? "error" : "done"}
-          label={verdict.outstandingTriage > 0 ? `${verdict.outstandingTriage} left` : "0 left"}
-          dot={false}
-        />
-      </div>
-      <ul class="mr-tally" aria-label="Validation tally">
-        <li><span class="mr-tally-n">{signals.validation.ok}</span><span class="mr-tally-l">Supported</span></li>
-        <li><span class="mr-tally-n">{signals.validation.weak}</span><span class="mr-tally-l">Weak</span></li>
-        <li><span class="mr-tally-n">{signals.validation.unsupported}</span><span class="mr-tally-l">Unsupported</span></li>
-      </ul>
-      <p class="mr-triage-note">
-        Done means every flagged claim has a verdict — not that weak or unsupported reach
-        zero. A graph with honestly-weak claims can still be production-grade.
+    {#if triage.leadGateId}
+      <!-- Headline count: exact when one gate needs the user; the countless
+           variant when 2+ do (their populations can overlap — no honest total
+           exists; the per-gate receipts carry the real numbers). Copy pack §3.2. -->
+      <h2 id="verify-hub-h" class="verify-h" tabindex="-1" use:headingAction>
+        {triage.headlineCount === null
+          ? "Facts need your review"
+          : triage.headlineCount === 1
+            ? "1 fact needs your review"
+            : `${num(triage.headlineCount)} facts need your review`}
+      </h2>
+      <!-- First contact for "claim" — defined inline (copy pack §3.2 / noun ramp A-10). -->
+      <p class="verify-body">
+        Each one is a claim — a fact we found in your documents — that we couldn't fully match to
+        its source.
       </p>
-      {#if verdict.outstandingTriage > 0}
-        <a class="btn btn-primary btn-sm" href={triageHref} data-testid="mr-triage-cta">
-          Review {verdict.outstandingTriage} flagged →
-        </a>
+      <p class="verify-body">
+        Check each claim against the passage shown. It usually takes under a minute each.
+      </p>
+
+      {#if triage.multipleNeedYou && triage.leadGateId}
+        <!-- Priority rule (copy pack §3 lead-in): only when 2+ gates need attention. -->
+        <p class="verify-body verify-priority" data-testid="verify-priority">
+          Start with {GATE_SENTENCE_NAME[triage.leadGateId]} — each check depends on the one
+          before it, so this one comes first.
+        </p>
       {/if}
-    </div>
-  </BrutalCard>
 
-  <!-- Factor rails — the SAME scorecard, capped (no second trust number/formula). -->
-  <ConnectTrustScorecard {scorecard} capped />
+      {#if triage.leadGateId}
+        <!-- The ONE expanded gate (never more than one — priority rule). No chip,
+             no dot: the label + words carry the state. -->
+        <div class="gate-card" data-testid="verify-lead-gate" data-gate={triage.leadGateId}>
+          <h3 class="gate-label">{GATE_LABEL[triage.leadGateId]}</h3>
+          <p class="gate-liner">{GATE_ONE_LINER[triage.leadGateId]}</p>
+          {#if triage.leadDetail}
+            <p class="gate-detail">{triage.leadDetail}</p>
+          {/if}
+        </div>
+      {/if}
 
-  <!-- The K4 readiness ledger — reused verbatim; rows are receipts with fix links. -->
-  <ConnectVerifiedReadiness {readiness} />
+      {#if clearedLine(triage.clearedGateIds)}
+        <!-- ONE combined receipt line for the auto-cleared gates (A-3). -->
+        <p class="receipt-line" data-testid="verify-receipt">
+          {clearedLine(triage.clearedGateIds)}
+        </p>
+      {/if}
+      {#each triage.workingGateIds as id (id)}
+        <p class="receipt-line">{workingLine(id)}</p>
+      {/each}
+      {#each triage.queuedGates as g (g.id)}
+        <!-- A later gate that also needs the user — honest receipt; the lead-in
+             above already says it comes after the lead gate. -->
+        <p class="receipt-line">{GATE_SENTENCE_NAME[g.id]} — {g.detail}.</p>
+      {/each}
 
-  <!-- End state — honestly guarded by the accept-guard (triaged, not green). -->
-  <div class="mr-finish">
-    {#if verdict.ready}
-      <a class="btn btn-primary" href={markReadyHref} data-testid="mr-mark-ready">
-        Mark ready → production-grade
+      <a class="btn btn-primary verify-cta" href={leadHref(triage.leadGateId)} data-testid="verify-cta">
+        {LEAD_CTA_LABEL[triage.leadGateId]} <span aria-hidden="true">→</span>
       </a>
     {:else}
-      <button
-        type="button"
-        class="btn btn-primary"
-        disabled
-        aria-disabled="true"
-        data-testid="mr-mark-ready-disabled"
-      >
-        Mark ready
-      </button>
-      <p class="mr-finish-reason" role="status">{verdict.reason}</p>
+      <!-- Verify work outstanding but NOTHING needs the user (e.g. still making the
+           graph searchable). Quiet state — honest stage line, no yellow primary
+           (copy pack §0: a steady state may earn none). -->
+      <h2 id="verify-hub-h" class="verify-h" tabindex="-1" use:headingAction>Building your graph</h2>
+      {#if triage.workingGateIds.length > 0}
+        {#each triage.workingGateIds as id (id)}
+          <p class="verify-body">{workingLine(id)}</p>
+        {/each}
+      {:else}
+        <p class="verify-body">{journeyStageName(null)}… usually 1–3 minutes.</p>
+      {/if}
+      {#if clearedLine(triage.clearedGateIds)}
+        <p class="receipt-line">{clearedLine(triage.clearedGateIds)}</p>
+      {/if}
     {/if}
-  </div>
+  {:else}
+    <!-- READY (copy pack §3.3): confirmation block. INTERIM CTA: "Back to Home"
+         — the pack's "Mark your graph ready" + its "records the graph as
+         reviewed" sub-line + the "Marked ready." toast are DEFERRED with the
+         recording backend (PR-J wires the real recompute). Shipping the
+         mark-ready strings on a plain Home link would claim an action that
+         never happens (REC-ADR-016 fabricated-action — 5-lens review, lens 5
+         fix); the CTA says exactly what it does instead. -->
+    <h2 id="verify-hub-h" class="verify-h" tabindex="-1" use:headingAction>Everything checks out</h2>
+    <p class="verify-body" data-testid="verify-ready-body">
+      {signals.units === 1
+        ? "All 1 fact is matched to sources, searchable, and reviewed. Your graph is ready for real questions."
+        : `All ${num(signals.units)} facts are matched to sources, searchable, and reviewed. Your graph is ready for real questions.`}
+    </p>
+    <a class="btn btn-primary verify-cta" href={readyHomeHref} data-testid="verify-ready-cta">
+      Back to Home <span aria-hidden="true">→</span>
+    </a>
+  {/if}
+
+  <!-- The full scorecard + K4 ledger behind ONE closed-by-default muted text
+       disclosure (copy pack §3.2/§3.3 + A-3) — visually subordinate to the CTA.
+       The body renders only once opened, so the closed state carries zero
+       scorecard/ledger DOM (and no hidden second CTA can leak into the state). -->
+  <details class="scorecard-disclosure" data-testid="verify-disclosure" bind:open={scorecardOpen}>
+    <summary class="disclosure-summary">Show the full scorecard</summary>
+    {#if scorecardOpen}
+      <div class="disclosure-body">
+        <ConnectTrustScorecard {scorecard} capped />
+        <ConnectVerifiedReadiness {readiness} />
+      </div>
+    {/if}
+  </details>
 </section>
 
 <style>
-  .mr-hub {
+  .verify-hub {
     margin: 0 0 var(--space-6);
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .mr-head {
-    display: flex;
-    flex-wrap: wrap;
     align-items: flex-start;
-    justify-content: space-between;
     gap: var(--space-3);
   }
 
-  .mr-head-titles {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    max-width: 52ch;
-  }
-
-  .mr-h {
+  .trust-line {
+    margin: 0;
     font-family: var(--font-mono);
-    font-size: var(--text-mono-lg);
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: var(--text-mono-tracking);
-    margin: 0;
-  }
-
-  .mr-sub {
-    margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.5;
+    font-size: var(--text-mono-sm);
     color: var(--color-ink-muted);
   }
 
-  .mr-need {
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-sm);
-    font-weight: 700;
+  .verify-h {
+    font-family: var(--font-display);
+    font-size: var(--text-display-sm);
+    font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    border: var(--border);
-    padding: 2px var(--space-2);
-    background: var(--state-warn-bg);
-    color: var(--state-warn-fg);
-    white-space: nowrap;
-  }
-
-  /* Trust meter — static numeral + a deferred-state chip. No tween. */
-  .mr-meter {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-4);
-    justify-content: space-between;
-  }
-
-  .mr-meter-readout {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-1);
-  }
-
-  .mr-meter-num {
-    font-family: var(--font-mono);
-    font-size: 3rem;
-    font-weight: 800;
+    letter-spacing: var(--text-display-tracking);
     line-height: 1;
+    margin: 0;
     color: var(--color-ink);
   }
 
-  .mr-meter-denom {
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-md);
-    color: var(--color-ink-muted);
+  .verify-h:focus {
+    /* Programmatic-only focus target (retry relocation via `headingAction`) —
+       no visible ring; the heading is not in the tab order. */
+    outline: none;
   }
 
-  .mr-meter-state {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    align-items: flex-end;
-    text-align: right;
+  .verify-body {
+    margin: 0;
+    max-width: 46rem;
+    color: var(--color-ink);
   }
 
-  .mr-meter-foot {
-    font-size: var(--text-xs);
-    color: var(--color-ink-muted);
-    max-width: 32ch;
+  .verify-priority {
+    font-weight: 700;
   }
 
-  /* Gates */
-  .mr-gates {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--space-3);
-  }
-
-  .mr-gate {
+  .gate-card {
     border: var(--border);
     background: var(--color-surface);
-    box-shadow: var(--shadow-offset, 4px 4px 0 var(--color-ink));
-    padding: var(--space-3);
+    box-shadow: var(--shadow-md);
+    padding: var(--space-3) var(--space-4);
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-1);
+    align-self: stretch;
   }
 
-  .mr-gate--needs_you {
-    background: color-mix(in oklab, var(--state-warn-bg) 30%, var(--color-surface));
-  }
-
-  .mr-gate--needs_review {
-    background: color-mix(in oklab, var(--state-fail-bg) 35%, var(--color-surface));
-  }
-
-  .mr-gate-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-  }
-
-  .mr-gate-title {
+  .gate-label {
     font-family: var(--font-mono);
     font-size: var(--text-mono-sm);
     font-weight: 800;
-    text-transform: uppercase;
     letter-spacing: 0.04em;
     margin: 0;
     color: var(--color-ink);
   }
 
-  .mr-gate-blurb {
+  .gate-liner {
     margin: 0;
-    font-size: var(--text-sm);
-    line-height: 1.4;
-    color: var(--color-ink-muted);
-  }
-
-  .mr-gate-bar {
-    height: 8px;
-    border: var(--border-thin);
-    background: var(--color-bg-deep);
-    overflow: hidden;
-  }
-
-  .mr-gate-fill {
-    display: block;
-    height: 100%;
-    background: var(--color-ink);
-  }
-  .mr-gate-fill--done {
-    background: var(--state-ok-fg);
-  }
-  .mr-gate-fill--weak {
-    background: var(--state-warn-fg);
-  }
-  .mr-gate-fill--error {
-    background: var(--state-fail-fg);
-  }
-  .mr-gate-fill--running {
-    background: var(--brut-amber);
-  }
-
-  .mr-gate-foot {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    margin-top: auto;
-  }
-
-  .mr-gate-detail {
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-sm);
-    color: var(--color-ink-muted);
-  }
-
-  .mr-gate-cta {
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-sm);
-    font-weight: 700;
     color: var(--color-ink);
+  }
+
+  .gate-detail {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .receipt-line {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-muted);
+  }
+
+  .verify-cta {
+    margin-top: var(--space-2);
+  }
+
+  .scorecard-disclosure {
+    align-self: stretch;
+    margin-top: var(--space-3);
+  }
+
+  .disclosure-summary {
+    /* Muted text toggle (copy pack §3.2) — subordinate to the primary CTA, but
+       still a ≥44px target with an ink-paired focus ring (a11y skill: the bare
+       yellow ring floats invisibly on cream without an ink band). The native
+       disclosure triangle + the words carry the open/closed state — never
+       colour alone. */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    cursor: pointer;
+    font-size: var(--text-body-sm);
+    color: var(--color-ink-muted);
     text-decoration: underline;
     text-underline-offset: 2px;
-    white-space: nowrap;
+    width: fit-content;
   }
 
-  /* Triage */
-  .mr-triage {
+  .disclosure-summary::before {
+    /* Explicit open/closed glyph (glyph + word, never colour/position alone):
+       `display: inline-flex` suppresses the native ::marker triangle in
+       WebKit/Blink, so we restore an equivalent. The alt-text form (`/ ""`)
+       keeps the glyph OUT of the accessibility tree — the native <details>
+       expanded state already carries the semantics; without it VoiceOver
+       announces "black right-pointing small triangle" (a11y lens fix). */
+    content: "▸" / "";
+    font-family: var(--font-mono);
+    margin-right: var(--space-2);
+  }
+
+  .scorecard-disclosure[open] .disclosure-summary::before {
+    content: "▾" / "";
+  }
+
+  .disclosure-summary:focus-visible {
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px var(--color-ink);
+  }
+
+  .disclosure-body {
+    margin-top: var(--space-3);
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .mr-triage-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-  }
-
-  .mr-tally {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
     gap: var(--space-4);
-  }
-
-  .mr-tally li {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .mr-tally-n {
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-lg);
-    font-weight: 800;
-    color: var(--color-ink);
-  }
-
-  .mr-tally-l {
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-sm);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-ink-muted);
-  }
-
-  .mr-triage-note {
-    margin: 0;
-    font-size: var(--text-xs);
-    line-height: 1.5;
-    color: var(--color-ink-muted);
-    max-width: 60ch;
-  }
-
-  /* Finish */
-  .mr-finish {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    align-items: flex-start;
-  }
-
-  .mr-finish-reason {
-    margin: 0;
-    font-size: var(--text-sm);
-    color: var(--state-warn-fg);
-  }
-
-  @media (max-width: 640px) {
-    .mr-meter-state {
-      align-items: flex-start;
-      text-align: left;
-    }
   }
 </style>

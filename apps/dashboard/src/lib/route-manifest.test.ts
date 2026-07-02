@@ -88,6 +88,12 @@ const ROUTE_CLASSIFICATION: Record<string, { kind: string; via: string }> = {
   "/prove/traces": { kind: "page-link", via: "PROVE_HUB_TABS[1] — /prove nav item hub strip (R5)" },
   "/prove/audit": { kind: "page-link", via: "PROVE_HUB_TABS[2] — /prove nav item hub strip + /access deep-link (R5 D5)" },
   "/prove/share": { kind: "page-link", via: "PROVE_HUB_TABS[3] — /prove nav item hub strip; gated on W4.3 STOP (R5)" },
+  // RES-113 PR-6b: /verify renders a real page under the journey nav only. It is
+  // reachable from the flag-ON chrome (resolveJourneyNav's unconditional "Verify"
+  // tab, asserted by the journey manifest below) + the Home Verify tiles;
+  // flag-OFF the +page.server.ts 404s, so it can never orphan the legacy chrome
+  // this crawl checks.
+  "/verify": { kind: "page-link", via: "journey nav Verify tab (resolveJourneyNav, onboardingJourney ON) + Home Verify tiles; flag-OFF → 404" },
 };
 
 describe("R2 orphan crawl (route manifest)", () => {

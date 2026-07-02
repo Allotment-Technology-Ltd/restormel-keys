@@ -34,6 +34,7 @@
     type HomeStateKind,
     type HomeStateSignals,
   } from "$lib/connect/home-state";
+  import { resolveM2SurfaceFromSpine } from "$lib/connect/make-ready-hub";
   import { journeyStageName } from "$lib/connect/stage-vocabulary";
   import { invalidateAll, goto } from "$app/navigation";
   import {
@@ -509,6 +510,20 @@
   </div>
 {/snippet}
 
+{#snippet verifyReadyTile()}
+  <!-- Verify ready tile (copy pack §3.4, ready row — RES-113 PR-6a): ghost, no
+       dot — the text carries the state. Reveal predicate: graph built AND
+       `resolveM2SurfaceFromSpine` reads "ready" — which requires the spine
+       clear AND the scorecard's Sources signal clear ("all matched to sources"
+       is never asserted while units still need a link — 5-lens review, lens 2
+       fix); spine unresolved or scorecard unreadable ⇒ no tile (honest
+       absence, never a fabricated "all matched"). -->
+  <div class="panel ghost-tile">
+    <p class="tile-line">All facts are matched to sources.</p>
+    <a class="tile-link brut-focus" href={VERIFY_HREF}>Open Verify</a>
+  </div>
+{/snippet}
+
 {#if data.projectsError}
   <p class="error-msg" role="alert">
     Could not load your workspace. Reload the page to try again, or contact support if the problem continues.
@@ -555,6 +570,13 @@
       {:else}
         {@const home = deriveHomeState(homeSignals(card, hub, journeyConnectionCount))}
         {@const chip = connectionChip(home.connectionCount, data.hasAppTraffic24h)}
+        {@const m2Surface = resolveM2SurfaceFromSpine(
+          hub.spine,
+          home.units > 0,
+          card?.evidence
+            ? { unbound: card.evidence.unbound, noEvidence: card.evidence.no_evidence }
+            : null,
+        )}
 
         <!-- Persistent graph hero (copy pack §1 Hero): name + real counts + chip.
              EMPTY renders no metric row — nothing is fabricated (§2.3). -->
@@ -644,6 +666,8 @@
           {@render homeAskBox(false)}
           {#if home.showVerifyGhost}
             {@render verifyGhostTile(home.flaggedCount)}
+          {:else if m2Surface === "ready"}
+            {@render verifyReadyTile()}
           {/if}
         {:else}
           <!-- HOME · LIVE (copy pack §1.4): ask box promoted to primary + Verify ghost
@@ -652,6 +676,8 @@
           {@render homeAskBox(true)}
           {#if home.showVerifyGhost}
             {@render verifyGhostTile(home.flaggedCount)}
+          {:else if m2Surface === "ready"}
+            {@render verifyReadyTile()}
           {/if}
           <div class="panel ghost-tile">
             <p class="tile-line">

@@ -215,10 +215,17 @@ describe("RES-113 PR-G — flag-gated landing + journey aliases", () => {
     expect(off.status).toBe(404);
   });
 
-  it("/verify: ON → 308 to the make-ready / stamping desk, OFF → 404 (route does not exist, fully reversible)", async () => {
-    const on = await caughtWithLocals(import("../routes/keys/dashboard/verify/+page.server.js"), `${B}/verify`, true);
-    expect(on.status).toBe(308);
-    expect(on.location).toBe(`${B}/claims`);
+  it("/verify: ON → renders a real page (RES-113 PR-6b, no redirect), OFF → 404 (byte-for-byte unchanged)", async () => {
+    // ON: the PR-6b rewrite returns page data instead of throwing a redirect
+    // (signed-out locals → the signed-out shell data, no DB touched).
+    const { load } = await import("../routes/keys/dashboard/verify/+page.server.js");
+    const data = (await (load as (e: never) => unknown)({
+      url: new URL(`https://keys.test${B}/verify`),
+      params: {},
+      locals: { moduleFlags: { onboardingJourney: true } },
+    } as never)) as { hubSignedIn: boolean };
+    expect(data.hubSignedIn).toBe(false);
+    // OFF: the route still does not exist — the pre-PR-6 404, fully reversible.
     const off = await caughtWithLocals(import("../routes/keys/dashboard/verify/+page.server.js"), `${B}/verify`, false);
     expect(off.status).toBe(404);
   });

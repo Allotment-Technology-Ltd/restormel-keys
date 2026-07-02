@@ -17,9 +17,12 @@ import {
   makeReadySummary,
   resolveM2Surface,
   isVerifyOutstanding,
+  resolveM2SurfaceFromSpine,
+  buildVerifyTriageModel,
   type MakeReadySignals,
   type M2SurfaceSignals,
 } from "./make-ready-hub";
+import type { ConnectSpine, ConnectSpineStageState } from "$lib/connect/connect-spine";
 
 function signals(over: Partial<MakeReadySignals> = {}): MakeReadySignals {
   return {
@@ -73,11 +76,12 @@ describe("make-ready gates", () => {
   });
 });
 
-describe("pre-graph honesty (units <= 0, retained until PR-6a surface gating)", () => {
-  // The M2 hub still mounts unconditionally under the flag, so the gate builders
-  // must name the honest pre-graph state on an empty workspace rather than flip to a
-  // fabricated DONE (0 unbound ⇒ "grounded", 0 >= 0 ⇒ "vectors", 0 awaiting ⇒
-  // "triaged"). REC-ADR-016: never fabricate progress in EITHER direction.
+describe("pre-graph honesty (units <= 0, retained as defence-in-depth now PR-6a gates the hub)", () => {
+  // PR-6a gates the hub mount on `resolveM2Surface` (triage/ready ⇒ units > 0),
+  // but the gate builders keep naming the honest pre-graph state on an empty
+  // workspace rather than flip a future direct render to a fabricated DONE
+  // (0 unbound ⇒ "grounded", 0 >= 0 ⇒ "vectors", 0 awaiting ⇒ "triaged").
+  // REC-ADR-016: never fabricate progress in EITHER direction.
   it("Sources gate reports 'no ideas yet' (running, not done) when there are no units", () => {
     const g = buildSourcesGate(signals({ units: 0, evidence: { bound: 0, unbound: 0, noEvidence: 0, boundPct: 0 } }));
     expect(g.state).toBe("running");
@@ -141,10 +145,10 @@ describe("mark-ready guard (accept-guard honesty)", () => {
   });
 
   // RES-113 PR-2 (REC-ADR-016, honest pre-graph state): the `units <= 0` branch is
-  // RETAINED until PR-6a gates the hub on `resolveM2Surface`. `M2VerifyHub` still
-  // mounts unconditionally under the flag, so an empty workspace must NOT read as
-  // ready — that would be a fabricated DONE. The guard blocks with the honest
-  // "No graph yet" reason regardless of the (vacuously-zero) triage count.
+  // RETAINED as defence-in-depth now PR-6a gates the hub on `resolveM2Surface` —
+  // an empty workspace must NEVER read as ready (a fabricated DONE), even from a
+  // direct call. The guard blocks with the honest "No graph yet" reason
+  // regardless of the (vacuously-zero) triage count.
   it("does NOT report ready on an empty workspace — blocks with 'No graph yet'", () => {
     const v = resolveMarkReady(signals({ units: 0, trustScore: null }));
     expect(v.ready).toBe(false);
@@ -175,7 +179,7 @@ describe("trust meter (deferred, not climbing)", () => {
 
   it("shows 'no graph yet' (idle) at units 0 even if a stale score leaks through", () => {
     // The retained `units <= 0` half of the guard: an empty workspace is pre-graph
-    // regardless of any leftover score (until PR-6a gates the hub on resolveM2Surface).
+    // regardless of any leftover score (defence-in-depth under PR-6a's surface gate).
     const m = buildTrustMeter(signals({ units: 0, trustScore: 88 }));
     expect(m.recomputeState).toBe("idle");
     expect(m.recomputeLabel).toBe("No graph yet");
@@ -239,5 +243,129 @@ describe("resolveM2Surface (plan §3.3 — the single M2 gate)", () => {
     for (const c of cases) {
       expect(isVerifyOutstanding(c)).toBe(resolveM2Surface(c) === "triage");
     }
+  });
+});
+
+describe("resolveM2SurfaceFromSpine (RES-113 PR-6 — the hub-payload adapter)", () => {
+  function spine(makeReady: ConnectSpineStageState, review: ConnectSpineStageState): ConnectSpine {
+    return {
+      stages: [
+        { id: "make_ready", state: makeReady },
+        { id: "review", state: review },
+      ],
+    } as ConnectSpine;
+  }
+  /** Sources signal clear — every unit bound. */
+  const EV_CLEAR = { unbound: 0, noEvidence: 0 };
+
+  it("hidden pre-graph, with or without a spine or scorecard (graphBuilt alone decides)", () => {
+    expect(resolveM2SurfaceFromSpine(null, false, EV_CLEAR)).toBe("hidden");
+    expect(resolveM2SurfaceFromSpine(spine("current", "current"), false, EV_CLEAR)).toBe("hidden");
+    // A pre-graph scorecard is legitimately null — still hidden, not a failure.
+    expect(resolveM2SurfaceFromSpine(null, false, null)).toBe("hidden");
+  });
+
+  it("null (unresolved) when the spine is missing on a built graph — never a fabricated 'ready'", () => {
+    expect(resolveM2SurfaceFromSpine(null, true, EV_CLEAR)).toBeNull();
+  });
+
+  it("null (unresolved) when a stage state is unknown — a partial read failure is not 'ready'", () => {
+    expect(resolveM2SurfaceFromSpine(spine("unknown", "done"), true, EV_CLEAR)).toBeNull();
+    expect(resolveM2SurfaceFromSpine(spine("done", "unknown"), true, EV_CLEAR)).toBeNull();
+    // A stage missing from the ledger entirely reads as unknown too.
+    expect(
+      resolveM2SurfaceFromSpine({ stages: [] } as unknown as ConnectSpine, true, EV_CLEAR),
+    ).toBeNull();
+  });
+
+  it("null (unresolved) when the scorecard is unreadable on a BUILT graph — a failed read is named, never dressed as triage/ready", () => {
+    // 5-lens review (lens 2): with the hub loaded but the scorecard read failed,
+    // neither "matched to sources" (ready) nor the Sources gate's honest count
+    // (triage) can be stated — the caller shows its load-failure state.
+    expect(resolveM2SurfaceFromSpine(spine("done", "done"), true, null)).toBeNull();
+    expect(resolveM2SurfaceFromSpine(spine("current", "done"), true, null)).toBeNull();
+  });
+
+  it("delegates to resolveM2Surface once the states are known", () => {
+    expect(resolveM2SurfaceFromSpine(spine("current", "done"), true, EV_CLEAR)).toBe("triage");
+    expect(resolveM2SurfaceFromSpine(spine("done", "current"), true, EV_CLEAR)).toBe("triage");
+    expect(resolveM2SurfaceFromSpine(spine("done", "done"), true, EV_CLEAR)).toBe("ready");
+    expect(resolveM2SurfaceFromSpine(spine("todo", "blocked"), true, EV_CLEAR)).toBe("ready");
+  });
+
+  it("demotes a spine-clear graph to TRIAGE while units still need a link — 'matched to sources' is never asserted over an unclear Sources signal", () => {
+    // 5-lens review (lens 2, CONFIRMED): the spine's make_ready/review stages
+    // check embedding + validation only (connect-spine.ts) — evidence binding is
+    // checked by NEITHER, so spine done/done with unbound units would headline
+    // "All N facts are matched to sources" while buildSourcesGate on the same
+    // signals reads needs_you. The Sources signal is folded into the ready gate.
+    expect(resolveM2SurfaceFromSpine(spine("done", "done"), true, { unbound: 12, noEvidence: 0 })).toBe("triage");
+    expect(resolveM2SurfaceFromSpine(spine("done", "done"), true, { unbound: 0, noEvidence: 3 })).toBe("triage");
+  });
+});
+
+describe("buildVerifyTriageModel (RES-113 PR-6 — copy pack §3.2 decisions)", () => {
+  it("canonical flagged case: Review leads alone, both auto gates collapse, headline = awaitingTriage (exact)", () => {
+    const m = buildVerifyTriageModel(
+      signals({ validation: { ok: 1157, weak: 0, unsupported: 0, unvalidated: 0, awaitingTriage: 47, unsupportedUntriaged: 12 } }),
+    );
+    expect(m.headlineCount).toBe(47);
+    expect(m.leadGateId).toBe("validate");
+    expect(m.leadDetail).toContain("47 flagged");
+    expect(m.multipleNeedYou).toBe(false);
+    expect(m.clearedGateIds).toEqual(["sources", "embed"]);
+    expect(m.workingGateIds).toEqual([]);
+    expect(m.queuedGates).toEqual([]);
+  });
+
+  it("Sources leading ALONE: headline = the link-needing population (exact)", () => {
+    const m = buildVerifyTriageModel(
+      signals({ evidence: { bound: 1040, unbound: 164, noEvidence: 0, boundPct: 86 } }),
+    );
+    expect(m.headlineCount).toBe(164);
+    expect(m.leadGateId).toBe("sources");
+    expect(m.multipleNeedYou).toBe(false);
+    expect(m.queuedGates).toEqual([]);
+  });
+
+  it("priority rule: with Sources AND Review needing the user, Sources leads (pipeline order), Review queues, and the headline count is NULL — overlapping populations are never summed", () => {
+    // 5-lens review (lens 2): a validator-flagged claim awaiting a verdict can be
+    // the SAME unit whose evidence is unbound (independent per-unit fields), so
+    // 164 + 47 could count one fact twice — an inflated, fabricated total
+    // (REC-ADR-016). The union is unknowable without a per-unit join (a new
+    // query Stage 1.8 forbids) → the shell renders the countless headline and
+    // the per-gate receipts carry the real numbers.
+    const m = buildVerifyTriageModel(
+      signals({
+        evidence: { bound: 1040, unbound: 164, noEvidence: 0, boundPct: 86 },
+        validation: { ok: 0, weak: 0, unsupported: 0, unvalidated: 0, awaitingTriage: 47, unsupportedUntriaged: 12 },
+      }),
+    );
+    expect(m.leadGateId).toBe("sources");
+    expect(m.multipleNeedYou).toBe(true);
+    expect(m.headlineCount).toBeNull();
+    expect(m.leadDetail).toContain("164 need a link"); // the real per-gate numbers survive
+    expect(m.queuedGates).toEqual([{ id: "validate", detail: "47 flagged of 47" }]);
+    expect(m.clearedGateIds).toEqual(["embed"]);
+  });
+
+  it("quiet still-working case: nothing needs the user, the running gate is reported, headline count is 0 (no fabricated headline)", () => {
+    const m = buildVerifyTriageModel(signals({ embedded: 800, units: 1204 }));
+    expect(m.headlineCount).toBe(0);
+    expect(m.leadGateId).toBeNull();
+    expect(m.multipleNeedYou).toBe(false);
+    expect(m.workingGateIds).toEqual(["embed"]);
+    expect(m.clearedGateIds).toEqual(["sources", "validate"]);
+  });
+
+  it("never counts evidence links pre-graph or when the scorecard is unread", () => {
+    const m = buildVerifyTriageModel(
+      signals({ evidence: null, validation: { ok: 0, weak: 0, unsupported: 0, unvalidated: 0, awaitingTriage: 3, unsupportedUntriaged: 0 } }),
+    );
+    expect(m.headlineCount).toBe(3); // only the real verdict queue (one needing gate → exact)
+    expect(m.leadGateId).toBe("validate");
+    // Sources (scorecard unread) is working, not "checked automatically".
+    expect(m.workingGateIds).toEqual(["sources"]);
+    expect(m.clearedGateIds).toEqual(["embed"]);
   });
 });
