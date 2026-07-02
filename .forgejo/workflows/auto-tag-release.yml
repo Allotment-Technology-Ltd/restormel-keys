@@ -1,10 +1,22 @@
-# Auto-tag a dashboard release on every push to main — decision "auto-tag on merge"
-# (2026-06-16, supersedes the D8 cost-pause for prod deploys).
+# Cut a dashboard prod release tag — DELIBERATE, on-demand (decision "de-automate
+# merge→prod", ADR §5.1 / §6 Phase 1, 2026-07-02 — supersedes the 2026-06-16
+# "auto-tag on every main merge").
 #
-# Prod stays GATED on a `dashboard-v*` tag (see deploy-dashboard.yml); this workflow
-# just creates that tag automatically so each main merge ships to production, with an
-# explicit, revertable release artifact (the tag) per deploy. Rollback = redeploy a
-# previous dashboard-v* tag (workflow_dispatch=prod on that tag's ref).
+# WHAT CHANGED: the trigger was `push: branches:[main]` (every app-affecting merge
+# auto-cut the next `dashboard-v*` tag → deploy-k3s.yml deploy-prod → prod). A merge
+# to `main` must no longer ship straight to prod: it now auto-deploys to INTEGRATION
+# (merge-integration.yml), and prod is a DELIBERATE promotion of the tested artifact.
+# So this workflow is now `workflow_dispatch` ONLY — a founder cuts the next
+# `dashboard-v*` tag by hand when they choose to release (the interim prod path that
+# stays alive during the transition to digest promotion).
+#
+# REVERSIBLE: to restore merge→prod auto-tagging, put the `push:` block back (see the
+# commented original under `on:` below). The tag-compute + push body is unchanged.
+#
+# Prod stays GATED on a `dashboard-v*` tag (deploy-k3s.yml deploy-prod fires on the
+# tag push); this workflow just creates that tag, with an explicit, revertable release
+# artifact (the tag) per deploy. Rollback = redeploy a previous dashboard-v* tag
+# (deploy-k3s.yml workflow_dispatch environment=prod on that tag's ref).
 #
 # WHY the tag is pushed with secrets.FORGEJO_TOKEN (a PAT) and not the runner's
 # automatic token: a ref pushed by the automatic Actions token does NOT trigger
@@ -14,18 +26,20 @@
 # for origin — an explicit https://user:token@host URL was rejected 403 because the
 # baked-in username did not match the token owner.
 #
-# Scope note: a `paths:` filter is now in place (apps/dashboard/**, packages/**), so
-# only app-affecting merges tag + deploy prod. A docs/planning/workflow-only merge
-# gets no release tag — that is intentional (no prod redeploy for non-app changes).
-
 name: Auto-tag release
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/dashboard/**'
-      - 'packages/**'
+  # DELIBERATE prod release only — a founder dispatches this to cut the next
+  # `dashboard-v*` tag. Merge→main no longer auto-releases prod (it deploys to
+  # integration via merge-integration.yml). See the header for the rationale.
+  workflow_dispatch: {}
+  # --- REVERT to restore merge→prod auto-tagging (one-line rollback): -----------
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'apps/dashboard/**'
+  #     - 'packages/**'
+  # -----------------------------------------------------------------------------
 
 concurrency:
   group: auto-tag-release

@@ -35,6 +35,16 @@
 #          prod)         Prod pins by mutable :tag exactly as before (byte-compatible) —
 #                        digest-pinning is the integration-path defense-in-depth.
 #
+#       promote <from> <to>
+#                     — GITOPS_TOKEN ONLY (gitops write + PR-create). NO build/rebuild.
+#                       Reads the live @sha256 digests off the FROM-env manifests
+#                       (aborts if FROM is still :tag), pins them into the TO-env
+#                       manifests, and STAGES a gitops PR on a `promote/<from>-to-<to>`
+#                       branch — NEVER pushes HEAD:main, NEVER merges. The PR MERGE is
+#                       the founder deploy gate. DRY_RUN=true|1|yes prints the resolved
+#                       digests + proposed diff and stops (no branch/push/PR). This is
+#                       build-once/promote-by-digest (ADR §5.3).
+#
 # ---------------------------------------------------------------------------------
 # REC-INC-006 INVARIANT: OUTBOUND-ONLY. This script must NEVER call an on-box
 # control-plane API (Coolify / Argo / kube-API), never `kubectl`/`argocd`, never dial
@@ -60,38 +70,59 @@
 set -euo pipefail
 
 # --- sub-command dispatch ----------------------------------------------------
-# First arg is either a MODE (build|bump) or, for the legacy combined call, the env.
+# First arg is either a MODE (build|bump|promote) or, for the legacy combined call, the env.
 MODE=all
 case "${1:-}" in
-  build) MODE=build; shift ;;
-  bump)  MODE=bump;  shift ;;
+  build)   MODE=build;   shift ;;
+  bump)    MODE=bump;    shift ;;
+  promote) MODE=promote; shift ;;
   ''|*) : ;;  # legacy combined: first arg (if any) is ENV_NAME, handled below
 esac
 
-ENV_NAME="${1:-${ENV_NAME:?ENV_NAME (integration|prod) required}}"
-case "${ENV_NAME}" in
-  integration|prod) ;;
-  *) echo "FATAL: ENV_NAME must be 'integration' or 'prod', got '${ENV_NAME}'"; exit 2 ;;
-esac
+if [[ "${MODE}" == promote ]]; then
+  # promote <from-env> <to-env> — copy the live @sha256 digest between env manifests
+  # with NO rebuild, and STAGE a gitops promotion PR (never merge/deploy). GITOPS_TOKEN
+  # only; no registry token, no build.
+  PROMOTE_FROM="${1:?promote requires: promote <from-env> <to-env>}"
+  PROMOTE_TO="${2:?promote requires: promote <from-env> <to-env>}"
+  for _e in "${PROMOTE_FROM}" "${PROMOTE_TO}"; do
+    case "${_e}" in
+      integration|prod) ;;
+      *) echo "FATAL: promote env must be 'integration' or 'prod', got '${_e}'"; exit 2 ;;
+    esac
+  done
+  [[ "${PROMOTE_FROM}" != "${PROMOTE_TO}" ]] \
+    || { echo "FATAL: promote <from> and <to> must differ (got '${PROMOTE_FROM}')"; exit 2; }
+  : "${REG:?REG required}"
+  : "${IMAGE_REPO:?IMAGE_REPO required}"
+  GITOPS_REPO="${GITOPS_REPO:-Allotment-Technology-Ltd/restormel-gitops}"
+  echo "=== K3s promote | ${PROMOTE_FROM} → ${PROMOTE_TO} (digest copy, PR-only, no rebuild) ==="
+else
+  ENV_NAME="${1:-${ENV_NAME:?ENV_NAME (integration|prod) required}}"
+  case "${ENV_NAME}" in
+    integration|prod) ;;
+    *) echo "FATAL: ENV_NAME must be 'integration' or 'prod', got '${ENV_NAME}'"; exit 2 ;;
+  esac
 
-: "${REG:?REG required}"
-: "${IMAGE_REPO:?IMAGE_REPO required}"
-GITOPS_REPO="${GITOPS_REPO:-Allotment-Technology-Ltd/restormel-gitops}"
+  : "${REG:?REG required}"
+  : "${IMAGE_REPO:?IMAGE_REPO required}"
+  GITOPS_REPO="${GITOPS_REPO:-Allotment-Technology-Ltd/restormel-gitops}"
 
-# 12-hex short SHA (informational :tag + commit message).
-#   build : read from the build context (the integration HEAD = the train's batch tag).
-#   bump  : handed over from the build step via IMAGE_SHA (the job workspace is NOT a git
-#           repo, so NEVER call git here). Falls back to "unknown" only if unset.
-#   all   : combined prod path — from CWD (the trusted `dashboard-v*` tag checkout).
-case "${MODE}" in
-  build) SHA="$(git -C "${BUILD_CONTEXT:-.}" rev-parse --short=12 HEAD)" ;;
-  bump)  SHA="${IMAGE_SHA:-unknown}" ;;
-  *)     SHA="$(git rev-parse --short=12 HEAD)" ;;
-esac
-DASH_IMG="${REG}/${IMAGE_REPO}/dashboard:${SHA}"
-WORKER_IMG="${REG}/${IMAGE_REPO}/worker:${SHA}"
+  # 12-hex short SHA (informational :tag + commit message).
+  #   build : read from the build context (the integration HEAD = the train's batch tag).
+  #   bump  : handed over from the build step via IMAGE_SHA (the job workspace is NOT a git
+  #           repo, so NEVER call git here). Falls back to "unknown" only if unset.
+  #   all   : combined prod path — from CWD (the trusted `dashboard-v*` tag checkout).
+  case "${MODE}" in
+    build) SHA="$(git -C "${BUILD_CONTEXT:-.}" rev-parse --short=12 HEAD)" ;;
+    bump)  SHA="${IMAGE_SHA:-unknown}" ;;
+    *)     SHA="$(git rev-parse --short=12 HEAD)" ;;
+  esac
+  DASH_IMG="${REG}/${IMAGE_REPO}/dashboard:${SHA}"
+  WORKER_IMG="${REG}/${IMAGE_REPO}/worker:${SHA}"
 
-echo "=== K3s ${MODE} | env=${ENV_NAME} sha=${SHA} reg=${REG}/${IMAGE_REPO} ==="
+  echo "=== K3s ${MODE} | env=${ENV_NAME} sha=${SHA} reg=${REG}/${IMAGE_REPO} ==="
+fi
 
 # =============================================================================
 # BUILD + PUSH (registry token only; never sees the gitops token)
@@ -222,6 +253,117 @@ pin_manifest_digest() {
 }
 
 # =============================================================================
+# PROMOTE (gitops token only; NO build, NO rebuild) — copy the live @sha256 digest
+# from the FROM-env manifests into the TO-env manifests and STAGE a gitops promotion
+# PR. NEVER pushes HEAD:main and NEVER merges — the PR MERGE is the founder deploy
+# gate (HARD RULE 1 / infra rule 8). Build-once/promote-by-digest (ADR §5.3):
+# the byte-identical tested image moves envs; only env config differs.
+# =============================================================================
+
+# Map an env name to its restormel-gitops manifest directory.
+env_manifest_dir() {
+  case "$1" in
+    integration) echo "applications/restormel-integration" ;;
+    prod)        echo "applications/restormel-app-prod" ;;
+    *) echo "FATAL: no manifest dir for env '$1'" >&2; exit 2 ;;
+  esac
+}
+
+# Read the live @sha256 digest off a component's `image:` line. Aborts if the
+# component is still pinned by :tag — you can ONLY promote an immutable digest.
+# Prints ONLY the digest on stdout (for capture); diagnostics go to stderr.
+read_env_digest() { # $1 file  $2 component  $3 env-label -> echoes sha256:...
+  local file="$1" component="$2" env="$3" digest
+  [[ -f "${file}" ]] || { echo "FATAL: ${file} not found in restormel-gitops." >&2; exit 3; }
+  digest="$(grep -oE "image:[[:space:]]*${REG}/${IMAGE_REPO}/${component}@sha256:[0-9a-f]{64}" "${file}" \
+            | grep -oE 'sha256:[0-9a-f]{64}' | head -1)"
+  if [[ -z "${digest}" ]]; then
+    echo "FATAL: ${env} '${component}' is NOT digest-pinned (@sha256) in ${file} — it is still a :tag." >&2
+    echo "       You can only promote an immutable digest. Deploy ${env} by digest first" >&2
+    echo "       (a merge→integration run pins ${env} by @sha256), then re-run promote." >&2
+    exit 3
+  fi
+  printf '%s' "${digest}"
+}
+
+# Open a Forgejo PR (outbound to the git host — allowed; REC-INC-006 forbids the
+# CLUSTER control-plane, not the git host). Best-effort: a failed PR-create leaves the
+# pushed branch (durable), so a founder can open the PR by hand — never fails the run.
+open_promotion_pr() { # $1 from  $2 to  $3 branch  $4 dash-digest  $5 worker-digest
+  local from="$1" to="$2" branch="$3" dash="$4" worker="$5"
+  local api="https://git.allotmentology.tech/api/v1" title body
+  title="promote(${to}): ${from}-tested digest → ${to} (dashboard+worker)"
+  body="Automated **digest promotion** (\`k3s-build-push-bump.sh promote ${from} ${to}\`) — NO rebuild.
+
+Copies the ${from}-tested image digests into the \`${to}\` manifests:
+
+- dashboard \`${dash}\`
+- worker \`${worker}\`
+
+**Merging this PR is the ${to} deploy gate** (HARD RULE 1 / infra rule 8). Argo reconciles ${to} after merge. Rollback = revert this commit / re-point to the prior digest."
+  jq -nc --arg t "${title}" --arg b "${body}" --arg h "${branch}" \
+     '{title:$t, body:$b, head:$h, base:"main"}' \
+    | curl -fsS -H "Authorization: token ${GITOPS_TOKEN}" -H 'Content-Type: application/json' \
+        -X POST --data @- "${api}/repos/${GITOPS_REPO}/pulls" >/dev/null 2>&1 \
+    && echo "::notice::Opened ${to} promotion PR from '${branch}' in ${GITOPS_REPO}. Review + MERGE to deploy ${to}." \
+    || echo "::warning::branch '${branch}' pushed but PR creation failed — open it by hand (${GITOPS_REPO}: ${branch} → main)."
+}
+
+do_promote() { # $1 from-env  $2 to-env
+  local from="$1" to="$2"
+  : "${GITOPS_TOKEN:?GITOPS_TOKEN required (gitops write + PR-create scope)}"
+  local from_dir to_dir
+  from_dir="$(env_manifest_dir "${from}")"
+  to_dir="$(env_manifest_dir "${to}")"
+
+  local workdir; workdir="$(mktemp -d)"
+  trap 'rm -rf "${workdir}"' RETURN
+  echo "--- clone restormel-gitops (read ${from} digests → stage ${to} promotion PR) ---"
+  git clone --depth 1 "https://x-access-token:${GITOPS_TOKEN}@git.allotmentology.tech/${GITOPS_REPO}.git" "${workdir}/gitops"
+  cd "${workdir}/gitops"
+
+  # Read the live @sha256 digests from the FROM env (aborts if still :tag).
+  local dash_digest worker_digest
+  dash_digest="$(read_env_digest "${from_dir}/20-dashboard-deployment.yaml" dashboard "${from}")"
+  worker_digest="$(read_env_digest "${from_dir}/40-worker-deployment.yaml"   worker    "${from}")"
+  echo "resolved ${from} digests:"
+  echo "  dashboard ${dash_digest}"
+  echo "  worker    ${worker_digest}"
+
+  # Pin them into the TO env (pin_manifest_digest converts a :tag or @digest line).
+  pin_manifest_digest "${to_dir}/20-dashboard-deployment.yaml" dashboard "${dash_digest}"
+  pin_manifest_digest "${to_dir}/40-worker-deployment.yaml"    worker    "${worker_digest}"
+
+  if git diff --quiet; then
+    echo "::notice::${to} already at the ${from} digests — nothing to promote (no-op)."
+    return 0
+  fi
+
+  case "${DRY_RUN:-}" in
+    true|1|yes)
+      echo "=== DRY_RUN: promote ${from} → ${to} — resolved digests above; proposed diff: ==="
+      git --no-pager diff
+      echo "=== DRY_RUN: no branch/commit/push/PR. ==="
+      return 0
+      ;;
+  esac
+
+  local short branch
+  short="${dash_digest#sha256:}"; short="${short:0:12}"
+  branch="promote/${from}-to-${to}-${short}"
+  git checkout -b "${branch}"
+  git -c user.name=forgejo-ci -c user.email=ci@allotmentology.tech \
+      commit -am "promote(${to}): ${from} digest → ${to} (dashboard+worker)
+
+Copies the ${from}-tested image digests into the ${to} manifests. NO rebuild.
+Merging this PR is the ${to} deploy gate (HARD RULE 1 / infra rule 8)."
+  echo "--- push promotion branch '${branch}' (NEVER HEAD:main) ---"
+  git push origin "HEAD:${branch}"
+  open_promotion_pr "${from}" "${to}" "${branch}" "${dash_digest}" "${worker_digest}"
+  echo "=== done: staged ${from}→${to} promotion on branch '${branch}'. The PR MERGE deploys ${to}. ==="
+}
+
+# =============================================================================
 # dispatch
 # =============================================================================
 case "${MODE}" in
@@ -235,6 +377,9 @@ case "${MODE}" in
     ;;
   bump)
     do_bump
+    ;;
+  promote)
+    do_promote "${PROMOTE_FROM}" "${PROMOTE_TO}"
     ;;
   all)
     # Legacy combined path (PROD): build+push then bump :tag in one trusted process.
