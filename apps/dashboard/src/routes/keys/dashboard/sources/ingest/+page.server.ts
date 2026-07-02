@@ -2,6 +2,7 @@ import { redirect } from "@sveltejs/kit";
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import {
   CONNECT_PIPELINE_BASE,
+  isDefaultPipelineBundle,
   isLegacyPipelineWizardStep,
   isPipelineWizardStep,
   pipelineWizardHref,
@@ -317,6 +318,15 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
           }).catch(() => null)
         : null;
 
+    // RES-113 PR-4 (copy pack §2.7 launch-panel receipt). Reveal predicate:
+    // `m1PlugPoints` ON AND the active graph runs a customised pipeline
+    // (`bundle ≠ default`). Server-gated on the flag — flag OFF this is always
+    // `false`, so the launch panel renders byte-identically (no receipt). Reads
+    // the already-fetched `target.bundle` — zero extra queries. Default bundle
+    // ⇒ `false` ⇒ nothing renders (§0 honest absence; REC-ADR-020).
+    const pipelineCustomised =
+      moduleFlags.m1PlugPoints === true && !isDefaultPipelineBundle(target?.bundle ?? undefined);
+
     const payload = {
       step,
       wizard,
@@ -329,6 +339,7 @@ export const load: PageServerLoad = async ({ locals, url, depends, parent }) => 
       domainPacks: packs,
       selectedDomainPackId: activePack?.id ?? null,
       providerVerify: resolveProviderVerifyReceipt(integrations),
+      pipelineCustomised,
     };
     endPipeline();
     return payload;

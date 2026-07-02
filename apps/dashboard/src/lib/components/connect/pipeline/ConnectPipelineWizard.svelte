@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto, invalidate } from "$app/navigation";
   import { browser } from "$app/environment";
-  import { HOME_HREF } from "$lib/nav-config";
+  import { HOME_HREF, SOURCES_HREF } from "$lib/nav-config";
   import { page } from "$app/stores";
   import { tick } from "svelte";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
@@ -56,6 +56,13 @@
       detail: string | null;
       checkedAt: number | null;
     } | null;
+    /**
+     * RES-113 PR-4 (copy pack §2.7): the launch-panel configuration-receipt
+     * predicate — true only when `m1PlugPoints` is ON AND the active graph runs a
+     * customised pipeline (`bundle ≠ default`), computed server-side. Flag OFF or
+     * a default bundle ⇒ false ⇒ the receipt renders nothing (byte-identical).
+     */
+    pipelineCustomised?: boolean;
   };
 
   export let data: WizardData;
@@ -127,6 +134,14 @@
   // Copy pack Appendix A-1: eyebrow on the two ask panels only; launch owns its frame.
   $: journeyEyebrow = journeyPanel ? m1BuildEyebrow(journeyPanel) : null;
   $: journeyLaunchDocCount = runDefaults?.documents.length ?? progress?.selectedDocumentCount ?? 0;
+  // RES-113 PR-4 (copy pack §2.7): the launch-panel configuration receipt. Reveal
+  // predicate `bundle ≠ default`, server-gated on `m1PlugPoints` (data.pipelineCustomised
+  // is false when the flag is OFF or the bundle is the recommended default) — so the
+  // default path is byte-identical and no per-row teasers are introduced (decision: none).
+  // "[Review choices]" is an inline affordance onto the EXISTING sources-page "Advanced —
+  // full pipeline control" disclosure — no new surface (§2.5 inline-link convention).
+  $: pipelineCustomised = data.pipelineCustomised === true;
+  const REVIEW_CHOICES_HREF = SOURCES_HREF + "#advanced-heading";
 
   // Keep the URL `?step=` aligned with the derived panel so the server loads the
   // launch data (runDefaults / preflight / previous scorecard) exactly when the
@@ -448,6 +463,17 @@
         <p class="journey-launch-meta">{m1LaunchMetaLine(journeyLaunchDocCount)}</p>
         <p class="wizard-lead">{M1_BUILD_PANEL_COPY.launch.outcome}</p>
         <p class="journey-expectation">{M1_BUILD_PANEL_COPY.launch.expectation}</p>
+        {#if pipelineCustomised}
+          <!-- RES-113 PR-4 (copy pack §2.7 VERBATIM): one muted receipt line, only
+               when `bundle ≠ default` (predicate above). "[Review choices]" renders
+               as an inline text link (no arrow, no button — §2.5) onto the shipped
+               sources-page "Advanced — full pipeline control" disclosure. The default
+               bundle renders nothing here; there are no per-row source teasers. -->
+          <p class="journey-receipt">
+            Runs your customised pipeline.
+            <a class="journey-receipt-link" href={REVIEW_CHOICES_HREF}>Review choices</a>
+          </p>
+        {/if}
       {/if}
     </header>
 
