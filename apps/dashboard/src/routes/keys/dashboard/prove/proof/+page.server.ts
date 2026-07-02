@@ -47,6 +47,12 @@ type ProofData = {
    * of the Answer Console. Default off ⇒ the shipped console is unchanged.
    */
   onboardingJourney: boolean;
+  /**
+   * RES-113 PR-3 (flag-ON only): a question handed off from Home's ask box via
+   * `?q=` — the console asks it on mount so the user never re-types what they
+   * already gave (WCAG 3.3.7). Always null with the flag OFF (inert).
+   */
+  initialQuestion: string | null;
 };
 
 type ProofDataWithState = ProofData & { signedIn: boolean; loadError: boolean };
@@ -64,6 +70,7 @@ const SIGNED_OUT: ProofDataWithState = {
   keyPrefixHint: null,
   connectApiBase: DEFAULT_CONNECT_API_BASE,
   onboardingJourney: false,
+  initialQuestion: null,
   signedIn: false,
   loadError: false,
 };
@@ -81,6 +88,7 @@ const LOAD_ERROR: ProofDataWithState = {
   keyPrefixHint: null,
   connectApiBase: DEFAULT_CONNECT_API_BASE,
   onboardingJourney: false,
+  initialQuestion: null,
   signedIn: true,
   loadError: true,
 };
@@ -158,6 +166,10 @@ export const load: PageServerLoad = async (event): Promise<ProofDataWithState> =
       keyPrefixHint,
       connectApiBase: resolveConnectApiBase(event.url.origin),
       onboardingJourney: event.locals.moduleFlags?.onboardingJourney ?? false,
+      // RES-113 PR-3 (flag-ON only): the `?q=` Home ask-box handoff; null flag-OFF.
+      initialQuestion: event.locals.moduleFlags?.onboardingJourney
+        ? (event.url.searchParams.get("q")?.trim() || null)
+        : null,
       signedIn: true,
       loadError: false,
     };

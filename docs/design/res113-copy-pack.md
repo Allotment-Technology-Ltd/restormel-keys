@@ -177,6 +177,23 @@ Verify tile only while `flagged > 0` (ghost) + Connect tile (ghost) + activity p
 | Activity loading | Loading activity… usually a few seconds. |
 | Activity error | We couldn't load recent activity. Try again. |
 | Activity error action (secondary) | Try again |
+| Activity loaded announcement (visually hidden — the persistent `role="status"` region only; a11y skill: async completion must be announced) | Recent activity loaded. |
+
+### 1.5 HOME · LOAD FAILURE (journey shell)
+
+The flag-ON shell's workspace load can fail (hub payload unavailable, or the
+scorecard read rejects). One error banner, one recovery action (ux-contracts §3
+floor; error grammar §6.2 — say what happened, say the data is safe, say what
+next). Added by PR-3's 5-lens review: these strings shipped in code first; this
+row registers them per this pack's own "a string change is a change to this
+document first" rule.
+
+| Element | Literal string |
+|---|---|
+| Banner title | Workspace unavailable |
+| Banner body | Could not load your workspace. Your data is unaffected — this is a load failure. |
+| Recovery action (yellow primary) | Try again |
+| Recovery action, in flight | Retrying… |
 
 ---
 

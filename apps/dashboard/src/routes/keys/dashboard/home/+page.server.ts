@@ -34,6 +34,7 @@ import {
   listRoutes,
   listRequestLogs,
   listPolicyBindingsForWorkspace,
+  listApiKeysByWorkspace,
 } from "$lib/server/db";
 import { getWorkspaceEntitlements } from "$lib/server/entitlements";
 import {
@@ -49,6 +50,7 @@ import type { ConnectReadinessStatus } from "$lib/connect/verified-readiness";
 import { getGraphTargetForUi } from "$lib/server/connect/graph-target-service";
 import { listConnectIngestJobsForWorkspace } from "$lib/server/neon";
 import { isSignedInSession } from "$lib/server/session-user";
+import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
 
 /**
  * True when this instance is running in a non-production (self-host / dev) context.
@@ -80,6 +82,20 @@ export type ConnectReadinessSummary = {
   status: ConnectReadinessStatus;
 };
 
+/**
+ * RES-113 PR-3 (flag-ON only): one row of the LIVE-state "Recent activity" panel —
+ * a real gateway request attributed to the connection (gateway key) that made it.
+ * Ingest traffic (`source === "connect_ingest"`) is excluded: the panel shows the
+ * app/agent ASKING, not the pipeline writing (honesty, REC-ADR-016).
+ */
+export type HomeActivityRow = {
+  id: string;
+  /** Connection (gateway key) label; "Your app" when the request carries no key attribution. */
+  connectionName: string;
+  /** Request timestamp (ms epoch) for the "{relative time} ago" render. */
+  createdAt: number;
+};
+
 export type ConnectCompletionSignals = {
   /** A graph store has been connected (Neon or SurrealDB). */
   storeConnected: boolean;
@@ -93,6 +109,10 @@ export type ConnectCompletionSignals = {
 
 export const load: PageServerLoad = async (event) => {
   const { locals } = event;
+  // RES-113 PR-3: the journey Home shell (flag-ON only) needs a graph display name
+  // and the LIVE-state activity rows. Both are computed ONLY when the flag is on —
+  // the flag-OFF path issues the exact same queries as before (byte-identity).
+  const journeyOn = Boolean((locals.moduleFlags ?? MVP_MODULE_DEFAULTS).onboardingJourney);
   if (!locals.user) {
     return {
       projects: [],
@@ -116,6 +136,10 @@ export const load: PageServerLoad = async (event) => {
       // Streamed — null until resolved; page renders without it.
       trustStrip: Promise.resolve(null) as Promise<import("@restormel/contracts").ConnectTrustScorecard | null>,
       connectReadiness: Promise.resolve(null) as Promise<ConnectReadinessSummary | null>,
+      // RES-113 PR-3 (flag-ON only; inert null on flag-OFF / signed-out).
+      graphName: null as string | null,
+      homeActivity: Promise.resolve(null) as Promise<HomeActivityRow[] | null>,
+      hasAppTraffic24h: false,
       ...signedOutHubDefaults(),
     };
   }
@@ -306,6 +330,50 @@ export const load: PageServerLoad = async (event) => {
       };
     })();
 
+    // RES-113 PR-3 (flag-ON only): the LIVE-state activity rows — the most recent
+    // gateway requests attributed to their connection (gateway key) names. Streamed;
+    // resolves to null on failure (the shell renders its error state with a retry).
+    // Ingest traffic is excluded AT THE QUERY (`excludeSource`) — the panel shows
+    // the app ASKING, never the pipeline writing, and a big ingest run (one log per
+    // resolve) can never evict genuine app asks from the LIMIT window (5-lens
+    // review fix). The in-JS filter stays as defense in depth for any legacy row
+    // the SQL predicate cannot see. Flag-OFF: no queries issued, resolves null.
+    const homeActivityPromise: Promise<HomeActivityRow[] | null> = journeyOn
+      ? (async () => {
+          const [logs, keys] = await Promise.all([
+            listRequestLogs(wsId, { limit: 25, excludeSource: "connect_ingest" }),
+            listApiKeysByWorkspace(wsId).catch(() => []),
+          ]);
+          const nameByKeyId = new Map(keys.map((k) => [k.id, k.label ?? k.keyPrefix]));
+          return logs
+            .filter((l) => l.source !== "connect_ingest")
+            .slice(0, 5)
+            .map((l) => ({
+              id: l.id,
+              connectionName:
+                (l.gatewayKeyId ? nameByKeyId.get(l.gatewayKeyId) : null) ?? "Your app",
+              createdAt: l.createdAt,
+            }));
+        })().catch(() => null)
+      : Promise.resolve(null);
+
+    // RES-113 PR-3 (flag-ON only): the hero chip's traffic signal. `LIVE` renders
+    // only from real APP traffic — the pipeline's own `connect_ingest` request
+    // logs are excluded, so a rebuild can never fabricate "Live — serving answers
+    // to your app" (copy pack §1 honesty rule / REC-ADR-016; 5-lens review fix).
+    // An existence probe (limit 1), not a count — the chip only needs "any".
+    // Flag-OFF: no query issued, false (inert — never read).
+    const hasAppTraffic24hPromise: Promise<boolean> = journeyOn
+      ? listRequestLogs(wsId, {
+          since: last24hSince,
+          until: now,
+          limit: 1,
+          excludeSource: "connect_ingest",
+        })
+          .then((logs) => logs.some((l) => l.source !== "connect_ingest"))
+          .catch(() => false)
+      : Promise.resolve(false);
+
     // Trust strip: peek only — never blocks the page shell (statsMode: "peek").
     // The Overview QUOTES the scorecard service score; it never recomputes.
     // A test in activity.test.ts asserts no second formula exists here.
@@ -330,6 +398,8 @@ export const load: PageServerLoad = async (event) => {
       console.error("[overview] livePulse failed:", String(err).slice(0, 120));
       return null;
     });
+    // Already .catch-guarded to false; started in parallel with livePulse above.
+    const hasAppTraffic24h = await hasAppTraffic24hPromise;
 
     const noRouteCount24h = livePulse?.noRouteCount24h ?? 0;
     const usedThisMonth = livePulse?.usedThisMonth ?? null;
@@ -385,6 +455,15 @@ export const load: PageServerLoad = async (event) => {
       trustStrip: trustStripPromise,
       // Streamed — K4 readiness summary chip for the Verified context journey section.
       connectReadiness: connectReadinessPromise,
+      // RES-113 PR-3 (flag-ON only): graph display name for the persistent hero.
+      // The graph target's label is the closest real user-facing graph name today;
+      // null (⇒ the shell renders "Your graph") when absent — never fabricated.
+      graphName: journeyOn ? (target?.label ?? null) : null,
+      homeActivity: homeActivityPromise,
+      // RES-113 PR-3 (flag-ON only): ingest-excluded 24h traffic signal for the
+      // hero chip — the SAME filtered source the activity rows use, so the chip
+      // and the panel below it can never contradict each other.
+      hasAppTraffic24h,
       ...hubPanels,
     };
   } catch (e) {
@@ -411,6 +490,9 @@ export const load: PageServerLoad = async (event) => {
       } as ConnectCompletionSignals,
       trustStrip: Promise.resolve(null),
       connectReadiness: Promise.resolve(null) as Promise<ConnectReadinessSummary | null>,
+      graphName: null as string | null,
+      homeActivity: Promise.resolve(null) as Promise<HomeActivityRow[] | null>,
+      hasAppTraffic24h: false,
       ...hubPanels,
     };
   }

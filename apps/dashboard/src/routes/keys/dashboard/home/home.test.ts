@@ -21,6 +21,8 @@ vi.mock("$lib/server/db", () => ({
   listRoutes: vi.fn().mockResolvedValue([]),
   listRequestLogs: vi.fn().mockResolvedValue([]),
   listPolicyBindingsForWorkspace: vi.fn().mockResolvedValue([]),
+  // RES-113 PR-3: connection-name attribution for the flag-ON activity rows.
+  listApiKeysByWorkspace: vi.fn().mockResolvedValue([]),
 }));
 
 // R2: the relocated hub-home panel loads are mocked at their boundary — this
@@ -263,5 +265,191 @@ describe("load signed-out guard", () => {
     expect(result.connectCompletion.storeConnected).toBe(false);
     expect(result.connectCompletion.agentReady).toBe(false);
     await expect(result.trustStrip).resolves.toBe(null);
+  });
+});
+
+// ── 4. RES-113 PR-3 — flag-gated journey additions (graphName + homeActivity) ─
+
+type JourneyLoadResult = LoadResult & {
+  graphName: string | null;
+  homeActivity: Promise<
+    { id: string; connectionName: string; createdAt: number }[] | null
+  >;
+  hasAppTraffic24h: boolean;
+};
+
+describe("RES-113 PR-3 load additions — flag-gated, inert when OFF", () => {
+  it("flag OFF: graphName is null, homeActivity resolves null, no key query issued", async () => {
+    const { listApiKeysByWorkspace, listRequestLogs } = await import("$lib/server/db");
+    vi.mocked(listApiKeysByWorkspace).mockClear();
+    vi.mocked(listRequestLogs).mockClear();
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: { user: { uid: "u-off", authType: "session" } }, // no moduleFlags ⇒ defaults (flag OFF)
+    } as never);
+    const result = rawResult as JourneyLoadResult;
+
+    expect(result.graphName).toBeNull();
+    await expect(result.homeActivity).resolves.toBeNull();
+    expect(listApiKeysByWorkspace).not.toHaveBeenCalled();
+    // Chip probe is flag-gated too: inert false, and no ingest-excluded query issued.
+    expect(result.hasAppTraffic24h).toBe(false);
+    for (const call of vi.mocked(listRequestLogs).mock.calls) {
+      expect(call[1]).not.toMatchObject({ excludeSource: "connect_ingest" });
+    }
+  });
+
+  it("flag ON: graphName quotes the graph target label (never fabricated)", async () => {
+    const { getGraphTargetForUi } = await import("$lib/server/connect/graph-target-service");
+    vi.mocked(getGraphTargetForUi).mockResolvedValueOnce({
+      status: "ok",
+      label: "acme-graph",
+    } as never);
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: {
+        user: { uid: "u-on", authType: "session" },
+        moduleFlags: { onboardingJourney: true },
+      },
+    } as never);
+    const result = rawResult as JourneyLoadResult;
+
+    expect(result.graphName).toBe("acme-graph");
+  });
+
+  it("flag ON: graphName is null (not a placeholder) when the target has no label", async () => {
+    const { getGraphTargetForUi } = await import("$lib/server/connect/graph-target-service");
+    vi.mocked(getGraphTargetForUi).mockResolvedValueOnce({ status: "ok" } as never);
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: {
+        user: { uid: "u-on2", authType: "session" },
+        moduleFlags: { onboardingJourney: true },
+      },
+    } as never);
+
+    expect((rawResult as JourneyLoadResult).graphName).toBeNull();
+  });
+
+  it("flag ON: homeActivity attributes rows to connection names and EXCLUDES ingest traffic", async () => {
+    const { listRequestLogs, listApiKeysByWorkspace } = await import("$lib/server/db");
+    const now = Date.now();
+    vi.mocked(listRequestLogs).mockClear();
+    vi.mocked(listRequestLogs).mockResolvedValue([
+      { id: "r1", gatewayKeyId: "k1", source: null, createdAt: now - 60000 },
+      // Ingest traffic is the pipeline WRITING, not the app asking — excluded
+      // (belt and braces: the query also filters via excludeSource, asserted below).
+      { id: "r2", gatewayKeyId: "k1", source: "connect_ingest", createdAt: now - 120000 },
+      // Unattributed request → honest generic name, never a fabricated key.
+      { id: "r3", gatewayKeyId: null, source: null, createdAt: now - 180000 },
+    ] as never);
+    vi.mocked(listApiKeysByWorkspace).mockResolvedValue([
+      { id: "k1", label: "support-agent", keyPrefix: "rk_abc12345" },
+    ] as never);
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: {
+        user: { uid: "u-on3", authType: "session" },
+        moduleFlags: { onboardingJourney: true },
+      },
+    } as never);
+    const rows = await (rawResult as JourneyLoadResult).homeActivity;
+
+    expect(rows).not.toBeNull();
+    expect(rows!.map((r) => r.id)).toEqual(["r1", "r3"]);
+    expect(rows![0].connectionName).toBe("support-agent");
+    expect(rows![1].connectionName).toBe("Your app");
+
+    // 5-lens review fix: ingest is excluded AT THE QUERY (`excludeSource`), so a
+    // big ingest run (one log per resolve) can never evict genuine app asks from
+    // the LIMIT window before the in-JS filter runs.
+    expect(listRequestLogs).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ limit: 25, excludeSource: "connect_ingest" }),
+    );
+
+    // Restore the shared mock for other tests.
+    vi.mocked(listRequestLogs).mockResolvedValue([] as never);
+    vi.mocked(listApiKeysByWorkspace).mockResolvedValue([] as never);
+  });
+
+  it("flag ON: hasAppTraffic24h probes with ingest EXCLUDED — a rebuild can never light the LIVE chip", async () => {
+    const { listRequestLogs } = await import("$lib/server/db");
+    vi.mocked(listRequestLogs).mockClear();
+    // Dispatch on the probe's shape: the 24h ingest-excluded existence probe finds
+    // one real app request; every other listRequestLogs consumer sees no rows.
+    vi.mocked(listRequestLogs).mockImplementation(async (_ws: unknown, opts?: unknown) => {
+      const o = (opts ?? {}) as { limit?: number; excludeSource?: string; since?: number };
+      if (o.excludeSource === "connect_ingest" && o.limit === 1 && o.since != null) {
+        return [{ id: "app-1", gatewayKeyId: "k9", source: null, createdAt: Date.now() }] as never;
+      }
+      return [] as never;
+    });
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: {
+        user: { uid: "u-on5", authType: "session" },
+        moduleFlags: { onboardingJourney: true },
+      },
+    } as never);
+
+    expect((rawResult as JourneyLoadResult).hasAppTraffic24h).toBe(true);
+    expect(listRequestLogs).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ limit: 1, excludeSource: "connect_ingest" }),
+    );
+
+    vi.mocked(listRequestLogs).mockReset();
+    vi.mocked(listRequestLogs).mockResolvedValue([] as never);
+  });
+
+  it("flag ON: hasAppTraffic24h is false when the only 24h traffic is the pipeline's own ingest writes", async () => {
+    const { listRequestLogs } = await import("$lib/server/db");
+    vi.mocked(listRequestLogs).mockClear();
+    vi.mocked(listRequestLogs).mockImplementation(async (_ws: unknown, opts?: unknown) => {
+      const o = (opts ?? {}) as { excludeSource?: string };
+      // With the SQL-level filter in force, the probe sees NO rows — the ingest
+      // logs exist but are excluded by the query itself.
+      if (o.excludeSource === "connect_ingest") return [] as never;
+      return [
+        { id: "ing-1", gatewayKeyId: null, source: "connect_ingest", createdAt: Date.now() },
+      ] as never;
+    });
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: {
+        user: { uid: "u-on6", authType: "session" },
+        moduleFlags: { onboardingJourney: true },
+      },
+    } as never);
+
+    expect((rawResult as JourneyLoadResult).hasAppTraffic24h).toBe(false);
+
+    vi.mocked(listRequestLogs).mockReset();
+    vi.mocked(listRequestLogs).mockResolvedValue([] as never);
+  });
+
+  it("flag ON: homeActivity resolves null (recovery state) when the log read fails", async () => {
+    const { listRequestLogs } = await import("$lib/server/db");
+    // The load calls listRequestLogs several times (anyLogs / livePulse / activity);
+    // reject them all — every consumer of this mock is failure-tolerant.
+    vi.mocked(listRequestLogs).mockRejectedValue(new Error("store unavailable"));
+
+    const { load } = await import("./+page.server");
+    const rawResult = await load({
+      locals: {
+        user: { uid: "u-on4", authType: "session" },
+        moduleFlags: { onboardingJourney: true },
+      },
+    } as never);
+    await expect((rawResult as JourneyLoadResult).homeActivity).resolves.toBeNull();
+
+    vi.mocked(listRequestLogs).mockResolvedValue([] as never);
   });
 });
