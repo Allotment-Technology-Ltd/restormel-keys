@@ -611,3 +611,58 @@ risks:
     owner: founder
     status: accepted
     review: 2027-06-27
+
+  - id: RISK-017
+    risk: >
+      Teasynaer (AST-033) is designed as a self-hostable, internet-facing manual QA regression
+      runner with its own auth (local admin bootstrap + OIDC + trusted X-Forwarded-User header,
+      per docs/decisions/0001-teasynaer-stack-and-extraction.md in the teasynaer repo) and its own
+      Postgres schema. Once an instance is actually deployed (K3s workload, doc 03 / Milestone 1 —
+      not done yet), it becomes a public attack surface needing the same ingress/secrets/hardening
+      baseline as sibling products (Traefik + cert-manager, ESO/Infisical, no secrets in repo).
+      CURRENT STATE (2026-07-02): repo scaffolded only (AST-032) — no live deployment, no users,
+      no data. This entry tracks the risk ahead of the deploy step so the register isn't stood up
+      after the fact.
+    asset: "AST-033 — teasynaer repo (pre-deployment; no live workload asset yet)"
+    product: teasynaer
+    likelihood: L
+    impact: M
+    rating: Low
+    treatment_type: mitigate
+    treatment: >
+      Follow the existing K3s/ingress/secrets baseline (Traefik + cert-manager DNS-01, ESO +
+      self-hosted Infisical, no sealed-secrets) before any go-live — same pattern as the
+      allotmentology.tech Coolify→K3s migration (AST-017). The pre-PR security gate
+      (`restormel-high-risk-security`) applies to any PR touching Teasynaer's auth seam or DB
+      layer, per CONTRIBUTING.md. Re-review this entry (likelihood/impact) once a real workload
+      asset is registered and DNS is cut over.
+    treatment_status: "Open — tracked ahead of deployment. Not yet actionable until doc 03 / Milestone 1 K3s + DNS work begins."
+    owner: founder
+    status: open
+    review: 2026-10-02
+
+  - id: RISK-018
+    risk: >
+      Teasynaer's core function is manual QA regression runs that capture screen recordings
+      (getDisplayMedia + MediaRecorder → .webm), screenshots, and issue-tracker attachments as
+      evidence. These captures may inadvertently contain sensitive material surfaced during
+      testing — customer/personal data visible in a test environment, auth cookies or tokens in
+      HAR/network captures, or screenshots of other internal systems under test. Evidence storage
+      is designed as local disk under /data/evidence by default (per the same ADR), pluggable to
+      S3-compatible storage later.
+    asset: "AST-033 — teasynaer repo (evidence-store design; no live evidence data exists yet)"
+    product: teasynaer
+    likelihood: L
+    impact: M
+    rating: Low
+    treatment_type: mitigate
+    treatment: >
+      Before the recording/evidence feature ships to any real user: (1) access control on evidence
+      storage scoped per-workspace/owner, never world-readable; (2) a documented retention policy
+      for recordings/screenshots; (3) a scrub/redaction guideline for HAR-style captures (strip
+      auth headers/cookies before attaching to a filed issue). None of this is built yet — this
+      entry exists so the control lands with the feature, not after an incident.
+    treatment_status: "Open — no evidence store exists yet (pre-deployment). Revisit before the recording feature (build-order steps 1-4, docs/BUILD-ORDER-AND-MILESTONE-1.md) ships to a real user."
+    owner: founder
+    status: open
+    review: 2026-10-02
