@@ -346,6 +346,147 @@ cites the governing rule.
 The provider-key panel's field-level §2.1 strings ("Provider key", "Save key →",
 "Paste a key to continue.") remain deferred to a panel-internals PR (PR-5 decision 8).
 
+### 2.7 Build plug-points (shared by the sources Advanced disclosure + `/routes/ingestion`)
+
+Registered ahead of the plug-point PRs, per the signed-off verification-engine placement
+spec (founder decisions A–F, 2026-07-02; `restormel-ops`
+`planning/verification-ui-placement-spec.md`). One derivation, one renderer, two hosts
+(decision C): the sources-page "Advanced — full pipeline control" disclosure (§2.3) and its
+operator twin `/routes/ingestion`. Reveal predicate: disclosure open — otherwise zero
+pixels; the default path stays pixel-identical and novices see nothing new. Flag:
+`m1PlugPoints`. Curated options are the CLEARED set only (REC-GOV-022 §d); BLOCKED and
+AMBIGUOUS component names never appear in any string, menu, or derivation output. Slot rows
+reuse the §0 stage-table names verbatim (Reading your documents · Making it searchable ·
+Checking against sources) — a reference, not new strings. Store is never a slot row — the
+`?step=store` aside owns it. No string in this section introduces a yellow primary; both
+hosts keep their shipped primaries.
+
+**Slot row anatomy** (identical strings on both hosts):
+
+| Element | Literal string |
+|---|---|
+| Row label | *(§0 stage-table on-screen name, verbatim)* |
+| Current-choice line | {option name} |
+| Change affordance (secondary, per row) | Change (aria: "Change the model for {stage name}") |
+| Recommended tag on the default option (list order: recommended first) | `RECOMMENDED` (aria: "the recommended default") |
+| Option selection mark | *(reuses §4.5's "■ selected · □ select" — glyph + word; selection is never carried by colour or fill alone, R3-A3)* |
+| Preset annotation (muted, only while the current choice comes from an applied preset) | Part of {preset}. |
+
+**Outcome lines — one per curated option.** Written fresh for this pack (the wireframe
+exemplar was struck as a transplant — placement spec §3.1). Trade-offs are named as
+outcomes — accuracy, speed, where your documents go — never as licences, tiers, benchmark
+scores, or cost figures (economics render only on §2.8's surfaces).
+
+| Stage (§0 name) | Curated option (REC-GOV-022 §d) | Outcome line |
+|---|---|---|
+| Reading your documents | PaddleOCR-VL *(recommended default)* | The recommended reader. Handles most documents well and keeps the exact position of every fact, so citations can highlight the source passage. |
+| Reading your documents | Mistral OCR 4 | The most accurate on difficult documents — scanned pages, dense tables, many languages. Runs as a hosted service, so your pages leave your infrastructure. |
+| Reading your documents | PaddleOCR PP-OCRv5 | The fastest on plain, cleanly laid-out pages — a good fit for large volumes of simple documents. Less accurate on difficult ones. |
+| Making it searchable | BGE-M3 *(recommended default)* | The recommended choice. Strong search across many languages, and it can run entirely on your own infrastructure. |
+| Making it searchable | Qwen3-Embedding-8B | The strongest search quality — the pick when questions keep missing facts you know are there. Needs more computing power, so builds take longer. |
+| Making it searchable | voyage-4-lite | A hosted option with nothing to run yourself. Light and quick; search quality sits a step below the recommended choice. |
+| Making it searchable | Voyage domain models (legal · finance · code) | Tuned for legal, financial, or code documents — stronger search in those fields. Hosted, so your text leaves your infrastructure. |
+| Checking against sources | Granite Guardian *(recommended default set)* | The recommended check. Clear cases pass quickly, unclear ones get a stronger look, and anything still uncertain waits for your verdict. |
+| Checking against sources | Frontier hosted model (Claude, Gemini, or GPT) | The most thorough check for high-stakes work — a model from a different maker re-checks each fact. The slowest option, and facts go to that provider. |
+| Checking against sources | HHEM-2.1-Open | The lightest check — fast, and it runs on your own infrastructure. It settles fewer cases on its own, so more facts wait for your verdict. |
+
+Option display names come from the PR-1 derivation; a menu change is a change to
+REC-GOV-022 first, then to this table, then to code.
+
+**Incompatibility reason line (decisions B + D — absent-with-reason).** Incompatible
+options are never offered — absent from the list, never disabled-and-teasing (ux-craft
+§2.4). The reason renders once, as a muted line in the affected slot row, only when the
+current selections exclude at least one cleared option. Stage-table language; the word
+"checker" never appears in user copy (decision D). BLOCKED/AMBIGUOUS components get no
+reason line — they are simply absent (REC-GOV-022). One string, replacing both clusters'
+drafts:
+
+| Element | Literal string |
+|---|---|
+| Reason line (muted, in the slot row) | Some options aren't offered with your current choices. The stage that checks against sources always uses a different maker from the stage that reads your documents, so the check stays independent. |
+
+**Deployment preset (`/routes/ingestion` only — decision A).** Exactly one writable preset
+surface exists: `/routes/ingestion`, where this field extends the shipped "Reset to
+recommended" bulk action into a four-way choice — one mechanism, not two. Choosing "Fully
+managed (recommended)" *is* the shipped reset. `/projects` stays purely storage; no
+Settings nav string changes (§5.1 holds). A preset rewrites `bundle`; slot rows re-derive
+and carry the "Part of {preset}." annotation above.
+
+| Element | Literal string |
+|---|---|
+| Field label | Where your pipeline runs |
+| Helper text (below field) | One choice swaps the whole vetted setup. You can still adjust individual stages below. |
+| Option — recommended default | Fully managed (recommended) |
+| Outcome line | Hosted services do the work — nothing to run yourself. The recommended starting point. |
+| Option | Highest accuracy |
+| Outcome line | The strongest reading, search, and checking available. Builds run slower, and your documents go to hosted providers. |
+| Option | Regional residency |
+| Outcome line | Your documents are processed only inside your chosen region. |
+| Option | Self-host air-gapped |
+| Outcome line | Everything runs on your own infrastructure — nothing ever leaves it. You provide the computing power. |
+| Confirm dialog body (extends the shipped reset confirm; blast radius in numbers, ux-craft §3.5) | Switch to {preset}? This swaps {n} stages to that setup. Your graph and answers stay as they are — the new setup applies from your next build. |
+| Confirm dialog body, singular | Switch to {preset}? This swaps 1 stage to that setup. … |
+| Confirm / cancel buttons | Switch setup · Keep it |
+| Applied announcement (`role="status"`) | Setup switched to {preset}. |
+
+*Helper deviation, recorded:* the placement spec drafted the helper ending "…under
+Advanced." while placement was still disputed; decision A landed the field on
+`/routes/ingestion`, where the stage rows render on the same page below the field —
+"under Advanced" would point at the other host. Registered with "below".
+
+**Launch-panel receipt (predicate: `bundle ≠ default`).** The default bundle renders
+nothing — no receipt, no summary, no per-row teasers (§0 honest absence; REC-ADR-020).
+
+| Element | Literal string |
+|---|---|
+| Receipt line (muted, on the §2.3 launch panel) | Runs your customised pipeline. [Review choices] |
+| Customisation summary (inside the disclosure, same predicate) | {n} stages changed from the recommended default. |
+| Customisation summary, singular | 1 stage changed from the recommended default. |
+
+*Square brackets mark the inline link text (§2.5 convention); [Review choices] opens the
+sources-page "Advanced — full pipeline control" disclosure.*
+
+**Withdrawal / revert notice (decision F — one converged string).** Rendered once by the
+slot renderer, in the affected slot row, only when `reverted === true`; the withdrawn name
+is absent from menus thereafter. Never licence or counsel language (D-2026-07-02-1);
+verdict consequences flow only through the existing triage counts — §3.2/§3.4 strings
+unchanged.
+
+| Element | Literal string |
+|---|---|
+| Notice (`role="status"`, §6.2) | {name} is no longer available — {stage} is back on the recommended default. Your graph and answers are unaffected. |
+
+`{stage}` renders the §0 stage-table on-screen name; `{name}` the withdrawn option's
+display name.
+
+### 2.8 Economics (Metrics + run console)
+
+Verification-economics strings (placement spec §3.3; decision E assigns them this
+section). Exactly two render surfaces: rows on the Metrics page (`/analytics`) and one
+summary line inside the run console's existing "Show details" disclosure (§2.4) — the line
+exists only inside the opened disclosure. Never a cost figure on Home, on a Build panel,
+or on any journey surface; no tier or cache vocabulary anywhere; weekly-CI-gate views stay
+internal. Every count is a real counted unit; the populations are independent and are
+never summed into a single total (REC-ADR-016).
+
+| Metrics row label | First-contact gloss (hover/aria on the row) |
+|---|---|
+| Facts checked | How many facts were checked against the documents they came from. |
+| Re-used from earlier builds | Results carried over from an earlier build instead of being checked again. |
+| Sent for a closer look | Facts the quick check couldn't settle, passed to a stronger check. |
+| Awaiting review | Facts waiting for your verdict in Verify. |
+| Spend | What the checks cost to run, across providers. |
+
+| Element | Literal string |
+|---|---|
+| Per-run summary line (run console "Show details") | Checked {n} facts · {m} re-used from earlier builds · {k} sent for a closer look · {j} awaiting your review · {spend} spent. |
+| Segment singulars | Checked 1 fact · 1 re-used from an earlier build · 1 sent for a closer look · 1 awaiting your review |
+
+**Honest absence, restated (§0 — load-bearing here):** a measurement the run or corpus
+didn't record renders its row or segment **absent** — never `0`, never `—`. Each segment
+of the per-run line renders independently on the same rule; a run with no recorded
+economics renders no summary line at all.
+
 ---
 
 ## 3. Verify (M2)
@@ -432,6 +573,36 @@ Ghost styling always; no status dot — the text carries the state (Appendix A-3
 |---|---|---|
 | triage | {n} facts couldn't be matched to a source yet. ("1 fact couldn't be matched to a source yet.") | Review {n} facts ("Review 1 fact") |
 | ready | All facts are matched to sources. | Open Verify |
+
+### 3.5 Verify dossier first-contact lines
+
+Registered per the signed-off placement spec (§3.2; decision E assigns them this section).
+Predicate: **dossier open AND `judge !== null`**. One novice-register line renders above
+the shipped operator block (`judgedBy`, the JUDGE chip, the judgment-history disclosure) —
+no new fields, no second disclosure, never a "CHECKED BY" label, and the word "checker"
+never appears in user copy (decision D: stage-table language for novices; the shipped
+JUDGE vocabulary stays the operator layer). Exactly one of the three variants renders per
+dossier, selected by judge type / abstention.
+
+| Element | Literal string |
+|---|---|
+| Independence gloss (machine verdict) | Checked against its source on {DD Month YYYY} by a model independent of the one that read your documents. |
+| Human-verdict variant (the verdict is your recorded Operator verdict) | Reviewed by you on {DD Month YYYY}. |
+| Abstention line (claim still awaiting your triage) | We couldn't fully match this claim to its source — it's waiting for your verdict. |
+
+The abstention line echoes the §3.4 tile vocabulary ("couldn't be matched to a source")
+and the §3.2 definition sentence; verdict labels stay the registry's Supported / Weak /
+Unsupported. Dates render DD Month YYYY (§6.5). Component withdrawal has no Verify-side
+variant — §2.7's converged notice is the only withdrawal string (decision F).
+
+**Passage fidelity + citation resolution.** Tier names never appear in UI. A spatial span
+renders exactly as today, with no note — the note's presence is the only signal, and it is
+carried by text, never by colour alone (R3-A3).
+
+| Element | Literal string |
+|---|---|
+| Textual-fidelity note (in-dossier, only when `fidelity === "textual"`) | Source passage shown as text — this document type doesn't support a visual highlight. |
+| Unresolvable citation (ux-craft §4.1, registered here) | Source passage no longer available. |
 
 ---
 
