@@ -244,6 +244,45 @@ describe("slot rows — customised bundle + reason line", () => {
     expect(getByText("Qwen3-Embedding-8B")).toBeTruthy();
   });
 
+  it("renders the §2.7 withdrawal notice ONCE (plain <p>, not a live region) when a slot reverted, name absent from its menu", async () => {
+    const WITHDRAWN = "Frontier hosted model (Claude, Gemini, or GPT)";
+    const { container, getByText, getByRole, queryByText } = render(ConnectPipelineSlotRows, {
+      props: { graphTargetId: "g-1", bundle: { withdrawn_slots: { validate: WITHDRAWN } } },
+    });
+    // The single converged §2.7 notice, VERBATIM, rendered exactly once. It is
+    // durable per-row context, so it is a plain <p> — never a live region born
+    // inside {#if} (that anti-pattern never announces and breaks the one-region
+    // rule; the layout's persistent polite/assertive pair sits at the foot).
+    const notices = container.querySelectorAll(".slot-withdrawn");
+    expect(notices).toHaveLength(1);
+    expect(notices[0]?.getAttribute("role")).toBeNull();
+    expect(notices[0]?.getAttribute("aria-live")).toBeNull();
+    expect(
+      getByText(
+        "Frontier hosted model (Claude, Gemini, or GPT) is no longer available — Checking against sources is back on the recommended default. Your graph and answers are unaffected.",
+      ),
+    ).toBeTruthy();
+    // The slot reverted to the recommended default…
+    expect(getByText("Granite Guardian")).toBeTruthy();
+    // …and the withdrawn option is absent from the reopened menu thereafter.
+    await fireEvent.click(getByRole("button", { name: "Change the model for Checking against sources" }));
+    await tick();
+    expect(queryByText(WITHDRAWN)).toBeNull();
+    expect(getByText("HHEM-2.1-Open")).toBeTruthy();
+    // No counsel / licence / at-risk language leaks into the rendered slot.
+    const text = (container.textContent ?? "").toLowerCase();
+    for (const banned of ["checker", "licence", "license", "counsel", "at-risk", "at risk"]) {
+      expect(text).not.toContain(banned);
+    }
+  });
+
+  it("renders no withdrawal notice on a default (non-reverted) bundle", () => {
+    const { container } = render(ConnectPipelineSlotRows, {
+      props: { graphTargetId: "g-1", bundle: {} },
+    });
+    expect(container.querySelector(".slot-withdrawn")).toBeNull();
+  });
+
   it("renders the single §2.7 reason line, verbatim, when a row excluded an option", async () => {
     // rowsOverride seam: the shipped CLEARED menus are family-disjoint, so the
     // real catalog cannot produce blockedReason today (see pipeline-config PR-1

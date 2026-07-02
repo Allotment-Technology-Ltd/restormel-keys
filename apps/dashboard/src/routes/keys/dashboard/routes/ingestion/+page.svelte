@@ -5,6 +5,7 @@
   import { page } from "$app/stores";
   import ConnectBuilderReturnBar from "$lib/components/connect/ConnectBuilderReturnBar.svelte";
   import ConnectPipelineSlotRows from "$lib/components/connect/pipeline/ConnectPipelineSlotRows.svelte";
+  import ConnectPipelinePresetControl from "$lib/components/connect/pipeline/ConnectPipelinePresetControl.svelte";
   import ConnectSpineLedger from "$lib/components/connect/ConnectSpineLedger.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import {
@@ -387,7 +388,13 @@
               relate, and grouping when you have a second provider key.
             </p>
           </div>
-          {#if resetUiState === "confirming"}
+          {#if data.models.activeGraph}
+            <!-- RES-113 PR-3 (decision A): when the m1PlugPoints flag is ON, the
+                 four-way deployment preset EXTENDS "Reset to recommended" — the
+                 shipped reset block below is suppressed so exactly one writable
+                 preset surface exists. The preset field itself renders in the
+                 plug-point block below (above the slot rows it re-derives). -->
+          {:else if resetUiState === "confirming"}
             <div
               bind:this={resetConfirmEl}
               class="reset-confirm"
@@ -541,6 +548,16 @@
     {/if}
 
     {#if data.models.activeGraph}
+      <!-- RES-113 PR-3: the ONE writable deployment preset (decision A) — the
+           "Where your pipeline runs" field extending the shipped reset. Renders
+           above the disclosure ("adjust individual stages below"); a switch
+           re-derives the slot rows with their "Part of {preset}." annotation. -->
+      <section class="card preset-card" aria-label="Deployment preset">
+        <ConnectPipelinePresetControl
+          graphTargetId={data.models.activeGraph.id}
+          bundle={data.models.activeGraph.bundle}
+        />
+      </section>
       <!-- RES-113 PR-2: per-stage plug-point rows — the operator twin of the
            sources-page Advanced disclosure (one derivation, one renderer, two
            hosts; placement spec §3.4-C). The summary reuses the registered §2.1

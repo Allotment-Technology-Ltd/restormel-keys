@@ -1508,7 +1508,26 @@ export const ConnectGraphBundleSchema = z.object({
    * RES-113 (PR-5 renders the notice): slots whose curated choice was withdrawn
    * server-side and reverted to the recommended default (D-2026-07-02-1 rollback).
    */
-  reverted_slots: z.array(z.enum(['extract', 'embed', 'validate'])).optional()
+  reverted_slots: z.array(z.enum(['extract', 'embed', 'validate'])).optional(),
+  /**
+   * RES-113 (PR-3): the deployment preset last applied to this graph — a neutral
+   * id validated against the dashboard's `PIPELINE_PRESETS`. A marker only (the
+   * real choices live in `pipeline_slots`); drives the "Part of {preset}." slot
+   * annotation. Absent ⇒ no preset applied.
+   */
+  pipeline_preset: z.string().max(60).optional(),
+  /**
+   * RES-113 (PR-5): per-slot display name of the option withdrawn server-side
+   * (D-2026-07-02-1 rollback). Present ⇒ the slot reverted; the derivation renders
+   * the one §2.7 withdrawal notice and drops the option from the menu.
+   */
+  withdrawn_slots: z
+    .object({
+      extract: z.string().max(120).optional(),
+      embed: z.string().max(120).optional(),
+      validate: z.string().max(120).optional()
+    })
+    .optional()
 });
 
 export type ConnectGraphBundle = z.infer<typeof ConnectGraphBundleSchema>;
