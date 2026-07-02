@@ -1,68 +1,57 @@
 // @vitest-environment jsdom
 /**
- * RES-113 PR-C — flag-gated friendly M1 stepper.
- *
- * Proves the reskin is additive: with `friendly` OFF (the default) the literal
- * Provider→Sources→Domain→Review strip is byte-for-byte the live behaviour; with
- * it ON the friendly four-rung Sources·Configure·Running·Done ladder renders, and
- * rung state is derived from the same real signals.
+ * RES-113 PR-5 — the PR-C `friendly` four-rung ladder is DELETED (plan §3.2:
+ * the flag-ON Build path renders one state-derived panel with a plain
+ * non-interactive eyebrow — no stepper at all). This stepper now mounts only on
+ * the flag-OFF path; these tests pin the literal strip and prove no friendly
+ * rung markup survives.
  */
 import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/svelte";
 import PipelineWizardStepper from "./PipelineWizardStepper.svelte";
 
-describe("PipelineWizardStepper — flag OFF (live, unchanged)", () => {
-  it("renders the literal wizard steps and NONE of the friendly rungs", () => {
+describe("PipelineWizardStepper — flag-OFF literal strip (live, unchanged)", () => {
+  it("renders the literal wizard steps and NONE of the retired friendly rungs", () => {
     const { container } = render(PipelineWizardStepper, {
       props: { currentStep: "sources", onNavigate: vi.fn(), completedIds: [], navigable: true },
     });
     const text = container.textContent ?? "";
     expect(text).toContain("Provider key");
     expect(text).toContain("Review & launch");
-    // Friendly-only rung labels must not appear with the flag off.
+    // The PR-C friendly ladder is gone for good — not merely hidden.
     expect(container.querySelector(".wizard-stepper--friendly")).toBeNull();
     expect(text).not.toContain("Configure");
     expect(text).not.toContain("Running");
   });
-});
 
-describe("PipelineWizardStepper — friendly M1 ladder", () => {
-  it("renders the four friendly rungs and drops the literal step labels", () => {
-    const { container } = render(PipelineWizardStepper, {
-      props: { currentStep: "sources", onNavigate: vi.fn(), completedIds: [], friendly: true },
-    });
-    expect(container.querySelector(".wizard-stepper--friendly")).not.toBeNull();
-    const labels = [...container.querySelectorAll(".wizard-step-label")].map((n) => n.textContent);
-    expect(labels).toEqual(["Sources", "Configure", "Running", "Done"]);
-  });
-
-  it("marks the current step's rung active (provider folds into Configure)", () => {
-    const { container } = render(PipelineWizardStepper, {
-      props: { currentStep: "provider", onNavigate: vi.fn(), completedIds: [], friendly: true },
-    });
-    const active = container.querySelector(".wizard-step-active .wizard-step-label")?.textContent;
-    expect(active).toBe("Configure");
-  });
-
-  it("derives completed rungs from real completion, not position (active wins over completed)", () => {
-    // Back on the Sources rung, but a domain pack + provider key are already in
-    // place → Configure reads as completed even though we are upstream of it.
+  it("marks the active step with aria-current and keeps completed ✓ from real signals", () => {
     const { container } = render(PipelineWizardStepper, {
       props: {
         currentStep: "sources",
         onNavigate: vi.fn(),
-        completedIds: ["domain", "provider"],
-        friendly: true,
+        completedIds: ["provider"],
+        navigable: true,
       },
     });
-    const active = container.querySelector(".wizard-step-active .wizard-step-label")?.textContent;
-    expect(active).toBe("Sources");
+    const active = container.querySelector('[aria-current="step"]');
+    expect(active?.textContent).toContain("Sources");
     const completed = [...container.querySelectorAll(".wizard-step-completed .wizard-step-label")].map(
       (n) => n.textContent,
     );
-    expect(completed).toContain("Configure");
-    // Running/Done are never complete inside the wizard.
-    expect(completed).not.toContain("Running");
-    expect(completed).not.toContain("Done");
+    expect(completed).toEqual(["Provider key"]);
+  });
+
+  it("RES-122: connectors are bundled INSIDE the step li they lead into (no orphan li)", () => {
+    const { container } = render(PipelineWizardStepper, {
+      props: { currentStep: "provider", onNavigate: vi.fn(), completedIds: [], navigable: true },
+    });
+    // Every list item is a step; connectors are spans inside them, never li siblings.
+    const items = [...container.querySelectorAll(".wizard-steps > li")];
+    expect(items).toHaveLength(4);
+    for (const li of items) {
+      expect(li.classList.contains("wizard-step")).toBe(true);
+    }
+    expect(container.querySelectorAll("li.wizard-connector")).toHaveLength(0);
+    expect(container.querySelectorAll(".wizard-step > span.wizard-connector")).toHaveLength(3);
   });
 });

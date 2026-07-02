@@ -16,16 +16,13 @@
     ingestStatusLabel,
   } from "$lib/connect/ingest-quality-display";
   import { DASHBOARD_BASE } from "$lib/dashboard-base";
-  import { AGENTS_HREF, ANSWER_CONSOLE_HREF, CLAIMS_HREF, HOME_HREF, RUNS_HREF } from "$lib/nav-config";
+  import { AGENTS_HREF, CLAIMS_HREF, HOME_HREF, RUNS_HREF, VERIFY_HREF } from "$lib/nav-config";
   import {
     pipelineWizardHref,
-    m1RunConsoleRungs,
-    m1RungVisualState,
     isM1StageRateLimited,
-    M1_BUILD_RUNGS,
     M1_RATE_LIMIT_BANNER,
   } from "$lib/connect/pipeline-config";
-  import { MILESTONE_LABEL } from "$lib/connect/connect-journey";
+  import { journeyStageName, journeyStageDescription } from "$lib/connect/stage-vocabulary";
   import StateChip, { type StateChipState } from "$lib/components/brutalist/StateChip.svelte";
   import { STALL_NOTICE_MS } from "$lib/connect/run-stall";
   import { LiveRunEventClient } from "$lib/connect/live-run-event-client";
@@ -140,12 +137,16 @@
   export let graphTask: "link-sources" | "revalidate" | "auto-remediate" | "embed-backfill" | null =
     null;
   /**
-   * RES-113 PR-C: render the friendly M1 "Build" run-console reskin (StateChip
-   * progress ladder, plain-language framing, the amber rate-limit banner, and the
-   * "ask your own data" Done card). DEFAULT false — with the `onboardingJourney`
-   * flag OFF every friendly branch is skipped and this console renders byte-for-
-   * byte unchanged, including all .live / .machine-room / .completion-ledger test
-   * hooks. Presentational only; no execution behaviour changes.
+   * RES-113 PR-5 (supersedes PR-C): render the journey M1 "Build" run console —
+   * ONE honest per-stage tracker in the shared stage vocabulary, with the
+   * heartbeat/odometers/log/attribution instrumentation collapsed behind a single
+   * closed-by-default "Show details" disclosure (auto-opening on failure,
+   * rate-limit, or stall), and a single-primary completion state (copy pack §2.4
+   * / §2.5). DEFAULT false — with the `onboardingJourney` flag OFF every journey
+   * branch is skipped and this console renders byte-for-byte unchanged, including
+   * all .live / .machine-room / .completion-ledger test hooks. Presentational
+   * only; no execution behaviour changes. Graph-tool runs (graphTask / fromGraph)
+   * keep the operator console even with the flag ON — they are advanced surfaces.
    */
   export let onboardingJourney = false;
 
@@ -229,11 +230,10 @@
   $: isInProgress = job?.status === "pending" || job?.status === "running";
   $: startingRun = isInProgress && loading && logLines.length === 0;
 
-  // ── RES-113 PR-C · friendly M1 "Build" reskin (gated; presentational) ─────────
-  // The friendly four-rung ladder shown only with the flag ON. Active/complete are
-  // derived from the REAL run state (REC-ADR-016) — Running until the job completes,
-  // then Done. Renders alongside, never replacing, the honest stage timeline/ledger.
-  $: m1Rungs = m1RunConsoleRungs({ isCompleted });
+  // ── RES-113 PR-5 · journey M1 "Build" console (gated; presentational) ─────────
+  // The journey console replaces the operator layout ONLY for plain runs with the
+  // flag ON — graph-tool tasks keep the operator console (advanced surfaces).
+  $: journeyConsole = onboardingJourney && !graphTask && !fromGraph;
   // Amber rate-limit state: lit ONLY from a REAL signal (RES-113 PR-I). The engine
   // threads a structured backoff onto the running stage (`stage.backoff`) while it is
   // genuinely throttling and clears it on success — so this never fabricates a state
@@ -244,13 +244,101 @@
     (job?.stages ?? []).some((s) =>
       isM1StageRateLimited(s as { status?: string; backoff?: { reason_code?: string } | null }),
     );
-  // Map an M1 rung's visual state → the StateChip honest-state vocabulary.
-  function m1ChipState(rung: (typeof M1_BUILD_RUNGS)[number]["id"]): StateChipState {
-    const v = m1RungVisualState(rung, m1Rungs);
-    if (v === "completed") return "done";
-    if (v === "active") return "running";
-    return "idle";
+
+  // Journey completion primary — lands on Home with the ask box (PR-3's
+  // `#home-ask-input`) as the sequential-focus start point (copy pack §2.5).
+  const HOME_ASK_HREF = HOME_HREF + "#home-ask-input";
+
+  /** Journey h1 — names the REAL run state (REC-ADR-016), copy pack §2.4/§2.5. */
+  $: journeyTitle = (() => {
+    if (isCompleted && isStubPreview) return "Preview run finished";
+    if (isCompleted) return "Your graph is built";
+    if (job?.status === "failed") return "Build stopped";
+    if (job?.status === "cancelled") return "Build cancelled";
+    return "Building your graph";
+  })();
+
+  /** Copy pack §2.5: this run's validator-flagged count (real field; 0 → no Verify line). */
+  $: journeyFlagged = job?.progress?.quality_report?.quarantine_count ?? 0;
+  $: journeyDone = journeyConsole && isCompleted && !isStubPreview && job?.progress?.execution_mode === "full";
+
+  /**
+   * The ONE honest per-stage tracker (copy pack §2.4): real stage rows in the
+   * shared stage vocabulary. Skipped stages are omitted (they did not run);
+   * consecutive rows that collapse to the same fallback name ("Getting ready" —
+   * internal stages the pack deliberately leaves unmapped) merge into one row so
+   * engineering stage names never leak and the list never shows duplicates.
+   */
+  type JourneyStageRow = {
+    key: string;
+    name: string;
+    desc: string;
+    status: "pending" | "running" | "completed" | "failed";
+    processed?: number;
+    total?: number;
+  };
+  function mergeJourneyStatus(
+    a: JourneyStageRow["status"],
+    b: ConnectIngestStageProgress["status"],
+  ): JourneyStageRow["status"] {
+    const next = b === "skipped" ? "completed" : b;
+    if (a === "running" || next === "running") return "running";
+    if (a === "failed" || next === "failed") return "failed";
+    if (a === "pending" || next === "pending") return "pending";
+    return "completed";
   }
+  function buildJourneyStages(stages: readonly ConnectIngestStageProgress[]): JourneyStageRow[] {
+    const out: JourneyStageRow[] = [];
+    for (const s of stages) {
+      if (s.status === "skipped") continue;
+      const name = journeyStageName(s.stage);
+      const prev = out[out.length - 1];
+      if (prev && prev.name === name) {
+        prev.status = mergeJourneyStatus(prev.status, s.status);
+        // Merged rows drop counts — never sum units across different stages.
+        prev.processed = undefined;
+        prev.total = undefined;
+        prev.key = `${prev.key}+${s.stage}`;
+        continue;
+      }
+      out.push({
+        key: s.stage,
+        name,
+        desc: journeyStageDescription(s.stage),
+        status: s.status,
+        processed: s.progress?.processed,
+        total: s.progress?.total,
+      });
+    }
+    return out;
+  }
+  $: journeyStages = journeyConsole ? buildJourneyStages(job?.stages ?? []) : [];
+  $: journeyTrackerVisible =
+    journeyConsole && journeyStages.length > 0 && !isCompleted;
+
+  /** Stage chip: real status → StateChip state + copy-pack word (DONE/RUNNING/WAITING/FAILED). */
+  function journeyChip(status: JourneyStageRow["status"]): { state: StateChipState; label: string } {
+    if (status === "completed") return { state: "done", label: "Done" };
+    if (status === "running") return { state: "running", label: "Running" };
+    if (status === "failed") return { state: "error", label: "Failed" };
+    return { state: "idle", label: "Waiting" };
+  }
+
+  // ONE closed-by-default "Show details" disclosure for the instrumentation
+  // (heartbeat, odometers, log, attribution, ledger depth). Auto-opens ONCE per
+  // real trouble signal — failure, rate-limit, or stall — and stays user-owned
+  // after that (never one-way `open={expr}`, which a poll would keep resetting).
+  let journeyDetailsOpen = false;
+  let journeyDetailsAutoOpened = false;
+  $: if (
+    journeyConsole &&
+    !journeyDetailsAutoOpened &&
+    (m1RateLimited || isStalled || Boolean(job?.error) || job?.status === "failed")
+  ) {
+    journeyDetailsOpen = true;
+    journeyDetailsAutoOpened = true;
+  }
+
   $: graphRepair = job?.progress?.graph_repair ?? null;
   $: stagesComplete = job?.progress?.processed ?? 0;
   $: stagesTotal = job?.progress?.total ?? CONNECT_INGEST_PIPELINE_STAGES.length;
@@ -678,6 +766,591 @@
   {:else if error}
     <p class="run-error" role="alert">{error}</p>
   {:else if job}
+    <!-- ── Shared instrumentation blocks (RES-113 PR-5) ─────────────────────────
+         One source for both consoles: the flag-OFF operator layout renders these
+         in their original positions (byte-for-byte unchanged DOM), the journey
+         layout tucks them behind the single "Show details" disclosure. `j` is
+         passed at each render site so narrowing survives the snippet closure. -->
+    {#snippet stubWarnBlock(j: Job)}
+      {#if j.status === "completed" && isStubPreview}
+        <div class="run-warn" role="status">
+          <strong>Preview run — nothing was written to your graph store.</strong>
+          This run only simulated pipeline progress. With Surreal connected in the pipeline wizard, new runs
+          write to your database automatically. Use <strong>Restart run</strong> or
+          <a href={pipelineWizardHref("launch")}>start a new run</a>.
+        </div>
+      {/if}
+    {/snippet}
+
+    {#snippet completionLedgerBlock(j: Job)}
+      <!-- W4.1 B-P1-1: ONE completion ledger replaces the old stacked
+           success-banner + scorecard + "What to do next" blocks. Verdict cap (trust
+           numeral + supported %) above a single next-actions body. The numbers QUOTE
+           the run's quality report (W2.3 single-source rule), labelled "this run's
+           audit". The duplicate blocks are deleted, not hidden. -->
+      {#if j.progress?.quality_report && isCompleted && completionLedger}
+        <section class="completion-ledger" aria-labelledby="completion-ledger-heading">
+          {#if j.progress.quality_report.stub_warning}
+            <p class="run-warn" role="status">{j.progress.quality_report.stub_warning}</p>
+          {/if}
+          <!-- Verdict cap -->
+          <div class="ledger-cap ledger-cap--{completionLedger.trustTint}">
+            <p class="ledger-cap-kicker">This run's audit</p>
+            <h2 id="completion-ledger-heading" class="ledger-cap-verdict">
+              <span class="ledger-cap-numeral">{completionLedger.trustScore}</span>
+              <span class="ledger-cap-word">{completionLedger.verdict}</span>
+            </h2>
+            <p class="ledger-cap-stats">
+              <!-- Honest absence (MINOR-3): no okPct reported → "— supported", muted, never
+                   a fabricated 0% in red. -->
+              <span class="ledger-cap-stat ledger-cap-stat--{completionLedger.supportedTint}">
+                {#if completionLedger.supportedPct === "—"}— supported{:else}{completionLedger.supportedPct}% supported{/if}
+              </span>
+              <!-- Real captured unit count (quality report's `units`), never the
+                   completed-stage count. Dropped entirely when the run didn't report it,
+                   so the cap never headlines a stage tally as units. -->
+              {#if completionLedger.totalUnits !== "—"}
+                <span class="ledger-cap-sep" aria-hidden="true">·</span>
+                <span class="ledger-cap-stat">{completionLedger.totalUnits} units captured</span>
+              {/if}
+            </p>
+            <!-- K4/K-P1-7: validating-family disclosure (graceful absent-state until K5) -->
+            {#if j.progress.quality_report.validation_family?.validation_provider}
+              {@const vf = j.progress.quality_report.validation_family}
+              <p class="run-family-disclosure" role="status">
+                Validated by <strong>{vf.validation_provider}</strong>{#if vf.extraction_provider}
+                  — {vf.cross_family ? "different family than" : "same family as"} extraction
+                  ({vf.extraction_provider}){/if}{#if vf.cross_family === true}
+                  · cross-model validation ✓{:else if vf.cross_family === false}
+                  · add a second provider family for cross-model validation{/if}
+              </p>
+            {:else}
+              <p class="run-family-disclosure run-family-disclosure--absent">
+                Validating model family: not recorded for this run.
+              </p>
+            {/if}
+          </div>
+
+          <!-- Single next-actions body -->
+          <div class="ledger-body">
+          <h3 class="run-next-actions-title">What to do next</h3>
+          <ol class="run-next-list">
+            {#if (trustScore ?? 0) < 80}
+              <li class="run-next-item run-next-item-primary">
+                <span class="run-next-num">1</span>
+                <span class="run-next-text">Review weak units in Claims</span>
+                <a class="btn btn-primary btn-sm" href={CLAIMS_HREF + "?filter=review"}>Open quarantine queue →</a>
+              </li>
+              <li class="run-next-item">
+                <span class="run-next-num">2</span>
+                <span class="run-next-text">Explore what was captured</span>
+                <a class="btn btn-outline btn-sm" href={CLAIMS_HREF}>View graph →</a>
+              </li>
+              <li class="run-next-item">
+                <span class="run-next-num">3</span>
+                <span class="run-next-text">Connect an agent to start querying</span>
+                <a class="btn btn-outline btn-sm" href={AGENTS_HREF}>Set up agent →</a>
+              </li>
+            {:else}
+              <!-- Spine retarget (journey Phase 1): the run is MID-journey, not a
+                   terminus. The primary forward action is stage ③ → ④ "Make ready"
+                   (link · embed · validate), not "explore the graph" — exploring is
+                   a sideways move, making ready is the next step toward go-live. -->
+              <li class="run-next-item run-next-item-primary">
+                <span class="run-next-num">1</span>
+                <span class="run-next-text">Make your graph ready — link, embed, validate</span>
+                <a class="btn btn-primary btn-sm" href={CLAIMS_HREF + "?workspace=tools"}>Make your graph ready →</a>
+              </li>
+              <li class="run-next-item">
+                <span class="run-next-num">2</span>
+                <span class="run-next-text">Explore what was captured</span>
+                <a class="btn btn-outline btn-sm" href={CLAIMS_HREF}>View graph →</a>
+              </li>
+              <li class="run-next-item">
+                <span class="run-next-num">3</span>
+                <span class="run-next-text">Run again with more documents</span>
+                <a class="btn btn-outline btn-sm" href={pipelineWizardHref("sources")}>New run →</a>
+              </li>
+            {/if}
+          </ol>
+          <!-- W3.4 cross-link: run console → workspace trust scorecard. Every trust
+               number on the cap is its own receipt — the standing scorecard. -->
+          <p class="run-cross-links">
+            <a class="run-cross-link" href={HOME_HREF + "#trust-ledger"}>View workspace trust scorecard →</a>
+            <span class="run-cross-sep" aria-hidden="true">·</span>
+            <a class="run-cross-link" href={RUNS_HREF}>All ingest runs →</a>
+          </p>
+          </div>
+        </section>
+      {/if}
+    {/snippet}
+
+    {#snippet runGridBlock(j: Job)}
+      <div class="run-grid" class:run-grid-active={isInProgress}>
+        <BrutalCard fill="canvas" title={showGraphRepairPanel ? "Unit progress" : "Progress"}>
+          {#if showGraphRepairPanel && graphRepair}
+            <ConnectGraphRepairProgress
+              graphRepair={graphRepair}
+              jobStatus={j.status}
+              jobUpdatedAt={j.updated_at}
+              percent={percent}
+            />
+          {:else}
+            <div class="progress-panel">
+              <div class="progress-readout" aria-live="polite">
+                <span class="progress-pct">{percent}<span class="progress-pct-suffix">%</span></span>
+                <span class="progress-eta">{isInProgress ? (isStalled ? "Stalled" : "Running") : "Run progress"}</span>
+              </div>
+              <div
+                class="progress-track"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow={percent}
+                aria-label="Ingest progress"
+              >
+                <div class="progress-fill progress-fill-yellow" style:width="{percent}%"></div>
+                <div class="progress-segments" aria-hidden="true">
+                  {#each CONNECT_INGEST_PIPELINE_STAGES as _}
+                    <span></span>
+                  {/each}
+                </div>
+              </div>
+              {#if j.progress}
+                <p class="run-muted progress-detail">
+                  {#if isEmbedBackfill}
+                    Embedding stage only — other pipeline stages are skipped for re-embed.
+                  {:else}
+                    {stagesComplete} of {stagesTotal} stages complete
+                  {/if}
+                </p>
+              {/if}
+              <!-- The live "Last worker signal Xs ago" readout lives once, in the
+                   Machine Room heartbeat strip below (W4.1) — it breathes with the
+                   SSE frames and carries the STALLED stamp. The static duplicate that
+                   used to sit here was removed in W4.4 (filed #296: duplicate
+                   "Last worker signal" readouts). -->
+              {#if isStalled}
+                <!-- W4.1 §3.2: STALLED as a designed amber moment — the stamp prints
+                     the durable-runs contract in plain words (true to Stage 1.6). -->
+                <div class="progress-stall-notice" role="status">
+                  <span class="progress-stall-stamp">⚠ STALLED</span>
+                  <p class="progress-stall-body">
+                    {#if leaseCountdownLabel}
+                      {leaseCountdownLabel} A stalled run is reclaimed and resumes from the last
+                      checkpoint — nothing is lost.
+                    {:else}
+                      No worker heartbeat detected. A stalled run is reclaimed automatically and
+                      resumes from the last checkpoint — nothing is lost.
+                    {/if}
+                  </p>
+                </div>
+              {/if}
+              {#if isReclaimedRun && !isStalled}
+                <!-- W4.1 §3.2: RECLAIMED as a green ledger line. `isReclaimedRun`
+                     already guarantees reclaim_count > 0, so the count renders
+                     unconditionally — the redundant inner guard was removed in W4.4
+                     (filed #296: redundant reclaim guard). -->
+                <p class="progress-reclaim-ledger" role="status">
+                  <span class="reclaim-tag">RECLAIMED</span>
+                  · resumed from checkpoint after a stall (×{j.reclaim_count})
+                </p>
+              {/if}
+            </div>
+          {/if}
+          {#if showGraphRepairPanel}
+            <div
+              class="progress-track progress-track-compact"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={percent}
+              aria-label="Graph repair progress"
+            >
+              <div class="progress-fill progress-fill-yellow" style:width="{percent}%"></div>
+            </div>
+          {/if}
+        </BrutalCard>
+
+        {#if isCompleted}
+          <details class="run-collapsible">
+            <summary>Show pipeline details ↓</summary>
+            <BrutalCard fill="white" title="Pipeline">
+              <ConnectIngestPipelineTimeline
+                stages={j.stages ?? []}
+                currentStageKey={j.current_stage}
+                currentAction={j.current_action}
+                jobStatus={j.status}
+              />
+            </BrutalCard>
+          </details>
+        {:else}
+          <BrutalCard fill="white" title="Pipeline">
+            <ConnectIngestPipelineTimeline
+              stages={j.stages ?? []}
+              currentStageKey={j.current_stage}
+              currentAction={j.current_action}
+              jobStatus={j.status}
+            />
+          </BrutalCard>
+        {/if}
+      </div>
+    {/snippet}
+
+    {#snippet attributionBlock()}
+      <!-- K5: run attribution — which route/model served each stage. Read-only;
+           route name links to the builder (X4 grammar: route → builder). -->
+      {#if attributionRows.length > 0}
+        <section class="run-attribution" aria-labelledby="run-attribution-heading">
+          <h2 id="run-attribution-heading" class="run-attribution-heading">Served by</h2>
+          <ul class="run-attribution-list">
+            {#each attributionRows as row (row.stage)}
+              <li class="run-attribution-row">
+                <span class="run-attribution-stage">{row.label}</span>
+                <span class="run-attribution-line">
+                  <strong>{row.modelId}</strong>
+                  <span class="run-attribution-sep" aria-hidden="true">·</span>
+                  {row.provider}
+                  {#if row.routeName}
+                    <span class="run-attribution-sep" aria-hidden="true">·</span>
+                    {#if row.builderHref}
+                      <a class="run-attribution-route" href={row.builderHref}
+                        >route {row.routeName}{#if row.stepDisplay} ({row.stepDisplay}){/if} →</a
+                      >
+                    {:else}
+                      <span class="run-attribution-route-plain"
+                        >route {row.routeName}{#if row.stepDisplay} ({row.stepDisplay}){/if}</span
+                      >
+                    {/if}
+                  {/if}
+                  <span class="run-attribution-sep" aria-hidden="true">·</span>
+                  {row.attempts}
+                  {row.attempts === 1 ? "attempt" : "attempts"}
+                  {#if row.crossFamilyVsExtraction === true}
+                    <span class="run-attribution-cross run-attribution-cross--ok"
+                      >· cross-model ✓</span
+                    >
+                  {:else if row.crossFamilyVsExtraction === false}
+                    <span class="run-attribution-cross run-attribution-cross--same"
+                      >· same family as extraction</span
+                    >
+                  {/if}
+                </span>
+              </li>
+            {/each}
+          </ul>
+          {#if attributionRecordedFromLabel}
+            <p class="run-attribution-note">Attribution recorded from {attributionRecordedFromLabel}.</p>
+          {/if}
+        </section>
+      {:else if showAttributionAbsent}
+        <section class="run-attribution" aria-labelledby="run-attribution-heading">
+          <h2 id="run-attribution-heading" class="run-attribution-heading">Served by</h2>
+          <p class="run-attribution-note run-attribution-note--absent" role="status">
+            Route/model attribution was not recorded for this run — it predates attribution
+            capture. New runs record which route and model served each stage.
+          </p>
+        </section>
+      {/if}
+    {/snippet}
+
+    {#snippet machineRoomBlock()}
+      {#if !startingRun && isInProgress && !showGraphRepairPanel}
+        <!-- W4.1 Machine Room: heartbeat strip + per-stage odometers ride the live
+             SSE frames (no new fetch). Both have static reduced-motion fallbacks. -->
+        <section
+          class="machine-room"
+          class:machine-room--stalled={isStalled}
+          aria-label="Live run instrumentation"
+        >
+          <div class="heartbeat-strip" class:heartbeat-strip--stalled={heartbeat.stalled}>
+            <span class="heartbeat-bar" aria-hidden="true">{heartbeat.bar}</span>
+            <span class="heartbeat-label">
+              {#if heartbeat.stalled}
+                <span class="heartbeat-stalled-stamp">STALLED</span>
+              {:else}
+                Last worker signal {heartbeat.signalAgeLabel}
+              {/if}
+            </span>
+          </div>
+
+          {#if stageOdometers.length > 0}
+            <ol class="odometers" aria-label="Per-stage progress">
+              {#each stageOdometers as od (od.stage)}
+                <li
+                  class="odometer"
+                  class:odometer--running={od.running}
+                  class:odometer--done={od.status === "completed"}
+                >
+                  <span class="odometer-label">{od.label}</span>
+                  <span class="odometer-count">
+                    <span class="odometer-value">{od.count.toLocaleString()}</span>
+                    {#if od.total}
+                      <span class="odometer-total">/ {od.total.toLocaleString()}</span>
+                    {/if}
+                  </span>
+                </li>
+              {/each}
+            </ol>
+          {/if}
+        </section>
+      {/if}
+    {/snippet}
+
+    {#snippet logBlock()}
+      {#if !startingRun}
+        {#if isInProgress}
+          <section class="run-log-panel" aria-labelledby="run-log-heading">
+            <h2 id="run-log-heading" class="run-log-heading">
+              Activity log
+              <span class="run-log-count">({logLines.length} lines)</span>
+            </h2>
+            <div
+              id="run-log-screen"
+              class="log-screen"
+              role="log"
+              aria-live="polite"
+              aria-relevant="additions"
+              aria-labelledby="run-log-heading"
+              bind:this={logEl}
+            >
+              <pre class="log-screen-pre">{logLines.join("\n") || "— awaiting worker output —"}</pre>
+            </div>
+          </section>
+        {:else if logOpen}
+          <section class="run-log-panel" aria-labelledby="run-log-heading">
+            <div class="run-log-panel-head">
+              <h2 id="run-log-heading" class="run-log-heading">
+                Activity log
+                <span class="run-log-count">({logLines.length} lines)</span>
+              </h2>
+              <button
+                type="button"
+                class="run-log-collapse-btn brut-focus"
+                aria-expanded="true"
+                aria-controls="run-log-screen"
+                on:click={() => (logOpen = false)}
+              >
+                Collapse log
+              </button>
+            </div>
+            <div
+              id="run-log-screen"
+              class="log-screen"
+              role="log"
+              aria-labelledby="run-log-heading"
+              bind:this={logEl}
+            >
+              <pre class="log-screen-pre">{logLines.join("\n") || "— awaiting worker output —"}</pre>
+            </div>
+          </section>
+        {:else}
+          <div class="run-log-collapsed">
+            <button
+              type="button"
+              class="run-log-expand-btn brut-focus"
+              aria-expanded="false"
+              aria-controls="run-log-screen"
+              on:click={() => (logOpen = true)}
+            >
+              Activity log ({logLines.length} lines) — expand
+            </button>
+          </div>
+        {/if}
+      {/if}
+    {/snippet}
+
+    {#snippet cancelBlock()}
+      {#if canCancel}
+        <p class="run-cancel-wrap">
+          <button type="button" class="run-cancel-link" on:click={cancelJob} disabled={cancelling}>
+            {cancelling ? "Cancelling…" : "Cancel run"}
+          </button>
+        </p>
+      {/if}
+    {/snippet}
+
+    {#if journeyConsole}
+      <!-- ── RES-113 PR-5: journey Build console (flag-ON, plain runs only) ─────
+           ONE honest per-stage tracker (copy pack §2.4, shared stage vocabulary),
+           instrumentation behind a single closed-by-default "Show details"
+           disclosure that auto-opens on failure / rate-limit / stall, and a
+           single-primary completion (copy pack §2.5). Flag-OFF and graph-tool
+           runs render the operator console below byte-for-byte unchanged. -->
+      <header class="journey-run-head">
+        <h1 id="run-console-heading" class="run-title journey-run-title">{journeyTitle}</h1>
+      </header>
+
+      {#if startingRun}
+        <p class="run-starting" role="status">Starting your run…</p>
+      {/if}
+
+      {#if actionMsg}
+        <p class="run-notice" role="status">{actionMsg}</p>
+      {/if}
+
+      {#if m1RateLimited}
+        <!-- Copy pack §2.4 rate-limit banner: amber, no action needed. Lights ONLY
+             from the real backoff signal (PR-I `stage.backoff`, or the legacy
+             status-string wire) — never fabricated (REC-ADR-016). -->
+        <div class="m1-rate-limit" role="status">
+          <p class="m1-rate-limit-body">{M1_RATE_LIMIT_BANNER.body}</p>
+        </div>
+      {/if}
+
+      {#if journeyTrackerVisible}
+        <section class="journey-tracker" aria-label="Build progress">
+          <ol class="journey-stages">
+            {#each journeyStages as row (row.key)}
+              {@const chip = journeyChip(row.status)}
+              <li class="journey-stage" class:journey-stage--running={row.status === "running"}>
+                <span class="journey-stage-chip">
+                  <StateChip state={chip.state} label={chip.label} dot={false} />
+                </span>
+                <span class="journey-stage-text">
+                  <span class="journey-stage-name">{row.name}</span>
+                  <span class="journey-stage-desc">{row.desc}</span>
+                </span>
+                {#if typeof row.processed === "number" && typeof row.total === "number" && row.total > 0}
+                  <span class="journey-stage-count">
+                    {row.processed.toLocaleString()} of {row.total.toLocaleString()}
+                  </span>
+                {/if}
+              </li>
+            {/each}
+          </ol>
+          {#if isInProgress}
+            <p class="journey-tracker-note">Progress here is real — each count is work actually finished.</p>
+            <p class="journey-tracker-note">You can leave this page. We'll keep building, and Home shows progress.</p>
+          {/if}
+        </section>
+      {/if}
+
+      {#if job.error}
+        <div class="run-error-banner" role="alert">
+          <p class="run-error-banner-title">
+            {#if isWorkerLost}
+              <strong>Worker lost — run stalled</strong>
+            {:else}
+              <strong>Build stopped</strong>
+            {/if}
+          </p>
+          <p class="run-error-banner-body">
+            {#if isWorkerLost}
+              The worker stopped responding before the lease expired and the run was reclaimed
+              automatically. Nothing in your graph store was corrupted — the run can be restarted
+              from the last checkpoint.
+            {:else if failureHelp}
+              <strong>{failureHelp.title}.</strong>
+              {failureHelp.body}
+            {:else}
+              <!-- Copy pack §2.4 stage-failure banner — the stage is named in the
+                   shared vocabulary, never an engineering key. -->
+              {journeyStageName(job.current_stage)} stopped partway — the AI provider returned an
+              error. Everything finished so far is saved. Retry to pick up where it left off.
+            {/if}
+          </p>
+          {#if !isWorkerLost}
+            <details class="run-error-raw">
+              <summary>Raw error (for support)</summary>
+              <code>{job.error}</code>
+            </details>
+          {/if}
+          {#if restartBlockedRows.length > 0}
+            <ul class="run-error-preflight-list">
+              {#each restartBlockedRows as row (row.provider)}
+                <li>
+                  {preflightIssueCopy(row)}
+                  <a class="run-error-fix-link" href={row.fixHref}>{row.fixLabel}</a>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          {#if canRestart}
+            <div class="run-error-banner-actions">
+              <!-- Copy pack §2.4: the ONE yellow primary in the failed state. -->
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                on:click={restartJob}
+                disabled={restarting}
+              >
+                {restarting ? "Restarting…" : "Retry run →"}
+              </button>
+              {#if failureHelp}
+                <a class="btn btn-outline btn-sm" href={failureHelp.fixHref}>{failureHelp.fixLabel}</a>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {/if}
+
+      {#if journeyDone}
+        <!-- Copy pack §2.5 completion: exactly one primary, always to the ask
+             (M4 spine). The Verify secondary is plain muted text with an inline
+             link — no arrow, no button styling — and renders ONLY when this run
+             actually flagged something (`quality_report.quarantine_count > 0`). -->
+        <section class="journey-done" aria-label="Build complete">
+          <p class="journey-done-lead">
+            {#if runUnitCount !== null}
+              {runUnitCount === 1
+                ? "We found 1 fact across your documents."
+                : `We found ${runUnitCount.toLocaleString()} facts across your documents.`}
+            {/if}
+            Ask a question to see it work — every answer shows where it came from.
+          </p>
+          <a class="btn btn-primary btn-lg journey-done-cta" href={HOME_ASK_HREF}>
+            Ask your first question →
+          </a>
+          {#if journeyFlagged > 0}
+            <p class="journey-verify-line">
+              {journeyFlagged === 1
+                ? "1 of the facts we found couldn't be fully matched to its source."
+                : `${journeyFlagged.toLocaleString()} of the facts we found couldn't be fully matched to their sources.`}
+              <a class="journey-verify-link" href={VERIFY_HREF}>
+                {journeyFlagged === 1 ? "Review it in Verify" : "Review them in Verify"}
+              </a>
+              whenever you like — your answers work either way.
+            </p>
+          {/if}
+        </section>
+      {/if}
+
+      {@render stubWarnBlock(job)}
+
+      {#if job.status === "cancelled" || (isCompleted && isStubPreview)}
+        <div class="journey-restart-row">
+          <button
+            type="button"
+            class="btn btn-outline btn-sm"
+            on:click={restartJob}
+            disabled={restarting}
+          >
+            {restarting ? "Restarting…" : "Restart run"}
+          </button>
+        </div>
+      {/if}
+
+      {#if !startingRun}
+        <details class="journey-details" bind:open={journeyDetailsOpen}>
+          <summary class="journey-details-summary brut-focus">Show details</summary>
+          <div class="journey-details-body">
+            {#if liveDegraded && isInProgress}
+              <p class="run-live-degraded" role="status">
+                Live updates degraded to polling — refreshing every ~2.5s instead. The run is unaffected.
+              </p>
+            {/if}
+            {@render completionLedgerBlock(job)}
+            {@render runGridBlock(job)}
+            {@render attributionBlock()}
+            {@render machineRoomBlock()}
+            {@render logBlock()}
+          </div>
+        </details>
+      {/if}
+
+      {@render cancelBlock()}
+    {:else}
     <header class="run-head" class:run-head-active={isInProgress}>
       <div>
         <h1 id="run-console-heading" class="run-title">{job.label ?? "Ingest run"}</h1>
@@ -717,41 +1390,6 @@
         </div>
       {/if}
     </header>
-
-    {#if onboardingJourney && !graphTask}
-      <!-- RES-113 PR-C: friendly M1 ladder — a "where am I in Build" cue over the
-           honest stage timeline below. StateChips carry the real run state
-           (REC-ADR-016). Additive: the technical progress, machine room, and
-           completion ledger all still render underneath, unchanged. -->
-      <section class="m1-build-frame" aria-label="Build progress">
-        <p class="m1-build-eyebrow">M1 · {MILESTONE_LABEL.m1}</p>
-        <p class="m1-build-title">
-          {isCompleted ? "Your graph is ready" : "Building your graph"}
-        </p>
-        <ol class="m1-build-ladder">
-          {#each M1_BUILD_RUNGS as rung (rung.id)}
-            <li class="m1-build-rung">
-              <StateChip state={m1ChipState(rung.id)} label={rung.label} />
-            </li>
-          {/each}
-        </ol>
-        {#if m1RateLimited}
-          <!-- Amber, no-action-needed: the run keeps itself moving (03_SCREENS §M1). -->
-          <div class="m1-rate-limit" role="status">
-            <StateChip state="running" label="Rate-limited" dot={false} />
-            <p class="m1-rate-limit-body">
-              <strong>{M1_RATE_LIMIT_BANNER.title}.</strong>
-              {M1_RATE_LIMIT_BANNER.body}
-            </p>
-          </div>
-        {/if}
-        {#if !isCompleted}
-          <p class="m1-build-note">
-            We name each stage honestly as it runs — open the pipeline details below to watch every step.
-          </p>
-        {/if}
-      </section>
-    {/if}
 
     {#if isEmbedBackfill && !isCompleted}
       <div class="run-context-banner" role="note">
@@ -819,133 +1457,9 @@
       </div>
     {/if}
 
-    {#if job.status === "completed" && isStubPreview}
-      <div class="run-warn" role="status">
-        <strong>Preview run — nothing was written to your graph store.</strong>
-        This run only simulated pipeline progress. With Surreal connected in the pipeline wizard, new runs
-        write to your database automatically. Use <strong>Restart run</strong> or
-        <a href={pipelineWizardHref("launch")}>start a new run</a>.
-      </div>
-    {/if}
+    {@render stubWarnBlock(job)}
 
-    <!-- W4.1 B-P1-1: ONE completion ledger replaces the old stacked
-         success-banner + scorecard + "What to do next" blocks. Verdict cap (trust
-         numeral + supported %) above a single next-actions body. The numbers QUOTE
-         the run's quality report (W2.3 single-source rule), labelled "this run's
-         audit". The duplicate blocks are deleted, not hidden. -->
-    {#if job.progress?.quality_report && isCompleted && completionLedger}
-      <section class="completion-ledger" aria-labelledby="completion-ledger-heading">
-        {#if job.progress.quality_report.stub_warning}
-          <p class="run-warn" role="status">{job.progress.quality_report.stub_warning}</p>
-        {/if}
-        <!-- Verdict cap -->
-        <div class="ledger-cap ledger-cap--{completionLedger.trustTint}">
-          <p class="ledger-cap-kicker">This run's audit</p>
-          <h2 id="completion-ledger-heading" class="ledger-cap-verdict">
-            <span class="ledger-cap-numeral">{completionLedger.trustScore}</span>
-            <span class="ledger-cap-word">{completionLedger.verdict}</span>
-          </h2>
-          <p class="ledger-cap-stats">
-            <!-- Honest absence (MINOR-3): no okPct reported → "— supported", muted, never
-                 a fabricated 0% in red. -->
-            <span class="ledger-cap-stat ledger-cap-stat--{completionLedger.supportedTint}">
-              {#if completionLedger.supportedPct === "—"}— supported{:else}{completionLedger.supportedPct}% supported{/if}
-            </span>
-            <!-- Real captured unit count (quality report's `units`), never the
-                 completed-stage count. Dropped entirely when the run didn't report it,
-                 so the cap never headlines a stage tally as units. -->
-            {#if completionLedger.totalUnits !== "—"}
-              <span class="ledger-cap-sep" aria-hidden="true">·</span>
-              <span class="ledger-cap-stat">{completionLedger.totalUnits} units captured</span>
-            {/if}
-          </p>
-          <!-- K4/K-P1-7: validating-family disclosure (graceful absent-state until K5) -->
-          {#if job.progress.quality_report.validation_family?.validation_provider}
-            {@const vf = job.progress.quality_report.validation_family}
-            <p class="run-family-disclosure" role="status">
-              Validated by <strong>{vf.validation_provider}</strong>{#if vf.extraction_provider}
-                — {vf.cross_family ? "different family than" : "same family as"} extraction
-                ({vf.extraction_provider}){/if}{#if vf.cross_family === true}
-                · cross-model validation ✓{:else if vf.cross_family === false}
-                · add a second provider family for cross-model validation{/if}
-            </p>
-          {:else}
-            <p class="run-family-disclosure run-family-disclosure--absent">
-              Validating model family: not recorded for this run.
-            </p>
-          {/if}
-        </div>
-
-        <!-- Single next-actions body -->
-        <div class="ledger-body">
-        <h3 class="run-next-actions-title">What to do next</h3>
-        <ol class="run-next-list">
-          {#if (trustScore ?? 0) < 80}
-            <li class="run-next-item run-next-item-primary">
-              <span class="run-next-num">1</span>
-              <span class="run-next-text">Review weak units in Claims</span>
-              <a class="btn btn-primary btn-sm" href={CLAIMS_HREF + "?filter=review"}>Open quarantine queue →</a>
-            </li>
-            <li class="run-next-item">
-              <span class="run-next-num">2</span>
-              <span class="run-next-text">Explore what was captured</span>
-              <a class="btn btn-outline btn-sm" href={CLAIMS_HREF}>View graph →</a>
-            </li>
-            <li class="run-next-item">
-              <span class="run-next-num">3</span>
-              <span class="run-next-text">Connect an agent to start querying</span>
-              <a class="btn btn-outline btn-sm" href={AGENTS_HREF}>Set up agent →</a>
-            </li>
-          {:else}
-            <!-- Spine retarget (journey Phase 1): the run is MID-journey, not a
-                 terminus. The primary forward action is stage ③ → ④ "Make ready"
-                 (link · embed · validate), not "explore the graph" — exploring is
-                 a sideways move, making ready is the next step toward go-live. -->
-            <li class="run-next-item run-next-item-primary">
-              <span class="run-next-num">1</span>
-              <span class="run-next-text">Make your graph ready — link, embed, validate</span>
-              <a class="btn btn-primary btn-sm" href={CLAIMS_HREF + "?workspace=tools"}>Make your graph ready →</a>
-            </li>
-            <li class="run-next-item">
-              <span class="run-next-num">2</span>
-              <span class="run-next-text">Explore what was captured</span>
-              <a class="btn btn-outline btn-sm" href={CLAIMS_HREF}>View graph →</a>
-            </li>
-            <li class="run-next-item">
-              <span class="run-next-num">3</span>
-              <span class="run-next-text">Run again with more documents</span>
-              <a class="btn btn-outline btn-sm" href={pipelineWizardHref("sources")}>New run →</a>
-            </li>
-          {/if}
-        </ol>
-        <!-- W3.4 cross-link: run console → workspace trust scorecard. Every trust
-             number on the cap is its own receipt — the standing scorecard. -->
-        <p class="run-cross-links">
-          <a class="run-cross-link" href={HOME_HREF + "#trust-ledger"}>View workspace trust scorecard →</a>
-          <span class="run-cross-sep" aria-hidden="true">·</span>
-          <a class="run-cross-link" href={RUNS_HREF}>All ingest runs →</a>
-        </p>
-        </div>
-      </section>
-    {/if}
-
-    {#if onboardingJourney && isCompleted && !graphTask && !isStubPreview}
-      <!-- RES-113 PR-C · M1 Done — "ask your own data" (03_SCREENS §M1 step 4).
-           The same ask grammar as the M0 Explore hero, now pointed at the user's
-           OWN graph. Presentational handoff to the live Answer Console (the real
-           ask surface) — no inline query execution here (that is PR-I). -->
-      <section class="m1-done-ask" aria-labelledby="m1-done-heading">
-        <p class="m1-done-eyebrow">M1 · {MILESTONE_LABEL.m1} · Done</p>
-        <h2 id="m1-done-heading" class="m1-done-title">Ask your own data</h2>
-        <p class="m1-done-lead">
-          That's <em>your</em> knowledge now. Ask a question and get a grounded answer with
-          citations — drawn from the documents you just ingested.
-        </p>
-        <a class="btn btn-primary btn-lg m1-done-cta" href={ANSWER_CONSOLE_HREF}>
-          Ask your graph →
-        </a>
-      </section>
-    {/if}
+    {@render completionLedgerBlock(job)}
 
     {#if job.error}
       <div class="run-error-banner" role="alert">
@@ -1006,279 +1520,15 @@
       </div>
     {/if}
 
-    <div class="run-grid" class:run-grid-active={isInProgress}>
-      <BrutalCard fill="canvas" title={showGraphRepairPanel ? "Unit progress" : "Progress"}>
-        {#if showGraphRepairPanel && graphRepair}
-          <ConnectGraphRepairProgress
-            graphRepair={graphRepair}
-            jobStatus={job.status}
-            jobUpdatedAt={job.updated_at}
-            percent={percent}
-          />
-        {:else}
-          <div class="progress-panel">
-            <div class="progress-readout" aria-live="polite">
-              <span class="progress-pct">{percent}<span class="progress-pct-suffix">%</span></span>
-              <span class="progress-eta">{isInProgress ? (isStalled ? "Stalled" : "Running") : "Run progress"}</span>
-            </div>
-            <div
-              class="progress-track"
-              role="progressbar"
-              aria-valuemin="0"
-              aria-valuemax="100"
-              aria-valuenow={percent}
-              aria-label="Ingest progress"
-            >
-              <div class="progress-fill progress-fill-yellow" style:width="{percent}%"></div>
-              <div class="progress-segments" aria-hidden="true">
-                {#each CONNECT_INGEST_PIPELINE_STAGES as _}
-                  <span></span>
-                {/each}
-              </div>
-            </div>
-            {#if job.progress}
-              <p class="run-muted progress-detail">
-                {#if isEmbedBackfill}
-                  Embedding stage only — other pipeline stages are skipped for re-embed.
-                {:else}
-                  {stagesComplete} of {stagesTotal} stages complete
-                {/if}
-              </p>
-            {/if}
-            <!-- The live "Last worker signal Xs ago" readout lives once, in the
-                 Machine Room heartbeat strip below (W4.1) — it breathes with the
-                 SSE frames and carries the STALLED stamp. The static duplicate that
-                 used to sit here was removed in W4.4 (filed #296: duplicate
-                 "Last worker signal" readouts). -->
-            {#if isStalled}
-              <!-- W4.1 §3.2: STALLED as a designed amber moment — the stamp prints
-                   the durable-runs contract in plain words (true to Stage 1.6). -->
-              <div class="progress-stall-notice" role="status">
-                <span class="progress-stall-stamp">⚠ STALLED</span>
-                <p class="progress-stall-body">
-                  {#if leaseCountdownLabel}
-                    {leaseCountdownLabel} A stalled run is reclaimed and resumes from the last
-                    checkpoint — nothing is lost.
-                  {:else}
-                    No worker heartbeat detected. A stalled run is reclaimed automatically and
-                    resumes from the last checkpoint — nothing is lost.
-                  {/if}
-                </p>
-              </div>
-            {/if}
-            {#if isReclaimedRun && !isStalled}
-              <!-- W4.1 §3.2: RECLAIMED as a green ledger line. `isReclaimedRun`
-                   already guarantees reclaim_count > 0, so the count renders
-                   unconditionally — the redundant inner guard was removed in W4.4
-                   (filed #296: redundant reclaim guard). -->
-              <p class="progress-reclaim-ledger" role="status">
-                <span class="reclaim-tag">RECLAIMED</span>
-                · resumed from checkpoint after a stall (×{job.reclaim_count})
-              </p>
-            {/if}
-          </div>
-        {/if}
-        {#if showGraphRepairPanel}
-          <div
-            class="progress-track progress-track-compact"
-            role="progressbar"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            aria-valuenow={percent}
-            aria-label="Graph repair progress"
-          >
-            <div class="progress-fill progress-fill-yellow" style:width="{percent}%"></div>
-          </div>
-        {/if}
-      </BrutalCard>
+    {@render runGridBlock(job)}
 
-      {#if isCompleted}
-        <details class="run-collapsible">
-          <summary>Show pipeline details ↓</summary>
-          <BrutalCard fill="white" title="Pipeline">
-            <ConnectIngestPipelineTimeline
-              stages={job.stages ?? []}
-              currentStageKey={job.current_stage}
-              currentAction={job.current_action}
-              jobStatus={job.status}
-            />
-          </BrutalCard>
-        </details>
-      {:else}
-        <BrutalCard fill="white" title="Pipeline">
-          <ConnectIngestPipelineTimeline
-            stages={job.stages ?? []}
-            currentStageKey={job.current_stage}
-            currentAction={job.current_action}
-            jobStatus={job.status}
-          />
-        </BrutalCard>
-      {/if}
-    </div>
+    {@render attributionBlock()}
 
-    <!-- K5: run attribution — which route/model served each stage. Read-only;
-         route name links to the builder (X4 grammar: route → builder). -->
-    {#if attributionRows.length > 0}
-      <section class="run-attribution" aria-labelledby="run-attribution-heading">
-        <h2 id="run-attribution-heading" class="run-attribution-heading">Served by</h2>
-        <ul class="run-attribution-list">
-          {#each attributionRows as row (row.stage)}
-            <li class="run-attribution-row">
-              <span class="run-attribution-stage">{row.label}</span>
-              <span class="run-attribution-line">
-                <strong>{row.modelId}</strong>
-                <span class="run-attribution-sep" aria-hidden="true">·</span>
-                {row.provider}
-                {#if row.routeName}
-                  <span class="run-attribution-sep" aria-hidden="true">·</span>
-                  {#if row.builderHref}
-                    <a class="run-attribution-route" href={row.builderHref}
-                      >route {row.routeName}{#if row.stepDisplay} ({row.stepDisplay}){/if} →</a
-                    >
-                  {:else}
-                    <span class="run-attribution-route-plain"
-                      >route {row.routeName}{#if row.stepDisplay} ({row.stepDisplay}){/if}</span
-                    >
-                  {/if}
-                {/if}
-                <span class="run-attribution-sep" aria-hidden="true">·</span>
-                {row.attempts}
-                {row.attempts === 1 ? "attempt" : "attempts"}
-                {#if row.crossFamilyVsExtraction === true}
-                  <span class="run-attribution-cross run-attribution-cross--ok"
-                    >· cross-model ✓</span
-                  >
-                {:else if row.crossFamilyVsExtraction === false}
-                  <span class="run-attribution-cross run-attribution-cross--same"
-                    >· same family as extraction</span
-                  >
-                {/if}
-              </span>
-            </li>
-          {/each}
-        </ul>
-        {#if attributionRecordedFromLabel}
-          <p class="run-attribution-note">Attribution recorded from {attributionRecordedFromLabel}.</p>
-        {/if}
-      </section>
-    {:else if showAttributionAbsent}
-      <section class="run-attribution" aria-labelledby="run-attribution-heading">
-        <h2 id="run-attribution-heading" class="run-attribution-heading">Served by</h2>
-        <p class="run-attribution-note run-attribution-note--absent" role="status">
-          Route/model attribution was not recorded for this run — it predates attribution
-          capture. New runs record which route and model served each stage.
-        </p>
-      </section>
-    {/if}
+    {@render machineRoomBlock()}
 
-    {#if !startingRun && isInProgress && !showGraphRepairPanel}
-      <!-- W4.1 Machine Room: heartbeat strip + per-stage odometers ride the live
-           SSE frames (no new fetch). Both have static reduced-motion fallbacks. -->
-      <section
-        class="machine-room"
-        class:machine-room--stalled={isStalled}
-        aria-label="Live run instrumentation"
-      >
-        <div class="heartbeat-strip" class:heartbeat-strip--stalled={heartbeat.stalled}>
-          <span class="heartbeat-bar" aria-hidden="true">{heartbeat.bar}</span>
-          <span class="heartbeat-label">
-            {#if heartbeat.stalled}
-              <span class="heartbeat-stalled-stamp">STALLED</span>
-            {:else}
-              Last worker signal {heartbeat.signalAgeLabel}
-            {/if}
-          </span>
-        </div>
+    {@render logBlock()}
 
-        {#if stageOdometers.length > 0}
-          <ol class="odometers" aria-label="Per-stage progress">
-            {#each stageOdometers as od (od.stage)}
-              <li
-                class="odometer"
-                class:odometer--running={od.running}
-                class:odometer--done={od.status === "completed"}
-              >
-                <span class="odometer-label">{od.label}</span>
-                <span class="odometer-count">
-                  <span class="odometer-value">{od.count.toLocaleString()}</span>
-                  {#if od.total}
-                    <span class="odometer-total">/ {od.total.toLocaleString()}</span>
-                  {/if}
-                </span>
-              </li>
-            {/each}
-          </ol>
-        {/if}
-      </section>
-    {/if}
-
-    {#if !startingRun}
-      {#if isInProgress}
-        <section class="run-log-panel" aria-labelledby="run-log-heading">
-          <h2 id="run-log-heading" class="run-log-heading">
-            Activity log
-            <span class="run-log-count">({logLines.length} lines)</span>
-          </h2>
-          <div
-            id="run-log-screen"
-            class="log-screen"
-            role="log"
-            aria-live="polite"
-            aria-relevant="additions"
-            aria-labelledby="run-log-heading"
-            bind:this={logEl}
-          >
-            <pre class="log-screen-pre">{logLines.join("\n") || "— awaiting worker output —"}</pre>
-          </div>
-        </section>
-      {:else if logOpen}
-        <section class="run-log-panel" aria-labelledby="run-log-heading">
-          <div class="run-log-panel-head">
-            <h2 id="run-log-heading" class="run-log-heading">
-              Activity log
-              <span class="run-log-count">({logLines.length} lines)</span>
-            </h2>
-            <button
-              type="button"
-              class="run-log-collapse-btn brut-focus"
-              aria-expanded="true"
-              aria-controls="run-log-screen"
-              on:click={() => (logOpen = false)}
-            >
-              Collapse log
-            </button>
-          </div>
-          <div
-            id="run-log-screen"
-            class="log-screen"
-            role="log"
-            aria-labelledby="run-log-heading"
-            bind:this={logEl}
-          >
-            <pre class="log-screen-pre">{logLines.join("\n") || "— awaiting worker output —"}</pre>
-          </div>
-        </section>
-      {:else}
-        <div class="run-log-collapsed">
-          <button
-            type="button"
-            class="run-log-expand-btn brut-focus"
-            aria-expanded="false"
-            aria-controls="run-log-screen"
-            on:click={() => (logOpen = true)}
-          >
-            Activity log ({logLines.length} lines) — expand
-          </button>
-        </div>
-      {/if}
-    {/if}
-
-    {#if canCancel}
-      <p class="run-cancel-wrap">
-        <button type="button" class="run-cancel-link" on:click={cancelJob} disabled={cancelling}>
-          {cancelling ? "Cancelling…" : "Cancel run"}
-        </button>
-      </p>
+    {@render cancelBlock()}
     {/if}
   {/if}
 </section>
@@ -2262,60 +2512,20 @@
     }
   }
 
-  /* ── RES-113 PR-C · M1 "Build" friendly reskin (flag-gated; additive) ────────
-     Emitted only behind the `onboardingJourney` flag. Brutalist tokens only;
-     sits above the unchanged honest stage timeline / ledger. */
-  .m1-build-frame {
-    margin: 0 0 var(--space-4);
-    padding: var(--space-4);
-    border: var(--border-thin);
-    background: var(--color-surface);
-  }
-  .m1-build-eyebrow {
-    margin: 0 0 var(--space-1);
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-sm);
-    font-weight: 700;
-    letter-spacing: var(--text-mono-tracking);
-    text-transform: uppercase;
-    color: var(--color-ink-faint);
-  }
-  .m1-build-title {
-    margin: 0 0 var(--space-3);
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-md);
-    font-weight: 700;
-    letter-spacing: var(--text-mono-tracking);
-    text-transform: uppercase;
-    color: var(--color-ink);
-  }
-  .m1-build-ladder {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    align-items: center;
-  }
-  .m1-build-rung {
-    display: inline-flex;
-  }
-  .m1-build-note {
-    margin: var(--space-3) 0 0;
-    color: var(--color-ink-muted);
-    font-size: var(--text-sm);
-    line-height: 1.5;
-  }
+  /* ── RES-113 PR-5 · journey M1 "Build" console (flag-gated) ──────────────────
+     Emitted only behind the `onboardingJourney` flag on plain runs. Brutalist
+     tokens only; no new animations (the tracker is static — the chips carry the
+     state in words, REC-ADR-016 / colour-never-alone). */
   .m1-rate-limit {
-    margin-top: var(--space-3);
+    margin: 0;
     padding: var(--space-2) var(--space-3);
-    border: var(--border-thin) var(--brut-amber);
+    /* PR-C wrote `border: var(--border-thin) var(--brut-amber)` — an invalid
+       shorthand (--border-thin is a full border value), which dropped the
+       border entirely. Split shorthand + colour so the amber boundary renders. */
+    border: var(--border-thin);
+    border-color: var(--brut-amber);
     border-left-width: 6px;
     background: color-mix(in oklab, var(--brut-amber) 12%, var(--brut-white));
-    display: flex;
-    gap: var(--space-3);
-    align-items: center;
   }
   .m1-rate-limit-body {
     margin: 0;
@@ -2324,40 +2534,139 @@
     line-height: 1.5;
   }
 
-  .m1-done-ask {
-    margin: var(--space-4) 0;
+  .journey-run-head {
+    display: flex;
+    align-items: flex-start;
+  }
+  .journey-run-title {
+    margin: 0;
+  }
+  .journey-tracker {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: var(--border);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-md);
+  }
+  .journey-stages {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .journey-stage {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-bottom: var(--border-thin);
+  }
+  .journey-stage:last-child {
+    border-bottom: none;
+  }
+  .journey-stage-chip {
+    flex: 0 0 auto;
+    min-width: 6.5rem;
+  }
+  .journey-stage-text {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 12rem;
+  }
+  .journey-stage-name {
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+  .journey-stage-desc {
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+  .journey-stage-count {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .journey-tracker-note {
+    margin: 0;
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .journey-done {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
     padding: var(--space-5);
     border: var(--border);
-    border-left-width: 6px;
     box-shadow: var(--shadow-md);
     background: var(--color-surface);
   }
-  .m1-done-eyebrow {
-    margin: 0 0 var(--space-1);
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-sm);
-    font-weight: 700;
-    letter-spacing: var(--text-mono-tracking);
-    text-transform: uppercase;
-    color: var(--color-ink-faint);
-  }
-  .m1-done-title {
-    margin: 0 0 var(--space-2);
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-lg, var(--text-mono-md));
-    font-weight: 700;
-    letter-spacing: var(--text-mono-tracking);
-    text-transform: uppercase;
+  .journey-done-lead {
+    margin: 0;
+    max-width: 42rem;
     color: var(--color-ink);
+    line-height: 1.55;
   }
-  .m1-done-lead {
-    margin: 0 0 var(--space-4);
+  .journey-done-cta {
+    text-decoration: none;
+  }
+  /* Copy pack Appendix A-2: the Verify secondary is one muted line with an inline
+     text link — no arrow, no button styling (the arrow is the primary's alone). */
+  .journey-verify-line {
+    margin: 0;
     max-width: 42rem;
     color: var(--color-ink-muted);
     font-size: var(--text-sm);
-    line-height: 1.55;
+    line-height: 1.5;
   }
-  .m1-done-cta {
-    text-decoration: none;
+  .journey-verify-link {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .journey-restart-row {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .journey-details {
+    border-top: var(--border-thin);
+    padding-top: var(--space-2);
+  }
+  .journey-details-summary {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    font-weight: 700;
+    color: var(--color-ink-muted);
+  }
+  /* display:flex drops the native ::marker — restore an explicit caret so the
+     toggle still LOOKS like one (glyph + word, never colour/motion alone). */
+  .journey-details-summary::before {
+    content: "▸";
+    font-family: var(--font-mono);
+  }
+  .journey-details[open] > .journey-details-summary::before {
+    content: "▾";
+  }
+  .journey-details-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding-top: var(--space-3);
   }
 </style>

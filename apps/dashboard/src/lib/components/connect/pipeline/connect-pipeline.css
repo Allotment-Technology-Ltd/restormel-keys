@@ -1203,15 +1203,34 @@
     transition: none;
   }
 }
-/* ── RES-113 PR-C · M1 "Build" friendly reskin (flag-gated; additive) ──────────
-   Every rule below applies only to the friendly markup rendered behind the
+/* ── RES-113 PR-5 · journey M1 "Build" panel (flag-gated; additive) ────────────
+   Every rule below applies only to the journey markup rendered behind the
    `onboardingJourney` module flag. With the flag OFF none of these classes are
    emitted, so the live wizard is visually unchanged. Brutalist tokens only. */
-.connect-pipeline .wizard-kicker--m1 {
+/* Programmatic-only focus target for the state-derived panel swap (a11y skill:
+   relocate focus on {#if} swaps; suppress the visible ring on a target that is
+   never reached by Tab). */
+.connect-pipeline .journey-panel-title[tabindex="-1"]:focus {
+  outline: none;
+}
+/* Copy pack §2.3 launch header lines: mono meta ("{n} documents ready.") and the
+   muted expectation line under the outcome sentence. */
+.connect-pipeline .journey-launch-meta {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-sm);
   color: var(--rm-text);
 }
-.connect-pipeline .wizard-stepper--friendly {
-  /* Friendly ladder reuses .wizard-step* — no structural override needed. */
+.connect-pipeline .journey-expectation {
+  margin: var(--space-1) 0 0;
+  color: var(--rm-muted);
+  font-size: var(--text-sm);
+}
+/* Copy pack §2.1 models line: muted, sits between the one field and Advanced. */
+.connect-pipeline .journey-models-line {
+  margin: var(--space-3) 0 0;
+  color: var(--rm-muted);
+  font-size: var(--text-sm);
 }
 .connect-pipeline .wizard-advanced-models {
   margin-top: var(--space-4);

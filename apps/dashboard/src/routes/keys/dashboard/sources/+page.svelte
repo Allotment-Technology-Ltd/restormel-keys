@@ -7,7 +7,10 @@
   import BrutalErrorBanner from "$lib/components/brutalist/BrutalErrorBanner.svelte";
   import BrutalLoadingState from "$lib/components/brutalist/BrutalLoadingState.svelte";
   import { invalidateAll } from "$app/navigation";
+  import { page } from "$app/stores";
+  import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
   import { INGEST_FLOW_HREF, RUNS_HREF } from "$lib/nav-config";
+  import { pipelineWizardHref } from "$lib/connect/pipeline-config";
   import { formatSourceKind, pipelineStatusClass } from "$lib/connect/pipeline-utils";
   import type { ConnectGraphTarget } from "@restormel/contracts/connect";
   import type { SourceHealthSummary } from "$lib/connect/source-health-types";
@@ -32,6 +35,14 @@
   // Advanced disclosure — collapsed by default. The full guided flow (extract / link /
   // embed / validate / remediate / store + chunk/embed knobs) lives behind this.
   let advancedOpen = false;
+
+  // RES-113 PR-5 (flag-ON only; flag-OFF renders byte-for-byte unchanged): the
+  // Domain step is off the Build spine — a built-in pack applies silently — so
+  // pack/schema design is reached from HERE, under this existing Advanced
+  // disclosure (plan §3.2 point 3). Reveal predicate: static Advanced disclosure,
+  // licensed by the founder's "keep full control, collapsed" decision above.
+  $: onboardingJourney = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).onboardingJourney;
+  const DOMAIN_PACK_DESIGN_HREF = pipelineWizardHref("domain");
 </script>
 
 <svelte:head>
@@ -142,8 +153,14 @@
           on:click={() => (advancedOpen = !advancedOpen)}
         >
           <span class="advanced-caret" aria-hidden="true">{advancedOpen ? "▾" : "▸"}</span>
-          <span id="advanced-heading" class="section-title">Advanced</span>
-          <span class="section-meta">Full pipeline control · packs &amp; graphs · per-stage settings</span>
+          {#if onboardingJourney}
+            <!-- Copy pack §2.3: the disclosure label on this page. -->
+            <span id="advanced-heading" class="section-title">Advanced — full pipeline control</span>
+            <span class="section-meta">Packs &amp; graphs · per-stage settings</span>
+          {:else}
+            <span id="advanced-heading" class="section-title">Advanced</span>
+            <span class="section-meta">Full pipeline control · packs &amp; graphs · per-stage settings</span>
+          {/if}
         </button>
         {#if advancedOpen}
           <div class="advanced-body">
@@ -152,7 +169,16 @@
               remediate, store — plus chunk and embedding knobs. Most sources never need it;
               it's here when you do.
             </p>
-            <a class="btn btn-outline btn-sm" href={INGEST_FLOW_HREF}>Open guided ingest flow →</a>
+            {#if onboardingJourney}
+              <!-- RES-113 PR-5: pack/schema design lives under Advanced — the Domain
+                   step is off the Build spine (a built-in pack applies silently). -->
+              <div class="advanced-actions">
+                <a class="btn btn-outline btn-sm" href={INGEST_FLOW_HREF}>Open guided ingest flow</a>
+                <a class="btn btn-outline btn-sm" href={DOMAIN_PACK_DESIGN_HREF}>Design a domain pack</a>
+              </div>
+            {:else}
+              <a class="btn btn-outline btn-sm" href={INGEST_FLOW_HREF}>Open guided ingest flow →</a>
+            {/if}
 
             <div class="advanced-packs">
               <div class="section-head">
@@ -349,5 +375,10 @@
     flex-direction: column;
     gap: var(--space-3);
     margin-top: var(--space-2);
+  }
+  .advanced-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
 </style>
