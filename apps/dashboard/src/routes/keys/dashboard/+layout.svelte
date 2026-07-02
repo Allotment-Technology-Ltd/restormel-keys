@@ -19,6 +19,7 @@
     type JourneyNav as JourneyNavData,
   } from "$lib/nav-config";
   import JourneyNav from "$lib/components/dashboard/JourneyNav.svelte";
+  import JourneyWelcome from "$lib/components/dashboard/JourneyWelcome.svelte";
   import { connectReviewCount } from "$lib/stores/connect-review-count";
   import { contextualHelpForPath, SUITE_MAP_LINK } from "$lib/dashboard-contextual-help";
   import { onMount } from "svelte";
@@ -285,16 +286,19 @@
       <nav class="nav" aria-label="Dashboard" data-sveltekit-preload-data="tap">
         <!-- RES-113 PR-4: on the journey branch the switcher is state-derived —
              it renders ONLY when projectCount > 1 (plan §3.5). journeyNavData is
-             null on every flag-OFF render, so that path is untouched. -->
+             null on every flag-OFF render, so that path is untouched. The journey
+             branch also names the trigger's INTENT ("Switch project — current: …",
+             5-lens review Lens 1 finding 2); flag-OFF keeps the original
+             labelledBy-only name, byte-identical. -->
         {#if !projectsNavHidden && (!journeyNavData || journeyNavData.showProjectSwitcher)}
           <div class="nav-section nav-section-scope">
             <p class="nav-section-label" id="nav-scope-label">Project</p>
             {#await Promise.resolve(projectContextsSource)}
-              <ProjectContextSwitcher projects={[]} {moduleFlags} labelledBy="nav-scope-label" />
+              <ProjectContextSwitcher projects={[]} {moduleFlags} labelledBy="nav-scope-label" actionLabel={journeyNavData ? "Switch project" : undefined} />
             {:then projectContexts}
-              <ProjectContextSwitcher projects={projectContexts ?? []} {moduleFlags} labelledBy="nav-scope-label" />
+              <ProjectContextSwitcher projects={projectContexts ?? []} {moduleFlags} labelledBy="nav-scope-label" actionLabel={journeyNavData ? "Switch project" : undefined} />
             {:catch}
-              <ProjectContextSwitcher projects={[]} {moduleFlags} labelledBy="nav-scope-label" />
+              <ProjectContextSwitcher projects={[]} {moduleFlags} labelledBy="nav-scope-label" actionLabel={journeyNavData ? "Switch project" : undefined} />
             {/await}
           </div>
         {/if}
@@ -519,15 +523,11 @@
           {:else if journeyFlagOn}
             <!-- RES-113 PR-4 (copy pack §5.5): the journey signed-out layout. The
                  stale "Sources → Runs → Claims / Foundation" tour copy is deleted
-                 from this branch — one sentence + the canonical auth CTA. The
-                 flag-OFF welcome below is byte-identical. -->
-            <div class="welcome" role="region" aria-labelledby="welcome-heading">
-              <h1 id="welcome-heading" class="welcome-title">Restormel Dashboard</h1>
-              <p class="welcome-intro">Restormel turns your documents into answers you can check.</p>
-              <p class="welcome-signin">
-                <a href={DASHBOARD_BASE + "/login"} class="btn btn-primary welcome-signin-cta">Sign in with GitHub</a>
-              </p>
-            </div>
+                 from this branch — one sentence + the canonical auth CTA.
+                 Extracted to JourneyWelcome.svelte so the CTA is getByRole-tested
+                 (5-lens review, Lens 4 minor 2). The flag-OFF welcome below is
+                 byte-identical. -->
+            <JourneyWelcome />
           {:else}
             <div class="welcome" role="region" aria-labelledby="welcome-heading">
               <h1 id="welcome-heading" class="welcome-title">Restormel Dashboard</h1>
@@ -1061,16 +1061,6 @@
   .welcome-sep {
     color: var(--rm-dim);
     margin: 0 var(--space-2);
-  }
-  /* RES-113 PR-4 — journey signed-out CTA (copy pack §5.5). Uses the shared
-     .btn/.btn-primary chrome; the focus ring is ink-paired locally per the
-     accessibility skill (never a bare yellow ring on cream). */
-  .welcome-signin {
-    margin: 0;
-  }
-  .welcome-signin-cta:focus-visible {
-    outline: 2px solid var(--brut-ink);
-    outline-offset: 2px;
   }
   /* ── R6 mobile read-only tier ─────────────────────────────────────────────
      On a phone, the opened surfaces (Home, run console, Claims) render the shell

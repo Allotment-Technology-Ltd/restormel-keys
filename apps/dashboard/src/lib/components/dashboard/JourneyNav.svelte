@@ -45,6 +45,7 @@
 
   /** href of the dimmed item whose explanation is open (one at a time). */
   let openLockHref: string | null = null;
+  let rootEl: HTMLDivElement | null = null;
   let lockNoteEl: HTMLDivElement | null = null;
   const lockButtonEls: Record<string, HTMLButtonElement | null> = {};
 
@@ -71,16 +72,21 @@
   }
 
   function onWindowKeydown(event: KeyboardEvent) {
-    if (event.key === "Escape" && openLockHref !== null) {
-      event.stopPropagation();
-      closeLock();
-    }
+    if (event.key !== "Escape" || openLockHref === null) return;
+    // Scope to focus-within (accessibility skill: shortcuts never fire from
+    // unrelated contexts): only close — and teleport focus back to the opener —
+    // when the key was pressed INSIDE the nav/note. Escape in a main-content
+    // input must keep its native meaning and must not yank focus to the sidebar
+    // (5-lens review, Lens 4 minor 1).
+    if (!(event.target instanceof Node) || !rootEl?.contains(event.target)) return;
+    event.stopPropagation();
+    closeLock();
   }
 </script>
 
 <svelte:window on:keydown={onWindowKeydown} />
 
-<div class="journey-nav">
+<div class="journey-nav" bind:this={rootEl}>
   <div class="journey-links" role="group" aria-label="Sections">
     {#each items as item (item.href)}
       {#if item.reachable}
