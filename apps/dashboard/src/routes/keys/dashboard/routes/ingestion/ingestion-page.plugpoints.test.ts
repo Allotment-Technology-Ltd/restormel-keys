@@ -94,3 +94,36 @@ describe("/routes/ingestion — activeGraph present (flag ON, server-gated)", ()
     expect(getByText("Checking against sources")).toBeTruthy();
   });
 });
+
+describe("/routes/ingestion — PR-3 deployment preset (decision A: exactly one writable surface)", () => {
+  // Routes section renders only with a project+environment bound; canApplyRecommended
+  // is what shows the shipped "Reset to recommended" button.
+  function withRoutes(overrides: Record<string, unknown> = {}) {
+    return models({
+      projectId: "p-1",
+      environmentId: "e-1",
+      canApplyRecommended: true,
+      integrationsCount: 1,
+      ...overrides,
+    });
+  }
+
+  it("flag ON (activeGraph present): the preset field renders and the shipped reset is suppressed", () => {
+    const { getByText, queryByRole } = render(IngestionPage, {
+      props: { data: { signedIn: true, models: withRoutes({ activeGraph: ACTIVE_GRAPH }) } },
+    });
+    // The single writable preset surface.
+    expect(getByText("Where your pipeline runs")).toBeTruthy();
+    expect(getByText("Fully managed (recommended)")).toBeTruthy();
+    // Exactly one surface: the shipped "Reset to recommended" button is gone.
+    expect(queryByRole("button", { name: "Reset to recommended" })).toBeNull();
+  });
+
+  it("flag OFF (activeGraph null): the shipped reset renders, no preset field (byte-identical path)", () => {
+    const { getByRole, queryByText } = render(IngestionPage, {
+      props: { data: { signedIn: true, models: withRoutes({ activeGraph: null }) } },
+    });
+    expect(getByRole("button", { name: "Reset to recommended" })).toBeTruthy();
+    expect(queryByText("Where your pipeline runs")).toBeNull();
+  });
+});

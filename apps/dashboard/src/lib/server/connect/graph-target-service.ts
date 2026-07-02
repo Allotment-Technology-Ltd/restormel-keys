@@ -26,7 +26,11 @@ import {
 import { looksLikeSurrealJwt, parseSurrealConnectionString } from "$lib/server/connect/connection-string";
 import { validateOutboundSurrealEndpoint } from "$lib/server/connect/outbound-surreal-endpoint";
 import { isWebSocketSurrealEndpoint, surrealSdkQuery } from "$lib/server/connect/surreal-sdk";
-import { parsePipelineSlotAssignments, parseRevertedSlots } from "$lib/connect/pipeline-config";
+import {
+  parsePipelinePreset,
+  parsePipelineSlotAssignments,
+  parseRevertedSlots,
+} from "$lib/connect/pipeline-config";
 
 export { parseSurrealConnectionString };
 
@@ -45,6 +49,7 @@ function bundleFromRecord(row: ConnectGraphTargetRecord): ConnectGraphTarget["bu
   // recommended default inside the derivation, so a stale id can never render.
   const pipelineSlots = parsePipelineSlotAssignments(settings.pipeline_slots);
   const revertedSlots = parseRevertedSlots(settings.reverted_slots);
+  const pipelinePreset = parsePipelinePreset(settings.pipeline_preset);
   return {
     ...(row.defaultDomainPackId ? { default_domain_pack_id: row.defaultDomainPackId } : {}),
     ...(Array.isArray(ids)
@@ -57,6 +62,7 @@ function bundleFromRecord(row: ConnectGraphTargetRecord): ConnectGraphTarget["bu
     allow_claim_versions_table: allowVersionTable === true,
     ...(Object.keys(pipelineSlots).length > 0 ? { pipeline_slots: pipelineSlots } : {}),
     ...(revertedSlots.length > 0 ? { reverted_slots: revertedSlots } : {}),
+    ...(pipelinePreset ? { pipeline_preset: pipelinePreset } : {}),
   };
 }
 

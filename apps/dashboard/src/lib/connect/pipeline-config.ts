@@ -44,6 +44,13 @@ export type GraphTarget = {
      * the one-time §6.2 revert notice; the withdrawn option is absent from menus.
      */
     reverted_slots?: PipelineSlotId[];
+    /**
+     * RES-113 (PR-3): the deployment preset last applied to this graph
+     * (`PipelinePresetId`). Drives the copy-pack §2.7 "Part of {preset}." slot
+     * annotation — a marker only, the real per-slot choices live in
+     * `pipeline_slots`. Absent ⇒ no preset applied (fresh default or hand-picked).
+     */
+    pipeline_preset?: string;
   };
 } | null;
 
@@ -698,6 +705,13 @@ export type PipelineSlotRow = {
   blockedReason?: string;
   /** Present (true) only when this slot was reverted server-side (PR-5 revert notice). */
   reverted?: true;
+  /**
+   * RES-113 PR-3: the display name of the applied deployment preset, present ONLY
+   * while this slot's current choice matches the preset's assignment for the slot
+   * (copy pack §2.7 "Part of {preset}." — "only while the current choice comes from
+   * an applied preset"). Absent on a slot the operator has since customised away.
+   */
+  partOfPreset?: string;
 };
 
 /** Which slots resolve, in order, when reading a bundle. */
@@ -739,6 +753,112 @@ export function parsePipelineSlotAssignments(value: unknown): Partial<Record<Pip
 export function parseRevertedSlots(value: unknown): PipelineSlotId[] {
   if (!Array.isArray(value)) return [];
   return value.filter(isPipelineSlotId);
+}
+
+// ── RES-113 · deployment presets (PR-3, placement spec §5 item 4, decision A) ────
+// One writable preset surface: `/routes/ingestion`, where the four-way choice
+// EXTENDS the shipped "Reset to recommended" bulk action (not a second control).
+// A preset is a whole-bundle swap: it rewrites `pipeline_slots` (via the existing
+// `updateConnectGraphTargetBundle` path) and records `pipeline_preset` so the slot
+// rows can annotate "Part of {preset}." (copy pack §2.7). The bundles below are the
+// authoritative REC-GOV-022 §(e) "Deployment / Sovereignty Presets" table, mapped
+// to the three CLEARED slot menus — every preset keeps invariant 1 (extract family
+// ≠ validate family, cross-checked in the derivation test).
+
+/** The four deployment presets — ids are neutral, names are copy pack §2.7 verbatim. */
+export type PipelinePresetId =
+  | "fully-managed"
+  | "highest-accuracy"
+  | "regional-residency"
+  | "self-host-air-gapped";
+
+export const PIPELINE_PRESET_IDS = [
+  "fully-managed",
+  "highest-accuracy",
+  "regional-residency",
+  "self-host-air-gapped",
+] as const;
+
+export type PipelinePreset = {
+  id: PipelinePresetId;
+  /** On-screen name — copy pack §2.7 deployment-preset options, VERBATIM. Also the {preset} slot. */
+  name: string;
+  /** The complete per-slot target (every slot named, defaults included) this preset selects. */
+  slots: Record<PipelineSlotId, string>;
+};
+
+/**
+ * REC-GOV-022 §(e) bundles, mapped to CLEARED slot option ids:
+ *  - fully-managed  = the recommended default per slot (⇒ a "default bundle").
+ *  - highest-accuracy = the strongest option per slot (report-b "Highest-accuracy").
+ *  - regional-residency = Mistral OCR (EU residency) + open-weight embed/check on
+ *    in-region compute (report-b "Regional-residency").
+ *  - self-host-air-gapped = all open-weight, own-infrastructure options (report-b
+ *    "Self-host / air-gapped": PaddleOCR-VL + BGE-M3 + HHEM-2.1-Open).
+ * A preset change is a change to REC-GOV-022 §(e) first, then the copy pack §2.7
+ * outcome lines, then here.
+ */
+export const PIPELINE_PRESETS: Record<PipelinePresetId, PipelinePreset> = {
+  "fully-managed": {
+    id: "fully-managed",
+    name: "Fully managed (recommended)",
+    slots: { extract: "paddleocr-vl", embed: "bge-m3", validate: "granite-guardian" },
+  },
+  "highest-accuracy": {
+    id: "highest-accuracy",
+    name: "Highest accuracy",
+    slots: { extract: "mistral-ocr-4", embed: "qwen3-embedding-8b", validate: "frontier-hosted" },
+  },
+  "regional-residency": {
+    id: "regional-residency",
+    name: "Regional residency",
+    slots: { extract: "mistral-ocr-4", embed: "bge-m3", validate: "granite-guardian" },
+  },
+  "self-host-air-gapped": {
+    id: "self-host-air-gapped",
+    name: "Self-host air-gapped",
+    slots: { extract: "paddleocr-vl", embed: "bge-m3", validate: "hhem-2.1-open" },
+  },
+};
+
+export function isPipelinePresetId(value: unknown): value is PipelinePresetId {
+  return typeof value === "string" && PIPELINE_PRESET_IDS.some((id) => id === value);
+}
+
+/** The applied preset's display name for a bundle, or null when none is applied. */
+export function appliedPresetName(bundle: GraphTargetBundle): string | null {
+  const id = bundle?.pipeline_preset;
+  return isPipelinePresetId(id) ? PIPELINE_PRESETS[id].name : null;
+}
+
+/** Parse a persisted `pipeline_preset` settings value into a valid preset id, or null. */
+export function parsePipelinePreset(value: unknown): PipelinePresetId | null {
+  return isPipelinePresetId(value) ? value : null;
+}
+
+/**
+ * The `pipeline_slots` write-map a preset persists: the preset's target per slot,
+ * with slots that already sit on their recommended default OMITTED — so applying
+ * "Fully managed (recommended)" writes an empty map (a real default bundle), exactly
+ * as the shipped reset leaves it. Empty ⇒ the caller clears `pipeline_slots`.
+ */
+export function presetSlotAssignments(presetId: PipelinePresetId): Partial<Record<PipelineSlotId, string>> {
+  const preset = PIPELINE_PRESETS[presetId];
+  const out: Partial<Record<PipelineSlotId, string>> = {};
+  for (const slot of PIPELINE_SLOT_IDS) {
+    if (preset.slots[slot] !== recommendedSlotOptionId(slot)) out[slot] = preset.slots[slot];
+  }
+  return out;
+}
+
+/**
+ * How many stages a preset would change from a bundle's CURRENT choices — the {n}
+ * in the copy pack §2.7 confirm ("This swaps {n} stages to that setup."). Compares
+ * every slot's current option against the preset's full target.
+ */
+export function presetSlotChangeCount(bundle: GraphTargetBundle, presetId: PipelinePresetId): number {
+  const preset = PIPELINE_PRESETS[presetId];
+  return PIPELINE_SLOT_IDS.filter((slot) => currentOptionId(bundle, slot) !== preset.slots[slot]).length;
 }
 
 /**
@@ -783,6 +903,9 @@ export function resolveM1PipelineSlots(bundle: GraphTargetBundle): PipelineSlotR
     validate: familyOf("validate", currentOptionId(bundle, "validate")),
   };
   const revertedSet = new Set(bundle?.reverted_slots ?? []);
+  // PR-3: the applied preset, for the per-slot "Part of {preset}." annotation.
+  const presetId = isPipelinePresetId(bundle?.pipeline_preset) ? bundle?.pipeline_preset : null;
+  const preset = presetId ? PIPELINE_PRESETS[presetId] : null;
 
   return PIPELINE_SLOT_IDS.map((slot): PipelineSlotRow => {
     const currentId = currentOptionId(bundle, slot);
@@ -820,6 +943,9 @@ export function resolveM1PipelineSlots(bundle: GraphTargetBundle): PipelineSlotR
     };
     if (excludedAny) row.blockedReason = PIPELINE_SLOT_INCOMPATIBILITY_REASON;
     if (revertedSet.has(slot)) row.reverted = true;
+    // PR-3: annotate only while this slot's current choice still comes from the
+    // applied preset (copy pack §2.7) — a slot customised away loses the annotation.
+    if (preset && preset.slots[slot] === currentId) row.partOfPreset = preset.name;
     return row;
   });
 }

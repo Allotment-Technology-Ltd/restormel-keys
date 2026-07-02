@@ -173,6 +173,11 @@
             Change
           </button>
         </div>
+        {#if row.partOfPreset}
+          <!-- Copy pack §2.7 preset annotation — only while the current choice comes
+               from an applied preset (PR-3 derivation sets it per matching slot). -->
+          <p class="slot-preset">Part of {row.partOfPreset}.</p>
+        {/if}
         {#if openSlot === row.slot}
           <ul class="slot-options" id={"slot-options-" + row.slot} aria-busy={savingSlot === row.slot}>
             {#each row.options as o (o.id)}
@@ -335,6 +340,12 @@
     font-size: var(--text-sm);
     color: var(--color-ink-muted);
     max-width: 40rem;
+  }
+  .slot-preset {
+    margin: var(--space-1) 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-muted);
   }
   .slot-reason,
   .slot-error {
