@@ -507,9 +507,31 @@ List-plus-nudge. No yellow primary in the steady state — nothing demands actio
 
 | Element | Literal string |
 |---|---|
+| Detail affordance (per row, `aria-expanded`) | Details |
 | Delete action | Delete this connection |
 | Confirmation (blast radius) | Delete {name}? Your app loses access immediately — any code using this key stops working. This can't be undone. |
 | Confirm / cancel buttons | Delete connection · Keep it |
+
+### 4.5 Strings registered by PR-7
+
+These shipped in code with the Connect PR and are registered here per this pack's own
+"a string change is a change to this document first" rule (the §1.5 / PR-3 precedent).
+All follow the pack's grammar rules (§6.2 errors say what happened + what next; §0 one
+yellow primary per state).
+
+| Element | Literal string |
+|---|---|
+| S1 disabled-CTA hint (visible, muted — mirrors §2.1's "Paste a key to continue.") | Choose one to continue. |
+| S2 add form — access line, read (the §4.2 first-connection line is first-run-specific) | New connections start read-only — they can look things up but can't add, change, or delete anything in your graph. |
+| S2 add form — access line, read + write (opened from the §4.4 suggestion row) | This connection is read + write — it can look things up and also add or update facts in your graph. |
+| Create failed (inline, `role="alert"`, input preserved; server detail shown when supplied) | We couldn't create the connection — something failed on our side. Try again in a moment. |
+| Delete completed (polite announcement) | Connection deleted. |
+| Delete failed (polite announcement) | We couldn't delete the connection. Try again. |
+| Page load error banner title (body + action are §4.4's) | Connections unavailable |
+
+The S2 add form otherwise reuses §4.2's strings verbatim (headline, cards, name field,
+project chip, Create CTA) — one form, two entry points ("+ Add connection" → read; the
+suggestion row → read + write).
 
 ---
 

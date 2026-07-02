@@ -13,7 +13,12 @@
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import type { ConnectAgentSetupData } from "$lib/connect/agent-setup-types";
 
-  export let data: { signedIn: boolean; agentSetup: Promise<ConnectAgentSetupData | null> };
+  export let data: {
+    signedIn: boolean;
+    agentSetup: Promise<ConnectAgentSetupData | null>;
+    /** RES-113 PR-7 (flag-ON only): key ids with real 24h non-ingest traffic. */
+    liveKeyIds: Promise<string[]>;
+  };
 
   /**
    * RES-113 PR-E: the M4 Connect wizard + manager reskin is gated behind the
@@ -45,7 +50,16 @@
   {#await data.agentSetup}
     <ConnectPageSkeleton variant="mcp" />
   {:then agentSetup}
-    {#if !agentSetup}
+    {#if !agentSetup && onboardingJourney}
+      <!-- RES-113 PR-7 — Connect load error, copy pack §4.4 strings verbatim. -->
+      <BrutalErrorBanner title="Connections unavailable" message="We couldn't load your connections.">
+        {#snippet actions()}
+          <button type="button" class="btn btn-secondary btn-sm" disabled={retrying} on:click={retry}>
+            {retrying ? "Retrying…" : "Try again"}
+          </button>
+        {/snippet}
+      </BrutalErrorBanner>
+    {:else if !agentSetup}
       <BrutalErrorBanner
         title="Agent setup unavailable"
         message="Could not load the MCP agent setup. Your configuration is unaffected — this is a load failure."
@@ -57,20 +71,35 @@
         {/snippet}
       </BrutalErrorBanner>
     {:else if onboardingJourney}
-      <ConnectionsManager setup={agentSetup} enforceScope={onboardingJourney} />
+      <ConnectionsManager
+        setup={agentSetup}
+        enforceScope={onboardingJourney}
+        liveKeyIds={data.liveKeyIds}
+      />
     {:else}
       <ConnectAgentSetup setup={agentSetup} />
     {/if}
   {:catch}
-    <BrutalErrorBanner
-      title="Agent setup unavailable"
-      message="Could not load the MCP agent setup. Your configuration is unaffected — this is a load failure."
-    >
-      {#snippet actions()}
-        <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
-          {retrying ? "Retrying…" : "Try again"}
-        </button>
-      {/snippet}
-    </BrutalErrorBanner>
+    {#if onboardingJourney}
+      <!-- RES-113 PR-7 — Connect load error, copy pack §4.4 strings verbatim. -->
+      <BrutalErrorBanner title="Connections unavailable" message="We couldn't load your connections.">
+        {#snippet actions()}
+          <button type="button" class="btn btn-secondary btn-sm" disabled={retrying} on:click={retry}>
+            {retrying ? "Retrying…" : "Try again"}
+          </button>
+        {/snippet}
+      </BrutalErrorBanner>
+    {:else}
+      <BrutalErrorBanner
+        title="Agent setup unavailable"
+        message="Could not load the MCP agent setup. Your configuration is unaffected — this is a load failure."
+      >
+        {#snippet actions()}
+          <button type="button" class="btn btn-primary btn-sm" disabled={retrying} on:click={retry}>
+            {retrying ? "Retrying…" : "Try again"}
+          </button>
+        {/snippet}
+      </BrutalErrorBanner>
+    {/if}
   {/await}
 {/if}

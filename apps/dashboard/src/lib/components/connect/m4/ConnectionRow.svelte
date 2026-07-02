@@ -1,16 +1,22 @@
 <script lang="ts">
   /**
-   * M4 connections-manager row (RES-113 PR-E; designs/M4 Connections.html).
-   * Type icon · name + type · access badge (READ / READ+WRITE) · endpoint + copy ·
-   * status · delete danger-zone. Presentational: access/type are a MOCK label, the
-   * endpoint is illustrative, and "live" reflects a stored key — not a real probe.
+   * M4 connections-manager row (RES-113 PR-7; copy pack §4.4, strings verbatim).
+   *
+   * Row anatomy: {type icon} {name} · READ / READ + WRITE · {endpoint} · Copy.
+   * The `LIVE` chip renders ONLY when derived from REAL observed traffic (the
+   * `live` prop — request logs attributed to this key, ingest excluded). This
+   * fixes the old hardcoded-on dot, a REC-ADR-016 honesty violation: absence of
+   * traffic evidence renders NOTHING, never a fabricated status.
+   *
+   * Delete lives in the per-row detail view (disclosure), never inline in the
+   * list; the confirmation states the blast radius (copy pack §4.4 detail view).
    */
-  import { createEventDispatcher } from "svelte";
+  import { createEventDispatcher, tick } from "svelte";
   import ConnectionTypeIcon from "./ConnectionTypeIcon.svelte";
   import {
     getMethod,
-    getAccess,
     connectionEndpoint,
+    ACCESS_BADGE,
     type ConnectionView,
   } from "./connection-model";
 
@@ -18,97 +24,168 @@
   export let connectApiBase = "";
   /** True while a delete request for THIS connection is in flight. */
   export let deleting = false;
+  /**
+   * REAL observed traffic for this key in the last 24h (ingest excluded) —
+   * the ONLY thing that renders the `LIVE` chip (REC-ADR-016).
+   */
+  export let live = false;
 
-  const dispatch = createEventDispatcher<{ delete: { keyId: string } }>();
+  const dispatch = createEventDispatcher<{
+    delete: { keyId: string };
+    /** Bubble copy feedback so the manager's persistent live region announces it. */
+    announce: { text: string };
+  }>();
 
+  let detailOpen = false;
   let confirmingDelete = false;
   let copied = false;
 
   $: methodMeta = getMethod(connection.method);
-  $: accessMeta = getAccess(connection.access);
-  $: endpoint = connectionEndpoint({
-    connectApiBase,
-    method: connection.method,
-    name: connection.name,
-  });
+  $: endpoint = connectionEndpoint({ connectApiBase, method: connection.method });
+  $: detailId = `conn-detail-${connection.keyId}`;
 
   async function copyEndpoint() {
     try {
       await navigator.clipboard.writeText(endpoint);
       copied = true;
+      dispatch("announce", { text: "Copied." });
       setTimeout(() => (copied = false), 2000);
     } catch {
       copied = false;
     }
   }
 
-  function requestDelete() {
+  async function toggleDetail() {
+    detailOpen = !detailOpen;
+    if (!detailOpen) confirmingDelete = false;
+  }
+
+  async function requestDelete() {
+    // The "Delete this connection" button is destroyed by the {#if} swap —
+    // relocate focus to the safe choice (a11y skill: focus relocation on swap).
     confirmingDelete = true;
+    await tick();
+    document.getElementById(`${detailId}-keep`)?.focus();
   }
-  function cancelDelete() {
+
+  async function cancelDelete() {
     confirmingDelete = false;
+    await tick();
+    document.getElementById(`${detailId}-delete`)?.focus();
   }
+
   function confirmDelete() {
     dispatch("delete", { keyId: connection.keyId });
   }
 </script>
 
-<li class="conn-row" class:rw={connection.access === "read_write"}>
-  <span class="cbadge" aria-hidden="true"><ConnectionTypeIcon method={connection.method} size={20} /></span>
+<li class="conn-row">
+  <div class="row-line">
+    <span class="cbadge" aria-hidden="true"><ConnectionTypeIcon method={connection.method} size={20} /></span>
 
-  <div class="cmain">
-    <p class="cn">
-      {connection.name}
-      <span class="ct">{methodMeta.name}</span>
-    </p>
-    <p class="cmeta">
-      <code>{connection.keyPrefix}…</code> · endpoint
-      <code class="ep">{endpoint}</code>
-    </p>
-  </div>
+    <div class="cmain">
+      <p class="cn">{connection.name}</p>
+      <p class="cmeta">
+        <code class="ep">{endpoint}</code>
+      </p>
+    </div>
 
-  <span class="acl" class:ro={connection.access === "read"} class:wr={connection.access === "read_write"}>
-    {accessMeta.badge}
-  </span>
+    <span class="acl">{ACCESS_BADGE[connection.access]}</span>
 
-  <span class="clive" title="Backed by a live Gateway key">
-    <span class="ld" aria-hidden="true"></span> Live
-  </span>
-
-  <div class="row-acts">
-    <button type="button" class="ibtn" on:click={copyEndpoint}>{copied ? "Copied" : "Copy"}</button>
-    {#if confirmingDelete}
-      <button type="button" class="ibtn" on:click={cancelDelete} disabled={deleting}>Cancel</button>
-      <button type="button" class="ibtn danger" on:click={confirmDelete} disabled={deleting}>
-        {deleting ? "Deleting…" : "Confirm delete"}
-      </button>
-    {:else}
-      <button type="button" class="ibtn danger" on:click={requestDelete} aria-label={`Delete connection ${connection.name}`}>
-        Delete
-      </button>
+    {#if live}
+      <span class="clive" role="img" aria-label="This connection has served requests recently">
+        <span class="ld" aria-hidden="true"></span> LIVE
+      </span>
     {/if}
+
+    <div class="row-acts">
+      <button type="button" class="ibtn" on:click={copyEndpoint}>{copied ? "Copied" : "Copy"}</button>
+      <button
+        type="button"
+        class="ibtn"
+        aria-expanded={detailOpen}
+        aria-controls={detailId}
+        on:click={toggleDetail}
+      >
+        Details
+      </button>
+    </div>
   </div>
+
+  {#if detailOpen}
+    <div class="detail" id={detailId}>
+      <dl class="detail-list">
+        <div class="drow">
+          <dt>Type</dt>
+          <dd>{methodMeta.chip}</dd>
+        </div>
+        <div class="drow">
+          <dt>Key</dt>
+          <dd><code>{connection.keyPrefix}…</code></dd>
+        </div>
+        <div class="drow">
+          <dt>Endpoint</dt>
+          <dd><code class="ep">{endpoint}</code></dd>
+        </div>
+      </dl>
+
+      {#if confirmingDelete}
+        <div class="confirm" role="group" aria-label={`Delete ${connection.name}?`}>
+          <p class="confirm-text">
+            Delete {connection.name}? Your app loses access immediately — any code using this key
+            stops working. This can't be undone.
+          </p>
+          <div class="confirm-acts">
+            <button
+              type="button"
+              class="ibtn danger"
+              id={`${detailId}-confirm`}
+              disabled={deleting}
+              on:click={confirmDelete}
+            >
+              {deleting ? "Deleting…" : "Delete connection"}
+            </button>
+            <button
+              type="button"
+              class="ibtn"
+              id={`${detailId}-keep`}
+              disabled={deleting}
+              on:click={cancelDelete}
+            >
+              Keep it
+            </button>
+          </div>
+        </div>
+      {:else}
+        <button type="button" class="ibtn danger" id={`${detailId}-delete`} on:click={requestDelete}>
+          Delete this connection
+        </button>
+      {/if}
+    </div>
+  {/if}
 </li>
 
 <style>
   .conn-row {
-    display: grid;
-    grid-template-columns: 40px 1fr auto auto auto;
-    gap: var(--space-3);
-    align-items: center;
     border: 2px solid var(--color-ink);
     background: var(--color-surface);
     box-shadow: var(--shadow-sm);
     padding: var(--space-3);
   }
+  .row-line {
+    display: grid;
+    grid-template-columns: 40px 1fr auto auto auto;
+    gap: var(--space-3);
+    align-items: center;
+  }
   @media (max-width: 720px) {
-    .conn-row {
+    .row-line {
       grid-template-columns: 40px 1fr;
       row-gap: var(--space-2);
     }
-    .conn-row .acl,
-    .conn-row .clive,
-    .conn-row .row-acts {
+    .row-line .acl,
+    .row-line .clive,
+    .row-line .row-acts {
       grid-column: 2;
       justify-self: start;
     }
@@ -121,9 +198,6 @@
     place-items: center;
     background: var(--color-bg);
   }
-  .conn-row.rw .cbadge {
-    background: color-mix(in srgb, var(--signal-teal) 20%, var(--color-surface));
-  }
   .cmain {
     min-width: 0;
   }
@@ -134,15 +208,6 @@
     font-size: 1.1rem;
     text-transform: uppercase;
     line-height: 1;
-  }
-  .ct {
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--color-ink-faint);
-    margin-left: var(--space-2);
   }
   .cmeta {
     margin: var(--space-1) 0 0;
@@ -165,12 +230,7 @@
     border: 1.5px solid var(--color-ink);
     padding: 5px 8px;
     white-space: nowrap;
-  }
-  .acl.ro {
     background: var(--color-bg);
-  }
-  .acl.wr {
-    background: color-mix(in srgb, var(--signal-teal) 20%, var(--color-surface));
   }
   .clive {
     display: inline-flex;
@@ -179,10 +239,12 @@
     font-family: var(--font-mono);
     font-size: 9px;
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--signal-teal);
+    color: var(--color-ink);
     white-space: nowrap;
+    border: 1.5px solid var(--color-ink);
+    padding: 5px 8px;
+    background: color-mix(in srgb, var(--signal-teal) 20%, var(--color-surface));
   }
   .clive .ld {
     width: 8px;
@@ -204,8 +266,15 @@
     font-weight: 700;
     text-transform: uppercase;
     padding: 7px 9px;
+    min-height: 44px;
+    min-width: 44px;
     cursor: pointer;
     color: var(--color-ink);
+  }
+  .ibtn:focus-visible {
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px var(--color-ink);
   }
   .ibtn:disabled {
     opacity: 0.6;
@@ -213,5 +282,58 @@
   }
   .ibtn.danger {
     color: var(--brut-coral);
+  }
+
+  .detail {
+    margin-top: var(--space-3);
+    border-top: 2px solid var(--color-ink);
+    padding-top: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: flex-start;
+  }
+  .detail-list {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    width: 100%;
+  }
+  .drow {
+    display: flex;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+  }
+  .drow dt {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    color: var(--color-ink-faint);
+    min-width: 72px;
+    padding-top: 2px;
+  }
+  .drow dd {
+    margin: 0;
+    word-break: break-all;
+  }
+  .confirm {
+    border: 2px solid var(--color-ink);
+    border-left: 8px solid var(--brut-coral);
+    background: color-mix(in srgb, var(--brut-coral) 8%, var(--color-surface));
+    padding: var(--space-3);
+    width: 100%;
+  }
+  .confirm-text {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    max-width: 62ch;
+  }
+  .confirm-acts {
+    display: flex;
+    gap: var(--space-2);
   }
 </style>

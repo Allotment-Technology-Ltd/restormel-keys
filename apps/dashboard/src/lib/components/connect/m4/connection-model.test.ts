@@ -1,193 +1,186 @@
 import { describe, it, expect } from "vitest";
 import {
   CONNECTION_METHODS,
-  CONNECTION_ACCESS,
-  availableMethods,
-  comingSoonMethods,
-  wizardStepsFor,
-  nextWizardStep,
-  prevWizardStep,
-  connectionSlug,
+  ACCESS_BADGE,
   connectionEndpoint,
   deriveMockMethod,
   deriveMockAccess,
   connectionName,
   connectionFromKey,
-  buildWizardPreview,
   getMethod,
-  getAccess,
+  resolveConnectSurface,
+  resolveConnectProject,
+  showReadWriteSuggestion,
+  type ConnectionView,
 } from "./connection-model";
 
-describe("connection-model — MVP method gating (REC-ADR-018 addendum: MCP+REST only)", () => {
-  it("exposes exactly MCP + REST as available; widget/SDK/GraphQL are coming-soon", () => {
-    expect(availableMethods().map((m) => m.id).sort()).toEqual(["mcp", "rest"]);
-    expect(comingSoonMethods().map((m) => m.id).sort()).toEqual(["graphql", "sdk", "widget"]);
+describe("connection-model — MVP methods (REC-ADR-018 addendum §1: MCP + REST only)", () => {
+  it("exposes exactly two method cards, MCP first, REST second", () => {
+    expect(CONNECTION_METHODS.map((m) => m.id)).toEqual(["mcp", "rest"]);
   });
 
-  it("every method carries an icon kind, a tag, and a description (icons not letters)", () => {
+  it("cards carry the copy pack §4.2 user-goal strings verbatim", () => {
+    const [mcp, rest] = CONNECTION_METHODS;
+    expect(mcp.title).toBe("Connect an agent");
+    expect(mcp.description).toBe(
+      "For Claude, ChatGPT, or any agent that supports MCP (the connector most AI agents use).",
+    );
+    expect(mcp.chip).toBe("MCP");
+    expect(mcp.namePrefill).toBe("agent");
+    expect(rest.title).toBe("Connect your own code");
+    expect(rest.description).toBe(
+      "For your app or backend — a simple web API your code can call.",
+    );
+    expect(rest.chip).toBe("REST API");
+    expect(rest.namePrefill).toBe("backend");
+  });
+
+  it("every method carries an icon kind (icons, never letters)", () => {
     for (const m of CONNECTION_METHODS) {
       expect(m.icon).toBe(m.id);
-      expect(m.tag.length).toBeGreaterThan(0);
-      expect(m.description.length).toBeGreaterThan(0);
-      expect(m.namePlaceholder.length).toBeGreaterThan(0);
     }
   });
 
-  it("getMethod/getAccess throw on unknown ids (no silent fallthrough)", () => {
+  it("getMethod throws on unknown ids (no silent fallthrough)", () => {
     // @ts-expect-error — exercising the runtime guard
     expect(() => getMethod("nope")).toThrow();
-    // @ts-expect-error — exercising the runtime guard
-    expect(() => getAccess("nope")).toThrow();
+  });
+
+  it("access badges are the copy pack §4.4 row-anatomy labels", () => {
+    expect(ACCESS_BADGE.read).toBe("READ");
+    expect(ACCESS_BADGE.read_write).toBe("READ + WRITE");
   });
 });
 
-describe("connection-model — access (plain language, read-only is the safe default)", () => {
-  it("read is the default, read+write is opt-in", () => {
-    expect(CONNECTION_ACCESS.find((a) => a.isDefault)?.id).toBe("read");
-    expect(CONNECTION_ACCESS.filter((a) => a.isDefault)).toHaveLength(1);
+describe("resolveConnectSurface — S0/S1/S2 (REC-ADR-018 addendum, 2026-07-01)", () => {
+  it("S0 whenever no graph exists — even with stray keys (same gate as nav/Home)", () => {
+    expect(resolveConnectSurface({ hasGraph: false, connectionCount: 0 })).toBe("s0");
+    expect(resolveConnectSurface({ hasGraph: false, connectionCount: 3 })).toBe("s0");
   });
 
-  it("badges are READ / READ+WRITE", () => {
-    expect(getAccess("read").badge).toBe("READ");
-    expect(getAccess("read_write").badge).toBe("READ+WRITE");
-  });
-});
-
-describe("connection-model — wizard step machine", () => {
-  it("MCP + REST walk Type → Access → Name", () => {
-    expect(wizardStepsFor("mcp")).toEqual(["type", "access", "name"]);
-    expect(wizardStepsFor("rest")).toEqual(["type", "access", "name"]);
-    expect(nextWizardStep("type", "mcp")).toBe("access");
-    expect(nextWizardStep("access", "mcp")).toBe("name");
-    expect(nextWizardStep("name", "mcp")).toBeNull();
-    expect(prevWizardStep("name", "mcp")).toBe("access");
-    expect(prevWizardStep("type", "mcp")).toBeNull();
-  });
-
-  it("a method without access meaning skips the access step", () => {
-    // widget is coming-soon but its step machine still proves the access-skip rule
-    expect(wizardStepsFor("widget")).toEqual(["type", "name"]);
-    expect(nextWizardStep("type", "widget")).toBe("name");
-    expect(prevWizardStep("name", "widget")).toBe("type");
+  it("S1 when built with zero connections; S2 from the first connection", () => {
+    expect(resolveConnectSurface({ hasGraph: true, connectionCount: 0 })).toBe("s1");
+    expect(resolveConnectSurface({ hasGraph: true, connectionCount: 1 })).toBe("s2");
+    expect(resolveConnectSurface({ hasGraph: true, connectionCount: 7 })).toBe("s2");
   });
 });
 
-describe("connection-model — mock endpoint (presentational, realistic)", () => {
-  it("slugs names and never emits a trailing slash or double slash", () => {
-    expect(connectionSlug("  Agent Read Only!! ")).toBe("agent-read-only");
-    expect(connectionSlug("")).toBe("connection");
-    const ep = connectionEndpoint({
-      connectApiBase: "https://connect.restormel.dev/",
-      method: "mcp",
-      name: "agent",
+describe("resolveConnectProject — silent resolution (addendum §3)", () => {
+  const p = (id: string) => ({ id, name: id });
+
+  it("prefers the default project; never ambiguous when a default exists", () => {
+    expect(resolveConnectProject({ defaultProjectId: "b", projects: [p("a"), p("b")] })).toEqual({
+      projectId: "b",
+      ambiguous: false,
     });
-    expect(ep).toBe("https://connect.restormel.dev/connect/invoke#agent");
-    expect(ep).not.toMatch(/\/\/connect\//);
   });
 
-  it("REST and MCP map to distinct surfaces", () => {
-    const base = "https://connect.restormel.dev";
-    expect(connectionEndpoint({ connectApiBase: base, method: "rest", name: "backend" })).toContain(
-      "/connect/v1/retrieve",
+  it("falls back to the first project; a single project is never ambiguous", () => {
+    expect(resolveConnectProject({ defaultProjectId: null, projects: [p("a")] })).toEqual({
+      projectId: "a",
+      ambiguous: false,
+    });
+  });
+
+  it("is ambiguous ONLY with 2+ projects and no default (the chip's reveal predicate)", () => {
+    expect(resolveConnectProject({ defaultProjectId: null, projects: [p("a"), p("b")] })).toEqual({
+      projectId: "a",
+      ambiguous: true,
+    });
+  });
+
+  it("yields null with no projects at all", () => {
+    expect(resolveConnectProject({ defaultProjectId: null, projects: [] })).toEqual({
+      projectId: null,
+      ambiguous: false,
+    });
+  });
+});
+
+describe("showReadWriteSuggestion — the §4.4 nudge predicate", () => {
+  const conn = (over: Partial<ConnectionView>): ConnectionView => ({
+    keyId: "k1",
+    keyPrefix: "rk_live_aa",
+    name: "agent",
+    method: "mcp",
+    access: "read",
+    projectId: "proj_1",
+    isMockScope: false,
+    ...over,
+  });
+
+  it("shows ONLY when exactly one connection exists and it is read-only", () => {
+    expect(showReadWriteSuggestion([conn({})])).toBe(true);
+  });
+
+  it("hidden for zero, multiple, or read+write connections", () => {
+    expect(showReadWriteSuggestion([])).toBe(false);
+    expect(showReadWriteSuggestion([conn({}), conn({ keyId: "k2" })])).toBe(false);
+    expect(showReadWriteSuggestion([conn({ access: "read_write" })])).toBe(false);
+  });
+});
+
+describe("connectionEndpoint — real endpoints, no decorative fragments", () => {
+  it("MCP points at the Connect API base (what the MCP config carries)", () => {
+    expect(connectionEndpoint({ connectApiBase: "https://c.dev/", method: "mcp" })).toBe(
+      "https://c.dev",
     );
-    expect(connectionEndpoint({ connectApiBase: base, method: "mcp", name: "agent" })).toContain(
-      "/connect/invoke",
+  });
+
+  it("REST points at the retrieve surface", () => {
+    expect(connectionEndpoint({ connectApiBase: "https://c.dev", method: "rest" })).toBe(
+      "https://c.dev/connect/v1/retrieve",
     );
   });
 });
 
-describe("connection-model — mock scope inference (NEVER a security decision)", () => {
-  it("defaults to MCP + read for an unlabelled key", () => {
+describe("legacy-key fallbacks (cosmetic only — enforced keys carry a real scope)", () => {
+  it("derives REST from rest-ish labels, MCP otherwise", () => {
+    expect(deriveMockMethod("prod backend REST")).toBe("rest");
+    expect(deriveMockMethod("my http caller")).toBe("rest");
+    expect(deriveMockMethod("agent")).toBe("mcp");
     expect(deriveMockMethod(null)).toBe("mcp");
-    expect(deriveMockMethod("")).toBe("mcp");
-    expect(deriveMockAccess(undefined)).toBe("read");
+    // Old widget/SDK/GraphQL guesses collapse to the MVP pair.
+    expect(deriveMockMethod("site chat widget")).toBe("mcp");
   });
 
-  it("reads cosmetic hints from the label", () => {
-    expect(deriveMockMethod("prod backend (REST)")).toBe("rest");
-    expect(deriveMockMethod("site chat widget")).toBe("widget");
-    expect(deriveMockAccess("agent read+write ingest")).toBe("read_write");
-    expect(deriveMockAccess("readonly lookup")).toBe("read");
+  it("derives read+write only from writeish labels; read is the safe default", () => {
+    expect(deriveMockAccess("agent read+write")).toBe("read_write");
+    expect(deriveMockAccess("agent")).toBe("read");
+    expect(deriveMockAccess(null)).toBe("read");
   });
 
-  it("connectionName falls back to the method placeholder when unlabelled", () => {
-    expect(connectionName("Cursor MCP", "mcp")).toBe("Cursor MCP");
+  it("connectionName falls back to the method prefill", () => {
+    expect(connectionName("  my agent  ", "mcp")).toBe("my agent");
     expect(connectionName("", "rest")).toBe("backend");
     expect(connectionName(null, "mcp")).toBe("agent");
   });
-
-  it("connectionFromKey builds a presentational view flagged isMockScope", () => {
-    const view = connectionFromKey({
-      id: "key_1",
-      keyPrefix: "rk_live_ab",
-      label: "agent read+write",
-      projectId: "proj_1",
-    });
-    expect(view).toMatchObject({
-      keyId: "key_1",
-      keyPrefix: "rk_live_ab",
-      method: "mcp",
-      access: "read_write",
-      projectId: "proj_1",
-      isMockScope: true,
-    });
-    expect(view.name).toBe("agent read+write");
-  });
-
-  it("connectionFromKey uses ENFORCED scope (isMockScope false) when the key carries key_type/access", () => {
-    // PR-L: a key minted with a real scope must render its REAL access, not a label guess — even
-    // when the label would derive otherwise (here label says 'write' but access is enforced read).
-    const view = connectionFromKey({
-      id: "key_2",
-      keyPrefix: "rk_live_cd",
-      label: "writer-bot",
-      projectId: "proj_1",
-      keyType: "rest",
-      access: "read",
-    });
-    expect(view).toMatchObject({
-      method: "rest",
-      access: "read",
-      isMockScope: false,
-    });
-  });
-
-  it("connectionFromKey enforces even when only one scope field is present", () => {
-    const view = connectionFromKey({
-      id: "key_3",
-      keyPrefix: "rk_live_ef",
-      label: null,
-      projectId: "proj_1",
-      access: "read_write",
-    });
-    expect(view.access).toBe("read_write");
-    expect(view.isMockScope).toBe(false);
-  });
 });
 
-describe("connection-model — wizard live preview", () => {
-  it("fills rows in as steps complete; later rows stay pending", () => {
-    const empty = buildWizardPreview({
-      method: null,
-      access: null,
-      name: "",
-      connectApiBase: "https://connect.restormel.dev",
+describe("connectionFromKey — enforced scope vs legacy fallback", () => {
+  it("reflects a persisted (enforced) scope and clears isMockScope", () => {
+    const v = connectionFromKey({
+      id: "k1",
+      keyPrefix: "rk_live_aa",
+      label: "backend",
+      projectId: "proj_1",
+      keyType: "rest",
+      access: "read_write",
     });
-    expect(empty.find((r) => r.key === "Type")?.pending).toBe(true);
-    expect(empty.every((r) => r.pending)).toBe(true);
+    expect(v.method).toBe("rest");
+    expect(v.access).toBe("read_write");
+    expect(v.isMockScope).toBe(false);
+  });
 
-    const full = buildWizardPreview({
-      method: "mcp",
-      access: "read",
-      name: "agent",
-      connectApiBase: "https://connect.restormel.dev",
+  it("falls back to label-derived guesses for legacy flat keys (isMockScope)", () => {
+    const v = connectionFromKey({
+      id: "k2",
+      keyPrefix: "rk_live_bb",
+      label: "prod backend REST",
+      projectId: "proj_1",
     });
-    expect(full.find((r) => r.key === "Type")?.value).toBe("MCP server");
-    expect(full.find((r) => r.key === "Access")?.value).toBe("Read-only");
-    expect(full.find((r) => r.key === "Access")?.pending).toBe(false);
-    expect(full.find((r) => r.key === "Name")?.value).toBe("agent");
-    expect(full.find((r) => r.key === "Endpoint")?.value).toContain("/connect/invoke#agent");
-    // Key is only ever shown on create — always pending in the preview.
-    expect(full.find((r) => r.key === "Key")?.pending).toBe(true);
+    expect(v.method).toBe("rest");
+    expect(v.access).toBe("read");
+    expect(v.isMockScope).toBe(true);
   });
 });
