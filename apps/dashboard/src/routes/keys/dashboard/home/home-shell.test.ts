@@ -66,11 +66,24 @@ const SPINE_VERIFY_CLEAR = {
   ],
 };
 
-function scorecard(over: { trust_score?: number | null; units?: number } = {}) {
+function scorecard(
+  over: { trust_score?: number | null; units?: number; unbound?: number } = {},
+) {
   if (over.trust_score === null) return null;
+  const units = over.units ?? 1204;
+  const unbound = over.unbound ?? 0;
   return {
     trust_score: over.trust_score ?? 88,
-    units: over.units ?? 1204,
+    units,
+    // RES-113 PR-6 (5-lens review, lens 2): the Verify ready tile's reveal
+    // predicate reads the Sources signal too — "All facts are matched to
+    // sources." is never asserted while units still need a link.
+    evidence: {
+      bound: units - unbound,
+      unbound,
+      no_evidence: 0,
+      bound_pct: units > 0 ? Math.round(((units - unbound) / units) * 100) : 0,
+    },
   };
 }
 
@@ -302,6 +315,40 @@ describe("HOME · BUILT_NOT_CONNECTED (flag ON)", () => {
     // Ghost, never a second primary — Connect keeps the one yellow CTA.
     expect(link.className).not.toContain("btn-primary");
     expect(container.querySelectorAll(".btn-primary").length).toBe(1);
+  });
+
+  it("renders NO ready tile while units still need a link — spine-clear alone never asserts 'all matched to sources'", async () => {
+    // 5-lens review (lens 2, CONFIRMED): the spine stages never check evidence
+    // binding — the ready tile's completion claim needs the Sources signal too.
+    setJourneyPageData();
+    const { queryByText } = render(
+      HomePage,
+      pageProps({
+        scorecard: Promise.resolve(scorecard({ units: 1204, unbound: 12 })),
+        hub: Promise.resolve(
+          hubPayload({ stats: { units: 1204, validation: { awaiting_triage: 0 } } }, SPINE_VERIFY_CLEAR),
+        ),
+      }),
+    );
+    await settle();
+    expect(queryByText("All facts are matched to sources.")).toBeNull();
+    expect(queryByText("Open Verify")).toBeNull();
+  });
+
+  it("renders NO ready tile when the scorecard is unreadable (honest absence — the Sources signal is unknown)", async () => {
+    setJourneyPageData();
+    const { queryByText } = render(
+      HomePage,
+      pageProps({
+        scorecard: Promise.resolve(null),
+        hub: Promise.resolve(
+          hubPayload({ stats: { units: 1204, validation: { awaiting_triage: 0 } } }, SPINE_VERIFY_CLEAR),
+        ),
+      }),
+    );
+    await settle();
+    expect(queryByText("All facts are matched to sources.")).toBeNull();
+    expect(queryByText("Open Verify")).toBeNull();
   });
 
   it("renders NO ready tile when the spine is unresolved (honest absence, never a fabricated 'all matched')", async () => {

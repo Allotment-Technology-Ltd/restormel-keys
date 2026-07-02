@@ -53,13 +53,20 @@ function hubPayload(
 }
 
 /** Minimal streamed scorecard — the fields `makeReadySignals` reads. */
-function card(units = 1204) {
+function card(units = 1204, evidence?: { unbound: number; no_evidence: number }) {
+  const unbound = evidence?.unbound ?? 0;
+  const noEv = evidence?.no_evidence ?? 0;
   return {
     trust_score: 88,
     last_verified_at: "2026-06-27T10:00:00.000Z",
     units,
     embedding: { embedded: units },
-    evidence: { bound: units, unbound: 0, no_evidence: 0, bound_pct: 100 },
+    evidence: {
+      bound: units - unbound - noEv,
+      unbound,
+      no_evidence: noEv,
+      bound_pct: Math.round(((units - unbound - noEv) / Math.max(1, units)) * 100),
+    },
     score_factors: [],
     verification_states: {},
   };
@@ -146,26 +153,82 @@ describe("/verify · TRIAGE (copy pack §3.2)", () => {
 });
 
 describe("/verify · READY (copy pack §3.3)", () => {
-  it("renders the confirmation block with the Mark-ready CTA back to Home", async () => {
-    const { getByRole, getByText } = render(
+  const SPINE_CLEAR = {
+    stages: [{ id: "make_ready", state: "done" }, { id: "review", state: "done" }],
+  };
+
+  it("renders the confirmation block with the interim Back-to-Home CTA (mark-ready strings deferred to PR-J)", async () => {
+    const { getByRole, getByText, queryByText } = render(
       VerifyPage,
       props({
+        scorecard: Promise.resolve(card()),
         hub: Promise.resolve(
-          hubPayload(
-            { units: 1204, validation: { awaiting_triage: 0, ok: 1204 } },
-            { stages: [{ id: "make_ready", state: "done" }, { id: "review", state: "done" }] },
-          ),
+          hubPayload({ units: 1204, validation: { awaiting_triage: 0, ok: 1204 } }, SPINE_CLEAR),
         ),
       }),
     );
     await settle();
 
     expect(getByRole("heading", { name: "Everything checks out" })).toBeTruthy();
-    const cta = getByRole("link", { name: /mark your graph ready/i });
-    expect(cta.getAttribute("href")).toContain("/home");
     expect(
-      getByText("This records the graph as reviewed and takes you back to Home."),
+      getByText(
+        "All 1,204 facts are matched to sources, searchable, and reviewed. Your graph is ready for real questions.",
+      ),
     ).toBeTruthy();
+    // No fabricated action (5-lens review, lens 5): until PR-J wires the real
+    // recompute, the CTA is the honest "Back to Home" and the "records the
+    // graph as reviewed" sub-line never renders.
+    const cta = getByRole("link", { name: /back to home/i });
+    expect(cta.getAttribute("href")).toContain("/home");
+    expect(queryByText(/mark your graph ready/i)).toBeNull();
+    expect(
+      queryByText("This records the graph as reviewed and takes you back to Home."),
+    ).toBeNull();
+  });
+
+  it("spine clear but units still need a link → TRIAGE with Sources leading, never 'matched to sources'", async () => {
+    // 5-lens review (lens 2, CONFIRMED): the spine stages never check evidence
+    // binding, so spine done/done with unbound units must NOT headline a
+    // completion the disclosure's own scorecard contradicts.
+    const { getByRole, queryByRole, getByTestId } = render(
+      VerifyPage,
+      props({
+        scorecard: Promise.resolve(card(1204, { unbound: 12, no_evidence: 0 })),
+        hub: Promise.resolve(
+          hubPayload({ units: 1204, validation: { awaiting_triage: 0, ok: 1204 } }, SPINE_CLEAR),
+        ),
+      }),
+    );
+    await settle();
+
+    expect(queryByRole("heading", { name: "Everything checks out" })).toBeNull();
+    expect(getByRole("heading", { name: "12 facts need your review" })).toBeTruthy();
+    expect(getByTestId("verify-lead-gate").getAttribute("data-gate")).toBe("sources");
+    // The one CTA names AND opens the Sources fix surface (lens 3 + 5 fixes).
+    const cta = getByRole("link", { name: /link facts to sources/i });
+    expect(cta.getAttribute("href")).toContain("workspace=tools");
+    expect(cta.getAttribute("href")).not.toContain("focus=sources");
+  });
+
+  it("scorecard unreadable on a BUILT graph → the load-failure state, never 'Building your graph' dressed over a failed read", async () => {
+    // 5-lens review (lens 2, minor): card null with the hub loaded is a partial
+    // read failure — name it (REC-ADR-016), don't render an indefinite
+    // still-working line.
+    const { getByText, queryByRole, getByRole } = render(
+      VerifyPage,
+      props({
+        scorecard: Promise.resolve(null),
+        hub: Promise.resolve(
+          hubPayload({ units: 1204, validation: { awaiting_triage: 0, ok: 1204 } }, SPINE_CLEAR),
+        ),
+      }),
+    );
+    await settle();
+
+    expect(getByText("Workspace unavailable")).toBeTruthy();
+    expect(getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(queryByRole("heading", { name: "Building your graph" })).toBeNull();
+    expect(queryByRole("heading", { name: "Everything checks out" })).toBeNull();
   });
 });
 
@@ -199,6 +262,66 @@ describe("/verify · load failure (ux-contracts §3 floor)", () => {
     await settle();
     expect(getByText("Workspace unavailable")).toBeTruthy();
     expect(getByRole("button", { name: "Try again" })).toBeTruthy();
+  });
+});
+
+describe("/verify · retry focus relocation (a11y skill 'no focus loss')", () => {
+  // 5-lens review (lens 4, Major): `invalidateAll` swaps the whole {#await}
+  // branch, destroying the focused "Try again" button — focus must land on the
+  // REMOUNTED content on BOTH outcomes (home-shell.test.ts pins the same
+  // contract for Home), never drop to <body>.
+  it("a successful retry relocates focus to the remounted hub heading — never <body>", async () => {
+    const { getByRole, rerender } = render(VerifyPage, props({ hub: Promise.resolve(null) }));
+    await settle();
+
+    getByRole("button", { name: "Try again" }).click();
+    await settle();
+    // invalidateAll (mocked) hands the page NEW promises — simulate the data swap.
+    await rerender(
+      props({
+        scorecard: Promise.resolve(card()),
+        hub: Promise.resolve(
+          hubPayload(
+            { units: 1204, validation: { awaiting_triage: 6, ok: 1198 } },
+            { stages: [{ id: "make_ready", state: "done" }, { id: "review", state: "current" }] },
+          ),
+        ),
+      }),
+    );
+    await settle();
+
+    const heading = getByRole("heading", { name: "6 facts need your review" });
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it("a retry that lands on the empty state relocates focus to the empty-card heading", async () => {
+    const { getByRole, rerender } = render(VerifyPage, props({ hub: Promise.resolve(null) }));
+    await settle();
+
+    getByRole("button", { name: "Try again" }).click();
+    await settle();
+    await rerender(
+      props({
+        hub: Promise.resolve(hubPayload({ units: 0, validation: { awaiting_triage: 0 } }, null)),
+      }),
+    );
+    await settle();
+
+    const heading = getByRole("heading", { name: "Nothing to check yet" });
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it("a retry that fails again relocates focus to the remounted error region", async () => {
+    const { getByRole, rerender } = render(VerifyPage, props({ hub: Promise.resolve(null) }));
+    await settle();
+
+    getByRole("button", { name: "Try again" }).click();
+    await settle();
+    await rerender(props({ hub: Promise.resolve(null) }));
+    await settle();
+
+    expect(document.activeElement).not.toBe(document.body);
+    expect((document.activeElement as HTMLElement).className).toContain("verify-error");
   });
 });
 

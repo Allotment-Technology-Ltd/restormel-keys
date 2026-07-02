@@ -255,37 +255,61 @@ describe("resolveM2SurfaceFromSpine (RES-113 PR-6 — the hub-payload adapter)",
       ],
     } as ConnectSpine;
   }
+  /** Sources signal clear — every unit bound. */
+  const EV_CLEAR = { unbound: 0, noEvidence: 0 };
 
-  it("hidden pre-graph, with or without a spine (graphBuilt alone decides)", () => {
-    expect(resolveM2SurfaceFromSpine(null, false)).toBe("hidden");
-    expect(resolveM2SurfaceFromSpine(spine("current", "current"), false)).toBe("hidden");
+  it("hidden pre-graph, with or without a spine or scorecard (graphBuilt alone decides)", () => {
+    expect(resolveM2SurfaceFromSpine(null, false, EV_CLEAR)).toBe("hidden");
+    expect(resolveM2SurfaceFromSpine(spine("current", "current"), false, EV_CLEAR)).toBe("hidden");
+    // A pre-graph scorecard is legitimately null — still hidden, not a failure.
+    expect(resolveM2SurfaceFromSpine(null, false, null)).toBe("hidden");
   });
 
   it("null (unresolved) when the spine is missing on a built graph — never a fabricated 'ready'", () => {
-    expect(resolveM2SurfaceFromSpine(null, true)).toBeNull();
+    expect(resolveM2SurfaceFromSpine(null, true, EV_CLEAR)).toBeNull();
   });
 
   it("null (unresolved) when a stage state is unknown — a partial read failure is not 'ready'", () => {
-    expect(resolveM2SurfaceFromSpine(spine("unknown", "done"), true)).toBeNull();
-    expect(resolveM2SurfaceFromSpine(spine("done", "unknown"), true)).toBeNull();
+    expect(resolveM2SurfaceFromSpine(spine("unknown", "done"), true, EV_CLEAR)).toBeNull();
+    expect(resolveM2SurfaceFromSpine(spine("done", "unknown"), true, EV_CLEAR)).toBeNull();
     // A stage missing from the ledger entirely reads as unknown too.
-    expect(resolveM2SurfaceFromSpine({ stages: [] } as unknown as ConnectSpine, true)).toBeNull();
+    expect(
+      resolveM2SurfaceFromSpine({ stages: [] } as unknown as ConnectSpine, true, EV_CLEAR),
+    ).toBeNull();
+  });
+
+  it("null (unresolved) when the scorecard is unreadable on a BUILT graph — a failed read is named, never dressed as triage/ready", () => {
+    // 5-lens review (lens 2): with the hub loaded but the scorecard read failed,
+    // neither "matched to sources" (ready) nor the Sources gate's honest count
+    // (triage) can be stated — the caller shows its load-failure state.
+    expect(resolveM2SurfaceFromSpine(spine("done", "done"), true, null)).toBeNull();
+    expect(resolveM2SurfaceFromSpine(spine("current", "done"), true, null)).toBeNull();
   });
 
   it("delegates to resolveM2Surface once the states are known", () => {
-    expect(resolveM2SurfaceFromSpine(spine("current", "done"), true)).toBe("triage");
-    expect(resolveM2SurfaceFromSpine(spine("done", "current"), true)).toBe("triage");
-    expect(resolveM2SurfaceFromSpine(spine("done", "done"), true)).toBe("ready");
-    expect(resolveM2SurfaceFromSpine(spine("todo", "blocked"), true)).toBe("ready");
+    expect(resolveM2SurfaceFromSpine(spine("current", "done"), true, EV_CLEAR)).toBe("triage");
+    expect(resolveM2SurfaceFromSpine(spine("done", "current"), true, EV_CLEAR)).toBe("triage");
+    expect(resolveM2SurfaceFromSpine(spine("done", "done"), true, EV_CLEAR)).toBe("ready");
+    expect(resolveM2SurfaceFromSpine(spine("todo", "blocked"), true, EV_CLEAR)).toBe("ready");
+  });
+
+  it("demotes a spine-clear graph to TRIAGE while units still need a link — 'matched to sources' is never asserted over an unclear Sources signal", () => {
+    // 5-lens review (lens 2, CONFIRMED): the spine's make_ready/review stages
+    // check embedding + validation only (connect-spine.ts) — evidence binding is
+    // checked by NEITHER, so spine done/done with unbound units would headline
+    // "All N facts are matched to sources" while buildSourcesGate on the same
+    // signals reads needs_you. The Sources signal is folded into the ready gate.
+    expect(resolveM2SurfaceFromSpine(spine("done", "done"), true, { unbound: 12, noEvidence: 0 })).toBe("triage");
+    expect(resolveM2SurfaceFromSpine(spine("done", "done"), true, { unbound: 0, noEvidence: 3 })).toBe("triage");
   });
 });
 
 describe("buildVerifyTriageModel (RES-113 PR-6 — copy pack §3.2 decisions)", () => {
-  it("canonical flagged case: Review leads alone, both auto gates collapse, count = awaitingTriage", () => {
+  it("canonical flagged case: Review leads alone, both auto gates collapse, headline = awaitingTriage (exact)", () => {
     const m = buildVerifyTriageModel(
       signals({ validation: { ok: 1157, weak: 0, unsupported: 0, unvalidated: 0, awaitingTriage: 47, unsupportedUntriaged: 12 } }),
     );
-    expect(m.needsUserCount).toBe(47);
+    expect(m.headlineCount).toBe(47);
     expect(m.leadGateId).toBe("validate");
     expect(m.leadDetail).toContain("47 flagged");
     expect(m.multipleNeedYou).toBe(false);
@@ -294,7 +318,23 @@ describe("buildVerifyTriageModel (RES-113 PR-6 — copy pack §3.2 decisions)", 
     expect(m.queuedGates).toEqual([]);
   });
 
-  it("priority rule: with Sources AND Review needing the user, Sources leads (pipeline order) and Review queues", () => {
+  it("Sources leading ALONE: headline = the link-needing population (exact)", () => {
+    const m = buildVerifyTriageModel(
+      signals({ evidence: { bound: 1040, unbound: 164, noEvidence: 0, boundPct: 86 } }),
+    );
+    expect(m.headlineCount).toBe(164);
+    expect(m.leadGateId).toBe("sources");
+    expect(m.multipleNeedYou).toBe(false);
+    expect(m.queuedGates).toEqual([]);
+  });
+
+  it("priority rule: with Sources AND Review needing the user, Sources leads (pipeline order), Review queues, and the headline count is NULL — overlapping populations are never summed", () => {
+    // 5-lens review (lens 2): a validator-flagged claim awaiting a verdict can be
+    // the SAME unit whose evidence is unbound (independent per-unit fields), so
+    // 164 + 47 could count one fact twice — an inflated, fabricated total
+    // (REC-ADR-016). The union is unknowable without a per-unit join (a new
+    // query Stage 1.8 forbids) → the shell renders the countless headline and
+    // the per-gate receipts carry the real numbers.
     const m = buildVerifyTriageModel(
       signals({
         evidence: { bound: 1040, unbound: 164, noEvidence: 0, boundPct: 86 },
@@ -303,14 +343,15 @@ describe("buildVerifyTriageModel (RES-113 PR-6 — copy pack §3.2 decisions)", 
     );
     expect(m.leadGateId).toBe("sources");
     expect(m.multipleNeedYou).toBe(true);
-    expect(m.needsUserCount).toBe(164 + 47); // links needed + verdicts needed — all real work
-    expect(m.queuedGates.map((g) => g.id)).toEqual(["validate"]);
+    expect(m.headlineCount).toBeNull();
+    expect(m.leadDetail).toContain("164 need a link"); // the real per-gate numbers survive
+    expect(m.queuedGates).toEqual([{ id: "validate", detail: "47 flagged of 47" }]);
     expect(m.clearedGateIds).toEqual(["embed"]);
   });
 
-  it("quiet still-working case: nothing needs the user, the running gate is reported, count is 0 (no fabricated headline)", () => {
+  it("quiet still-working case: nothing needs the user, the running gate is reported, headline count is 0 (no fabricated headline)", () => {
     const m = buildVerifyTriageModel(signals({ embedded: 800, units: 1204 }));
-    expect(m.needsUserCount).toBe(0);
+    expect(m.headlineCount).toBe(0);
     expect(m.leadGateId).toBeNull();
     expect(m.multipleNeedYou).toBe(false);
     expect(m.workingGateIds).toEqual(["embed"]);
@@ -321,7 +362,7 @@ describe("buildVerifyTriageModel (RES-113 PR-6 — copy pack §3.2 decisions)", 
     const m = buildVerifyTriageModel(
       signals({ evidence: null, validation: { ok: 0, weak: 0, unsupported: 0, unvalidated: 0, awaitingTriage: 3, unsupportedUntriaged: 0 } }),
     );
-    expect(m.needsUserCount).toBe(3); // only the real verdict queue
+    expect(m.headlineCount).toBe(3); // only the real verdict queue (one needing gate → exact)
     expect(m.leadGateId).toBe("validate");
     // Sources (scorecard unread) is working, not "checked automatically".
     expect(m.workingGateIds).toEqual(["sources"]);

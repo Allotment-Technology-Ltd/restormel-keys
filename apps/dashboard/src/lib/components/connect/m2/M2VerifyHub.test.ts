@@ -62,7 +62,7 @@ describe("M2VerifyHub — triage (copy pack §3.2)", () => {
   });
 
   it("expands ONLY the lead gate (priority rule: pipeline order) with the lead-in when 2+ gates need you", () => {
-    const { getByRole, getByText, getByTestId, queryByRole } = render(M2VerifyHub, {
+    const { getByRole, getByText, getByTestId, queryByRole, queryByText } = render(M2VerifyHub, {
       props: props("triage", {
         evidence: { bound: 1040, unbound: 164, noEvidence: 0, boundPct: 86 },
         validation: { ok: 0, weak: 0, unsupported: 0, unvalidated: 0, awaitingTriage: 47, unsupportedUntriaged: 12 },
@@ -76,11 +76,22 @@ describe("M2VerifyHub — triage (copy pack §3.2)", () => {
     expect(getByRole("heading", { name: "SOURCES" })).toBeTruthy();
     expect(queryByRole("heading", { name: "REVIEW" })).toBeNull();
     expect(getByTestId("verify-lead-gate").getAttribute("data-gate")).toBe("sources");
-    // The headline counts ALL work needing the user (164 links + 47 verdicts).
-    expect(getByRole("heading", { name: "211 facts need your review" })).toBeTruthy();
-    // The single CTA opens the lead gate's fix surface.
-    const cta = getByRole("link", { name: /review the first claim/i });
-    expect(cta.getAttribute("href")).toContain("focus=sources");
+    // Countless headline (copy pack §3.2): the two populations can overlap, so
+    // 164 + 47 would fabricate an inflated total (5-lens review, lens 2) — the
+    // per-gate receipts carry the real numbers instead.
+    expect(getByRole("heading", { name: "Facts need your review" })).toBeTruthy();
+    expect(queryByRole("heading", { name: /211 facts/i })).toBeNull();
+    expect(getByText("164 need a link")).toBeTruthy();
+    expect(getByText("Review — 47 flagged of 47.")).toBeTruthy();
+    // The single CTA NAMES and OPENS the lead gate's fix surface (lens 3 + 5
+    // fixes): a Sources-led frame never carries the Review claim-verb, and the
+    // destination is the LIVE tools-workspace param — never the dead
+    // `?focus=sources` token the explorer silently drops.
+    expect(queryByText(/review the first claim/i)).toBeNull();
+    const cta = getByRole("link", { name: /link facts to sources/i });
+    expect(cta.getAttribute("href")).toContain("workspace=tools");
+    expect(cta.getAttribute("href")).not.toContain("focus=sources");
+    expect(cta.className).toContain("btn-primary");
   });
 
   it("quotes the trust score as a line (never recomputed, absent when null)", () => {
@@ -118,19 +129,24 @@ describe("M2VerifyHub — triage (copy pack §3.2)", () => {
 });
 
 describe("M2VerifyHub — ready (copy pack §3.3)", () => {
-  it("renders the confirmation block with the honest unit count and the Mark-ready CTA", () => {
-    const { getByRole, getByText } = render(M2VerifyHub, { props: props("ready") });
+  it("renders the confirmation block with the honest unit count and the interim Back-to-Home CTA", () => {
+    const { getByRole, getByText, queryByText } = render(M2VerifyHub, { props: props("ready") });
     expect(getByRole("heading", { name: "Everything checks out" })).toBeTruthy();
     expect(
       getByText(
         "All 1,204 facts are matched to sources, searchable, and reviewed. Your graph is ready for real questions.",
       ),
     ).toBeTruthy();
-    const cta = getByRole("link", { name: /mark your graph ready/i });
+    // INTERIM CTA (copy pack §3.3 / 5-lens review, lens 5): no recording backend
+    // exists until PR-J, so the CTA says exactly what it does — the pack's
+    // "Mark your graph ready" + "records the graph as reviewed" sub-line +
+    // "Marked ready." toast are deferred with the backend, never faked.
+    const cta = getByRole("link", { name: /back to home/i });
     expect(cta.getAttribute("href")).toContain("/home");
+    expect(queryByText(/mark your graph ready/i)).toBeNull();
     expect(
-      getByText("This records the graph as reviewed and takes you back to Home."),
-    ).toBeTruthy();
+      queryByText("This records the graph as reviewed and takes you back to Home."),
+    ).toBeNull();
   });
 
   it("uses the singular body for a one-fact graph", () => {

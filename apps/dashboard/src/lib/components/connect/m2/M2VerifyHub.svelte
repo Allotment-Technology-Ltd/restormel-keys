@@ -47,8 +47,22 @@
   export let readiness: ConnectVerifiedReadinessData | null = null;
   /** Deep-link to the triage queue (the Review gate / stamping desk surface). */
   export let triageHref: string = proveClaimsFilterHref("review");
-  /** Where "Mark your graph ready" returns to (copy pack §3.3: Home). */
-  export let markReadyHref: string = HOME_HREF;
+  /**
+   * Deep-link to the Sources gate's fix surface: the graph Tools workspace,
+   * where the readiness wizard's "Link sources" step matches facts to source
+   * text. `?workspace=tools` is a LIVE explorer param (ConnectGraphExplorer
+   * parses it) — never a dead token like the retired `?focus=sources`
+   * (prove-it doctrine / 5-lens review, lens 5 fix).
+   */
+  export let sourcesHref: string = CLAIMS_HREF + "?workspace=tools";
+  /** Where the ready state's "Back to Home" CTA returns to (copy pack §3.3). */
+  export let readyHomeHref: string = HOME_HREF;
+  /**
+   * Focus-relocation hook (a11y skill "no focus loss"): the parent's retry
+   * flow claims focus and the remounted heading consumes it via this action —
+   * same pattern as home/+page.svelte's hero heading. Default no-op.
+   */
+  export let headingAction: (node: HTMLElement) => void = () => {};
 
   /** Copy pack §3 gate table — mono operational names (X12) + one-liners. */
   const GATE_LABEL: Record<MakeReadyGateId, string> = {
@@ -67,6 +81,19 @@
     validate: "Facts we weren't sure about need your verdict.",
   };
 
+  /**
+   * Primary-CTA labels per lead gate (copy pack §3.2): the label and the href
+   * must name the SAME action — a Sources-led frame never carries the Review
+   * gate's claim-verb (5-lens review, lens 3 fix). Searchable never leads
+   * (it runs itself, `needsYou` is always false), so it maps to the Review
+   * label purely as an exhaustiveness fallback.
+   */
+  const LEAD_CTA_LABEL: Record<MakeReadyGateId, string> = {
+    sources: "Link facts to sources",
+    embed: "Review the first claim",
+    validate: "Review the first claim",
+  };
+
   $: triage = surface === "triage" ? buildVerifyTriageModel(signals) : null;
 
   /** Disclosure open state — closed by default; the body mounts only when open. */
@@ -76,7 +103,7 @@
 
   /** The single primary CTA opens the LEAD gate's fix surface (priority rule). */
   function leadHref(id: MakeReadyGateId): string {
-    if (id === "sources") return CLAIMS_HREF + "?focus=sources";
+    if (id === "sources") return sourcesHref;
     return triageHref;
   }
 
@@ -121,11 +148,16 @@
       </p>
     {/if}
 
-    {#if triage.needsUserCount > 0}
-      <h2 id="verify-hub-h" class="verify-h">
-        {triage.needsUserCount === 1
-          ? "1 fact needs your review"
-          : `${num(triage.needsUserCount)} facts need your review`}
+    {#if triage.leadGateId}
+      <!-- Headline count: exact when one gate needs the user; the countless
+           variant when 2+ do (their populations can overlap — no honest total
+           exists; the per-gate receipts carry the real numbers). Copy pack §3.2. -->
+      <h2 id="verify-hub-h" class="verify-h" tabindex="-1" use:headingAction>
+        {triage.headlineCount === null
+          ? "Facts need your review"
+          : triage.headlineCount === 1
+            ? "1 fact needs your review"
+            : `${num(triage.headlineCount)} facts need your review`}
       </h2>
       <!-- First contact for "claim" — defined inline (copy pack §3.2 / noun ramp A-10). -->
       <p class="verify-body">
@@ -171,14 +203,14 @@
         <p class="receipt-line">{GATE_SENTENCE_NAME[g.id]} — {g.detail}.</p>
       {/each}
 
-      <a class="btn btn-primary verify-cta" href={leadHref(triage.leadGateId ?? "validate")} data-testid="verify-cta">
-        Review the first claim <span aria-hidden="true">→</span>
+      <a class="btn btn-primary verify-cta" href={leadHref(triage.leadGateId)} data-testid="verify-cta">
+        {LEAD_CTA_LABEL[triage.leadGateId]} <span aria-hidden="true">→</span>
       </a>
     {:else}
       <!-- Verify work outstanding but NOTHING needs the user (e.g. still making the
            graph searchable). Quiet state — honest stage line, no yellow primary
            (copy pack §0: a steady state may earn none). -->
-      <h2 id="verify-hub-h" class="verify-h">Building your graph</h2>
+      <h2 id="verify-hub-h" class="verify-h" tabindex="-1" use:headingAction>Building your graph</h2>
       {#if triage.workingGateIds.length > 0}
         {#each triage.workingGateIds as id (id)}
           <p class="verify-body">{workingLine(id)}</p>
@@ -191,17 +223,22 @@
       {/if}
     {/if}
   {:else}
-    <!-- READY (copy pack §3.3): confirmation block + "Mark your graph ready". -->
-    <h2 id="verify-hub-h" class="verify-h">Everything checks out</h2>
+    <!-- READY (copy pack §3.3): confirmation block. INTERIM CTA: "Back to Home"
+         — the pack's "Mark your graph ready" + its "records the graph as
+         reviewed" sub-line + the "Marked ready." toast are DEFERRED with the
+         recording backend (PR-J wires the real recompute). Shipping the
+         mark-ready strings on a plain Home link would claim an action that
+         never happens (REC-ADR-016 fabricated-action — 5-lens review, lens 5
+         fix); the CTA says exactly what it does instead. -->
+    <h2 id="verify-hub-h" class="verify-h" tabindex="-1" use:headingAction>Everything checks out</h2>
     <p class="verify-body" data-testid="verify-ready-body">
       {signals.units === 1
         ? "All 1 fact is matched to sources, searchable, and reviewed. Your graph is ready for real questions."
         : `All ${num(signals.units)} facts are matched to sources, searchable, and reviewed. Your graph is ready for real questions.`}
     </p>
-    <a class="btn btn-primary verify-cta" href={markReadyHref} data-testid="verify-mark-ready">
-      Mark your graph ready <span aria-hidden="true">→</span>
+    <a class="btn btn-primary verify-cta" href={readyHomeHref} data-testid="verify-ready-cta">
+      Back to Home <span aria-hidden="true">→</span>
     </a>
-    <p class="verify-muted">This records the graph as reviewed and takes you back to Home.</p>
   {/if}
 
   <!-- The full scorecard + K4 ledger behind ONE closed-by-default muted text
@@ -246,6 +283,12 @@
     color: var(--color-ink);
   }
 
+  .verify-h:focus {
+    /* Programmatic-only focus target (retry relocation via `headingAction`) —
+       no visible ring; the heading is not in the tab order. */
+    outline: none;
+  }
+
   .verify-body {
     margin: 0;
     max-width: 46rem;
@@ -254,12 +297,6 @@
 
   .verify-priority {
     font-weight: 700;
-  }
-
-  .verify-muted {
-    margin: 0;
-    font-size: var(--text-body-sm);
-    color: var(--color-ink-muted);
   }
 
   .gate-card {
@@ -330,14 +367,17 @@
   .disclosure-summary::before {
     /* Explicit open/closed glyph (glyph + word, never colour/position alone):
        `display: inline-flex` suppresses the native ::marker triangle in
-       WebKit/Blink, so we restore an equivalent. */
-    content: "▸";
+       WebKit/Blink, so we restore an equivalent. The alt-text form (`/ ""`)
+       keeps the glyph OUT of the accessibility tree — the native <details>
+       expanded state already carries the semantics; without it VoiceOver
+       announces "black right-pointing small triangle" (a11y lens fix). */
+    content: "▸" / "";
     font-family: var(--font-mono);
     margin-right: var(--space-2);
   }
 
   .scorecard-disclosure[open] .disclosure-summary::before {
-    content: "▾";
+    content: "▾" / "";
   }
 
   .disclosure-summary:focus-visible {

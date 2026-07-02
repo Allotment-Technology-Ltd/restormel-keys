@@ -349,23 +349,44 @@ export function resolveM2Surface(signals: M2SurfaceSignals): M2Surface {
 
 /**
  * Resolve the M2 surface from a loaded hub spine — the shape Home and `/verify`
- * actually hold. Honesty guard (REC-ADR-016): when the spine is missing or a
- * stage state is `unknown` (a partial read failure), we CANNOT know whether
- * verify work is outstanding, so this returns `null` — the caller renders an
- * honest absence (Home: no tile) or its load-failure state (`/verify`), never a
- * fabricated "ready". `hidden` needs no spine: it derives from `graphBuilt`
- * alone (REC-ADR-020 — zero M2 pixels pre-graph).
+ * actually hold. Honesty guards (REC-ADR-016):
+ *
+ *   • when the spine is missing or a stage state is `unknown` (a partial read
+ *     failure), we CANNOT know whether verify work is outstanding → `null` —
+ *     the caller renders an honest absence (Home: no tile) or its load-failure
+ *     state (`/verify`), never a fabricated "ready";
+ *   • `ready` asserts "all facts are MATCHED TO SOURCES" (copy pack §3.3), a
+ *     claim the spine's make_ready/review stages never check (they cover
+ *     embed + validation only — connect-spine.ts). So the Sources signal is a
+ *     hard input here: `evidence` unreadable on a built graph → `null` (the
+ *     scorecard read failed — name the failure, never dress it as progress or
+ *     completion); units still needing a link → `triage` (the Sources gate
+ *     leads), never a "matched to sources" headline the disclosure's own
+ *     scorecard would contradict (5-lens review, lens 2 fix).
+ *
+ * `hidden` needs neither spine nor evidence: it derives from `graphBuilt`
+ * alone (REC-ADR-020 — zero M2 pixels pre-graph; a pre-graph scorecard is
+ * legitimately null, not a failure).
  */
 export function resolveM2SurfaceFromSpine(
   spine: ConnectSpine | null,
   graphBuilt: boolean,
+  evidence: Pick<MakeReadyEvidence, "unbound" | "noEvidence"> | null,
 ): M2Surface | null {
   if (!graphBuilt) return "hidden";
   if (!spine) return null;
   const makeReadyState = spine.stages.find((s) => s.id === "make_ready")?.state ?? "unknown";
   const reviewState = spine.stages.find((s) => s.id === "review")?.state ?? "unknown";
   if (makeReadyState === "unknown" || reviewState === "unknown") return null;
-  return resolveM2Surface({ graphBuilt, makeReadyState, reviewState });
+  // A built graph whose scorecard could not be read is a partial read failure:
+  // without the evidence signal, neither "matched to sources" (ready) nor the
+  // Sources gate's honest count (triage) can be stated.
+  if (!evidence) return null;
+  const surface = resolveM2Surface({ graphBuilt, makeReadyState, reviewState });
+  if (surface === "ready" && Math.max(0, evidence.unbound) + Math.max(0, evidence.noEvidence) > 0) {
+    return "triage";
+  }
+  return surface;
 }
 
 /**
@@ -376,12 +397,20 @@ export function resolveM2SurfaceFromSpine(
  */
 export type VerifyTriageModel = {
   /**
-   * Facts that need the user across the gates: evidence still needing a link
-   * (Sources gate) + claims awaiting a verdict (Review gate). This is the
-   * headline `n` — when it is 0 the triage surface is a quiet "still working"
-   * state (never a fabricated "0 facts need your review").
+   * Honest headline `n` for "{n} facts need your review" (copy pack §3.2).
+   * Exact when EXACTLY ONE gate needs the user — that gate's own counted
+   * population. `null` when 2+ gates need the user: the Sources population
+   * (units needing a link — `evidence_status`) and the Review population
+   * (claims awaiting a verdict — `validation_status` + note) are independent
+   * per-unit fields that can OVERLAP, so no single honest total exists without
+   * a per-unit join (a new query the Stage 1.8 no-new-queries invariant
+   * forbids). Summing them would fabricate an inflated count (REC-ADR-016 —
+   * 5-lens review, lens 2 fix); the shell renders the countless headline
+   * variant instead and the per-gate receipts carry the real numbers.
+   * `0` only when no gate needs the user — the shell renders the quiet
+   * "still working" state (never a fabricated "0 facts need your review").
    */
-  needsUserCount: number;
+  headlineCount: number | null;
   /** The earliest gate in pipeline order (Sources → Searchable → Review) needing the user; null when none does. */
   leadGateId: MakeReadyGateId | null;
   /** The lead gate's honest counted receipt (e.g. "164 need a link"), null when no lead. */
@@ -406,11 +435,19 @@ export function buildVerifyTriageModel(s: MakeReadySignals): VerifyTriageModel {
   const gates = buildMakeReadyGates(s);
   const needing = gates.filter((g) => g.needsYou);
   const lead = needing[0] ?? null;
+  // Per-gate honest populations (each a real counted number; see `headlineCount`
+  // for why they are never summed).
   const needLink =
     s.units > 0 && s.evidence ? Math.max(0, s.evidence.unbound + s.evidence.noEvidence) : 0;
-  const needsUserCount = needLink + Math.max(0, s.validation.awaitingTriage);
+  const gateCount: Record<MakeReadyGateId, number> = {
+    sources: needLink,
+    embed: 0, // Searchable runs itself — never a user population.
+    validate: Math.max(0, s.validation.awaitingTriage),
+  };
+  const headlineCount =
+    needing.length === 0 ? 0 : needing.length === 1 ? gateCount[needing[0].id] : null;
   return {
-    needsUserCount,
+    headlineCount,
     leadGateId: lead?.id ?? null,
     leadDetail: lead?.detail ?? null,
     multipleNeedYou: needing.length >= 2,

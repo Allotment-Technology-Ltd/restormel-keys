@@ -9,11 +9,15 @@
    * predicate the Home tiles consume, so the two surfaces can never disagree:
    *   • hidden  → dashed empty card + "Go to Build" (copy pack §3.1); zero gate
    *     apparatus renders pre-graph (REC-ADR-020 / REC-ADR-022).
-   *   • triage  → the queue-led hub (M2VerifyHub), single primary CTA
-   *     "Review the first claim" honouring the priority rule.
-   *   • ready   → confirmation block + "Mark your graph ready" (M2VerifyHub).
-   *   • null (spine unresolved — partial read failure) → the load-failure
-   *     banner + retry, never a fabricated "ready" (REC-ADR-016).
+   *   • triage  → the queue-led hub (M2VerifyHub), single primary CTA naming
+   *     the lead gate's own action (priority rule).
+   *   • ready   → confirmation block (M2VerifyHub) — requires the spine clear
+   *     AND the Sources signal clear ("matched to sources" is never asserted
+   *     while units still need a link).
+   *   • null (spine unresolved OR the scorecard unreadable on a built graph —
+   *     partial read failures both) → the load-failure banner + retry, never a
+   *     fabricated "ready" and never a failure dressed as progress
+   *     (REC-ADR-016).
    *
    * ux-contracts §3 states: loading (skeleton) / error (banner + one recovery
    * action) / empty (hidden card) / success (triage | ready).
@@ -70,8 +74,10 @@
   }
 
   // Focus relocation on retry-driven swaps (a11y skill — never let focus drop to
-  // <body>): the retry CLAIMS focus; whichever error region next mounts consumes
-  // the claim and focuses itself (same pattern as home/+page.svelte).
+  // <body>): the retry CLAIMS focus; whichever region next mounts — the error
+  // banner on a failed retry, OR the empty-card / hub heading on a successful
+  // one — consumes the claim and focuses itself (same pattern as
+  // home/+page.svelte, which pins BOTH paths; verify-page.test.ts does too).
   let pendingFocus = false;
   function claimFocus(node: HTMLElement) {
     if (pendingFocus) {
@@ -122,12 +128,12 @@
       {@render loadFailure()}
     {:else}
       {@const signals = makeReadySignals(card, hub)}
-      {@const surface = resolveM2SurfaceFromSpine(hub.spine, signals.units > 0)}
+      {@const surface = resolveM2SurfaceFromSpine(hub.spine, signals.units > 0, signals.evidence)}
       {#if surface === "hidden"}
         <!-- HIDDEN (copy pack §3.1): no built graph — one dashed empty card, one
              CTA into the spine. No gates, meter, or ledger pixels. -->
         <section class="verify-empty" aria-labelledby="verify-empty-h">
-          <h2 id="verify-empty-h" class="empty-h">Nothing to check yet</h2>
+          <h2 id="verify-empty-h" class="empty-h" tabindex="-1" use:claimFocus>Nothing to check yet</h2>
           <p class="empty-body">
             Once your graph — your documents, connected — is built, anything we couldn't fully
             match to your documents appears here for a quick review.
@@ -137,10 +143,18 @@
           </a>
         </section>
       {:else if surface === "triage" || surface === "ready"}
-        <M2VerifyHub {surface} {signals} scorecard={data.scorecard} readiness={hub.readiness} />
+        <M2VerifyHub
+          {surface}
+          {signals}
+          scorecard={data.scorecard}
+          readiness={hub.readiness}
+          headingAction={claimFocus}
+        />
       {:else}
-        <!-- Spine unresolved (partial read failure): we cannot honestly say
-             triage OR ready — surface the load failure, never a guess. -->
+        <!-- Spine unresolved, or the scorecard unreadable on a built graph
+             (partial read failures both): we cannot honestly say triage OR
+             ready — surface the load failure, never a guess and never a
+             "still working" line dressed over a failed read. -->
         {@render loadFailure()}
       {/if}
     {/if}
@@ -174,6 +188,11 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-3);
+  }
+
+  .empty-h:focus {
+    /* Programmatic-only focus target (retry relocation) — no visible ring. */
+    outline: none;
   }
 
   .empty-h {

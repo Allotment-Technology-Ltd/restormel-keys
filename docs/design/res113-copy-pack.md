@@ -387,29 +387,41 @@ Queue-led. Gates that don't need the user collapse to **one combined receipt lin
 | Element | Literal string |
 |---|---|
 | Trust line (quotes the scorecard) | Trust score {t} of 100 — how strongly your answers are backed by your documents. |
-| Headline | {n} facts need your review ("1 fact needs your review" singular) |
+| Headline (exactly ONE gate needs you — `n` is that gate's own counted population) | {n} facts need your review ("1 fact needs your review" singular) |
+| Headline (2+ gates need you) | Facts need your review *(countless — the Sources and Review populations are independent per-unit fields that can overlap, so no single honest total exists; the per-gate receipt lines below carry the real numbers. REC-ADR-016; registered by PR-6's 5-lens review per the §1.5 precedent.)* |
 | Definition sentence (first contact for "claim") | Each one is a claim — a fact we found in your documents — that we couldn't fully match to its source. |
 | How-it-works sentence | Check each claim against the passage shown. It usually takes under a minute each. |
 | Priority lead-in (only when 2+ gates need attention) | Start with {gate name} — each check depends on the one before it, so this one comes first. |
-| Combined receipt line (auto-cleared gates) | Sources and searchability checked automatically — nothing needed from you. |
-| Combined receipt line (one gate cleared) | {Gate name} checked automatically — nothing needed from you. |
-| Queue row source line | From {source name} |
+| Lead-gate detail receipt — Sources (mono, inside the expanded gate card) | {n} need a link *(pre-existing PR-D string, registered now that it renders on this surface)* |
+| Lead-gate detail receipt — Review (mono) | {n} flagged of {m} |
+| Queued-gate receipt line (a later gate that ALSO needs you) | {Gate name} — {detail}. *(e.g. "Review — 47 flagged of 1,204.")* |
+| Still-working stage line — Searchable (§0 stage grammar) | Making it searchable — {done} of {total} facts. |
+| Still-working stage line — Sources (scorecard still being read) | Reading source links… *(defence-in-depth only: the `/verify` shell resolves a built graph with an unreadable scorecard to the §1.5 load-failure state, never this line — a failed read is named, not dressed as progress.)* |
+| Quiet still-working headline (nothing needs you, a gate still runs) | Building your graph |
 | Verdict buttons | Supported · Weak · Unsupported |
 | Verdict help line (muted, once above the queue) | Supported — the passage backs it. Weak — partly backed. Unsupported — the passage doesn't back it. |
+| Queue row source line | From {source name} |
 | Saving chip | `SAVING…` |
 | Saved announcement (`aria-live="polite"`) | Saved. {n} left. ("Saved. 1 left." / "Saved. All done.") |
-| Primary CTA (yellow) | Review the first claim → |
+| Primary CTA (yellow) — Review leads | Review the first claim → |
+| Primary CTA (yellow) — Sources leads | Link facts to sources → *(destination: the graph Tools workspace's "Link sources" step — `?workspace=tools`, a live explorer param; the label follows the lead gate so the frame's one action names the work its lead-in just prioritised.)* |
 | Scorecard disclosure (muted text toggle, closed by default, below the queue) | Show the full scorecard |
 
 ### 3.3 Ready (built + nothing outstanding)
 
+`ready` is asserted only when the spine's verify stages are clear **and** the scorecard's
+Sources signal is clear (no units still needing a link): the body's "matched to sources"
+claim must be backed by the same signal the disclosure's scorecard renders — never
+contradicted one click away (REC-ADR-016; PR-6 5-lens review).
+
 | Element | Literal string |
 |---|---|
 | Headline | Everything checks out |
-| Body | All {n} facts are matched to sources, searchable, and reviewed. Your graph is ready for real questions. |
-| Primary CTA (yellow) | Mark your graph ready → |
-| CTA sub-line (muted) | This records the graph as reviewed and takes you back to Home. |
-| Post-action toast | Marked ready. |
+| Body | All {n} facts are matched to sources, searchable, and reviewed. Your graph is ready for real questions. ("All 1 fact is matched to sources, searchable, and reviewed. …" singular) |
+| Primary CTA (yellow) — INTERIM until the mark-ready recompute ships (PR-J) | Back to Home → *(the three rows below are the target strings; shipping them on a plain Home link would claim a recording that never happens — a fabricated action, REC-ADR-016. They activate together with the PR-J backend.)* |
+| Primary CTA (yellow) — target, PR-J | Mark your graph ready → |
+| CTA sub-line (muted) — target, PR-J | This records the graph as reviewed and takes you back to Home. |
+| Post-action toast — target, PR-J | Marked ready. |
 | Scorecard disclosure | Show the full scorecard |
 
 ### 3.4 Home tile strings (triage / ready only — never in hidden)

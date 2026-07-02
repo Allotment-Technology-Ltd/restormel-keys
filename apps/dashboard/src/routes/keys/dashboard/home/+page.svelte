@@ -513,8 +513,11 @@
 {#snippet verifyReadyTile()}
   <!-- Verify ready tile (copy pack §3.4, ready row — RES-113 PR-6a): ghost, no
        dot — the text carries the state. Reveal predicate: graph built AND
-       `resolveM2SurfaceFromSpine` reads "ready" (verify work cleared); spine
-       unresolved ⇒ no tile (honest absence, never a fabricated "all matched"). -->
+       `resolveM2SurfaceFromSpine` reads "ready" — which requires the spine
+       clear AND the scorecard's Sources signal clear ("all matched to sources"
+       is never asserted while units still need a link — 5-lens review, lens 2
+       fix); spine unresolved or scorecard unreadable ⇒ no tile (honest
+       absence, never a fabricated "all matched"). -->
   <div class="panel ghost-tile">
     <p class="tile-line">All facts are matched to sources.</p>
     <a class="tile-link brut-focus" href={VERIFY_HREF}>Open Verify</a>
@@ -567,7 +570,13 @@
       {:else}
         {@const home = deriveHomeState(homeSignals(card, hub, journeyConnectionCount))}
         {@const chip = connectionChip(home.connectionCount, data.hasAppTraffic24h)}
-        {@const m2Surface = resolveM2SurfaceFromSpine(hub.spine, home.units > 0)}
+        {@const m2Surface = resolveM2SurfaceFromSpine(
+          hub.spine,
+          home.units > 0,
+          card?.evidence
+            ? { unbound: card.evidence.unbound, noEvidence: card.evidence.no_evidence }
+            : null,
+        )}
 
         <!-- Persistent graph hero (copy pack §1 Hero): name + real counts + chip.
              EMPTY renders no metric row — nothing is fabricated (§2.3). -->
