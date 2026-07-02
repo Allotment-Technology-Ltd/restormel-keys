@@ -204,7 +204,19 @@ export function makeMistralOcrFixtureTransport(fixture: ExtractionFixture) {
   };
 }
 
-/** Required-sentence fidelity checks per fixture (binary extractor eval). */
+/**
+ * Required-sentence fidelity checks per fixture (binary extractor eval).
+ *
+ * CIRCULAR BY CONSTRUCTION — read this before trusting `fidelityPassRate`: these
+ * required sentences are drawn from the SAME blocks the fixture doubles return, so a
+ * fixture run necessarily yields `fidelityPassRate === 1`. That is intentional and
+ * only proves the mapping/round-trip plumbing is faithful end-to-end (verbatim text
+ * survives extraction→canonical→re-slice); it proves NOTHING about a live OCR engine's
+ * real fidelity. The honest fidelity number comes from the step-2 cascade-validation
+ * harness against the PRIVATE eval set (verification-engineering §7), whose documents
+ * MUST stay disjoint from these fixtures — nothing enforces that disjointness yet; it
+ * is enforced when the private eval set lands (tracked in the ADR step-2 item).
+ */
 export function fixtureMustContain(fixture: ExtractionFixture): string[] {
   // Use the two most content-bearing narrative blocks as the fidelity anchors.
   return fixture.blocks.filter((b) => b.label === "text").map((b) => b.text);

@@ -146,17 +146,56 @@ describe("shared conformance suite — every registered adapter", () => {
 });
 
 describe("swap test — provable, identical contract, documented deltas (Scope §4)", () => {
-  it("runs default and alternative through the identical extract() contract", async () => {
-    const delta = await runSwapTest({ default: paddle, alternative: mistral, source: fixtureAsBinary(legal) });
-    expect(delta.identicalContract).toBe(true);
-    // Both are Tier A on this fixture.
-    expect(delta.default_.emittedTier).toBe("spatial");
-    expect(delta.alternative.emittedTier).toBe("spatial");
-    // Same underlying content → very high token overlap despite different engines.
-    expect(delta.canonicalTokenOverlap).toBeGreaterThan(0.9);
-    // Span anchoring holds for both.
-    expect(delta.default_.spanAnchorRate).toBe(1);
-    expect(delta.alternative.spanAnchorRate).toBe(1);
+  it("runs default and alternative through the identical extract() contract — ALL THREE doc types", async () => {
+    // Scope §4 says "the same indicative corpus" — exercise legal AND pharma AND finance,
+    // not just legal (each fixture carries its own transport double).
+    for (const fx of EXTRACTION_FIXTURES) {
+      const delta = await runSwapTest({
+        default: createPaddleOcrVlConnector(makePaddleOcrVlFixtureTransport(fx)),
+        alternative: createMistralOcrConnector(makeMistralOcrFixtureTransport(fx)),
+        source: fixtureAsBinary(fx),
+        claims: fixtureMustContain(fx),
+      });
+      expect(delta.identicalContract).toBe(true);
+      // Both are Tier A on every fixture.
+      expect(delta.default_.emittedTier).toBe("spatial");
+      expect(delta.alternative.emittedTier).toBe("spatial");
+      // Same underlying content → very high token overlap despite different engines.
+      expect(delta.canonicalTokenOverlap).toBeGreaterThan(0.9);
+      // Span anchoring holds for both.
+      expect(delta.default_.spanAnchorRate).toBe(1);
+      expect(delta.alternative.spanAnchorRate).toBe(1);
+      // Verification-outcome half (§4c, model-free): every claim binds to a byte-identical
+      // span in BOTH connectors, so a verifier sees no binding-driven abstention delta.
+      expect(delta.claimBindingDeltas.length).toBe(fixtureMustContain(fx).length);
+      expect(delta.claimBindingDeltas.every((d) => d.boundInDefault && d.boundInAlternative)).toBe(true);
+      expect(delta.claimBindingDeltas.some((d) => d.bindingDiffers)).toBe(false);
+    }
+  });
+
+  it("surfaces a verification-outcome delta when a claim binds in one connector but not the other", async () => {
+    // A claim present in the source but NOT emitted by the alternative would make a
+    // verifier abstain on the alternative for want of bound evidence — a real, model-free
+    // verification-outcome delta the swap test must surface (Scope §4c).
+    const delta = await runSwapTest({
+      default: paddle,
+      alternative: {
+        id: "sparse-double" as ExtractionConnector["id"],
+        version: "test",
+        declaredTier: "spatial",
+        // Drops the liability clause: the claim will not bind in the alternative.
+        extract: async () => {
+          const full = await paddle.extract(fixtureAsBinary(legal));
+          return { ...full, text_units: full.text_units.filter((u) => !u.text.includes("LIMITATION OF LIABILITY")) };
+        },
+      },
+      source: fixtureAsBinary(legal),
+      claims: ["1. LIMITATION OF LIABILITY. In no event shall either party's aggregate liability exceed the fees paid in the twelve (12) months preceding the claim."],
+    });
+    const liability = delta.claimBindingDeltas[0];
+    expect(liability.boundInDefault).toBe(true);
+    expect(liability.boundInAlternative).toBe(false);
+    expect(liability.bindingDiffers).toBe(true);
   });
 
   it("degradation swap (Tier A → Tier B) is honestly labelled", async () => {
@@ -195,10 +234,32 @@ describe("indicative validation harness — INDICATIVE, fixture-backed", () => {
     );
     for (const r of reports) {
       expect(r.execution).toBe("fixture");
+      // fidelityPassRate === 1 is CIRCULAR under fixtures (mustContain is drawn from the
+      // doubles' own blocks — see fixtureMustContain doc). It proves the mapping/round-trip
+      // plumbing, not live OCR fidelity; the real number is the step-2 private-eval harness.
       expect(r.summary.fidelityPassRate).toBe(1);
       expect(r.summary.meanSpanAnchorRate).toBe(1);
       expect(r.summary.note).toContain("INDICATIVE");
+      // Throughput IS measured (Scope §5) — a positive pages/sec, honestly stamped fixture.
+      expect(r.summary.indicativePagesPerSec).not.toBeNull();
+      expect(r.summary.indicativePagesPerSec as number).toBeGreaterThan(0);
+      expect(r.items[0].extractMs).toBeGreaterThanOrEqual(0);
+      expect(r.items[0].pageCount).toBeGreaterThan(0);
+      // Per-page cost is NULL under fixtures — the honest state (no vendor price in a
+      // double; connect-core is credential-free), NOT a silent omission (§8).
+      expect(r.summary.meanPerPageCostUsd).toBeNull();
+      expect(r.items[0].perPageCostUsd).toBeNull();
     }
+    // A live run supplies per-page cost via the host-app hook (from provider usage/pricing —
+    // never a client estimate). Prove the field populates when the hook is present.
+    const costed = await runIndicativeValidation({
+      connector: createPaddleOcrVlConnector(makePaddleOcrVlFixtureTransport(legal)),
+      corpus: [{ docType: "legal", source: fixtureAsBinary(legal), mustContain: [] }],
+      execution: "live",
+      perPageCostUsd: () => 0.001,
+    });
+    expect(costed.summary.meanPerPageCostUsd).toBe(0.001);
+    expect(costed.items[0].perPageCostUsd).toBe(0.001);
     // Confidence-as-abstention: the legal footnote (0.72) is above 0.6, so 0 low-confidence;
     // lower the threshold and it should be flagged.
     const strict = await runIndicativeValidation({
