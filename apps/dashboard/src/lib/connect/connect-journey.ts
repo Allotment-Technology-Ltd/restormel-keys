@@ -17,6 +17,7 @@ import {
   type ConnectSpineSignals,
   type ConnectSpineStageId,
 } from "$lib/connect/connect-spine";
+import { isVerifyOutstanding } from "$lib/connect/make-ready-hub";
 
 
 /** Ingest job is actively executing (not the suite-wide Monitor nav section). */
@@ -650,10 +651,12 @@ export function deriveOnboardingMilestone(
 
   // m2 Verify: relevant (and outstanding) when make-ready / review still has work.
   // Derived straight from the spine's stage states so embed + validate + triage
-  // all count — no parallel recomputation.
+  // all count — no parallel recomputation. The predicate itself is promoted to
+  // make-ready-hub.ts (`isVerifyOutstanding`) so the M2 surface (`resolveM2Surface`)
+  // and this milestone position can never disagree about whether verify work remains.
   const makeReadyState = milestoneStageState(spine, "make_ready");
   const reviewState = milestoneStageState(spine, "review");
-  const verifyOutstanding = graphBuilt && (makeReadyState === "current" || reviewState === "current");
+  const verifyOutstanding = isVerifyOutstanding({ graphBuilt, makeReadyState, reviewState });
   const m2done = graphBuilt && !verifyOutstanding;
 
   // m3 Store: opt-in advanced depth — only enters the path when the user has
