@@ -1,5 +1,6 @@
 import { DASHBOARD_BASE } from "$lib/dashboard-base";
 import { CLAIMS_HREF, INGEST_FLOW_HREF, INGEST_ROUTES_HREF } from "$lib/nav-config";
+import { journeyStageName } from "$lib/connect/stage-vocabulary";
 
 export const CONNECT_PIPELINE_API = DASHBOARD_BASE + "/api/connect";
 /** The ingest guided flow (the relocated setup wizard — R2: `/connect/pipeline` → `/sources/ingest`). */
@@ -29,6 +30,20 @@ export type GraphTarget = {
     ingest_document_ids?: string[];
     default_stop_after_stage?: string;
     allow_claim_versions_table?: boolean;
+    /**
+     * RES-113 verification-engine plug-points (PR-1): per-slot component choice,
+     * keyed by {@link PipelineSlotId} → curated option id. Absent/empty ⇒ the
+     * recommended default for every slot (a "default bundle"). Persisted through
+     * the existing `updateConnectGraphTargetBundle` settings shallow-merge — this
+     * is a settings key, not a schema column, so no migration lands with PR-1.
+     */
+    pipeline_slots?: Partial<Record<PipelineSlotId, string>>;
+    /**
+     * RES-113 (PR-5 render): slots whose curated choice was withdrawn server-side
+     * and reverted to the recommended default (D-2026-07-02-1 rollback). Drives
+     * the one-time §6.2 revert notice; the withdrawn option is absent from menus.
+     */
+    reverted_slots?: PipelineSlotId[];
   };
 } | null;
 
@@ -483,4 +498,317 @@ export function isM1StageBackingOff(row: M1RateLimitStageRow | null | undefined)
 /** True when a stage row signals a rate-limit by EITHER the structured field or a status string. */
 export function isM1StageRateLimited(row: M1RateLimitStageRow | null | undefined): boolean {
   return isM1StageBackingOff(row) || isM1RateLimitedStatus(row?.status);
+}
+
+// ── RES-113 · verification-engine plug-points — slot derivation (PR-1) ──────────
+// Pure TS. Consumed ONLY behind the `m1PlugPoints` render flag (added by PR-2, the
+// first rendering PR); nothing imports these exports yet, so the default path stays
+// byte-for-byte identical (flag-OFF invariant). Grounding: the signed-off placement
+// spec (restormel-ops planning/verification-ui-placement-spec.md — §3.1, §3.3,
+// §3.4 decisions B/C/D/F, §5 PR-1), the copy pack docs/design/res113-copy-pack.md
+// §2.7 (every user string VERBATIM), REC-GOV-022 (the authoritative CLEARED set —
+// BLOCKED/AMBIGUOUS components never appear in output), REC-ADR-023 invariant 1
+// (the checker is always a different maker family from the extractor).
+//
+// Two hosts, ONE derivation (decision C): this module is the single source for both
+// the sources-page "Advanced" disclosure and its `/routes/ingestion` twin. It does
+// NOT duplicate `ConnectGraphLibrary.svelte` — see the PR-2 reconciliation contract
+// at the foot of this section.
+
+/** The three plug-point slots. Store is NEVER a slot — the `?step=store` aside owns it. */
+export type PipelineSlotId = "extract" | "embed" | "validate";
+
+export const PIPELINE_SLOT_IDS = ["extract", "embed", "validate"] as const;
+
+/**
+ * Slot → the REAL engine stage key (`PIPELINE_STAGES`) whose §0 on-screen name the
+ * row reuses. The name comes from `journeyStageName` (stage-vocabulary.ts) — never
+ * re-authored here, so the two surfaces can never drift (extend-never-duplicate).
+ */
+const SLOT_STAGE_KEY: Record<PipelineSlotId, string> = {
+  extract: "extracting",
+  embed: "embedding",
+  validate: "validating",
+};
+
+/**
+ * Maker "family" for cross-family independence (REC-ADR-023 invariant 1: the checker
+ * is always a different family from the extractor). Used only to exclude options that
+ * would put the extract and validate slots on the same maker — an excluded option is
+ * ABSENT from the offered list (decision B: absent-with-reason, never disabled-and-
+ * teasing), and its absence lights the one reason line. NOT user-facing.
+ */
+export type ComponentFamily =
+  | "paddle"
+  | "mistral"
+  | "baai"
+  | "qwen"
+  | "voyage"
+  | "ibm"
+  | "vectara"
+  | "frontier";
+
+/** One curated, CLEARED option. Display name + outcome line are copy-pack §2.7 VERBATIM. */
+export type CuratedOption = {
+  /** Stable neutral id (never a vendor SDK type; safe in cache keys / persisted bundle). */
+  id: string;
+  /** On-screen name — copy pack §2.7, verbatim. */
+  name: string;
+  /** Outcome line — copy pack §2.7, verbatim. Trade-off named as an outcome, never a licence/tier/cost. */
+  outcome: string;
+  /** Maker family, for the cross-family independence check only. */
+  family: ComponentFamily;
+  /** True for the one recommended default per slot (rendered first; `RECOMMENDED` tag). */
+  isRecommended?: true;
+};
+
+/**
+ * The curated menus — CLEARED components ONLY (REC-GOV-022 §d). This catalog is the
+ * single choke point that makes "BLOCKED/AMBIGUOUS names never appear in output" a
+ * structural guarantee, not a runtime filter: the REC-GOV-022 BLOCKED and AMBIGUOUS
+ * sets are simply absent — there is no code path that could surface them. (Those
+ * component names are deliberately NOT spelled here: the licensing gate greps this
+ * tree binary, and the exclusion rationale lives in REC-GOV-022 / the placement spec.)
+ *
+ * Order is significant: the recommended default is first (copy pack §2.7 list order).
+ * A menu change is a change to REC-GOV-022 first, then the copy pack §2.7 table, then here.
+ */
+const SLOT_CATALOG: Record<PipelineSlotId, readonly CuratedOption[]> = {
+  extract: [
+    {
+      id: "paddleocr-vl",
+      name: "PaddleOCR-VL",
+      outcome:
+        "The recommended reader. Handles most documents well and keeps the exact position of every fact, so citations can highlight the source passage.",
+      family: "paddle",
+      isRecommended: true,
+    },
+    {
+      id: "mistral-ocr-4",
+      name: "Mistral OCR 4",
+      outcome:
+        "The most accurate on difficult documents — scanned pages, dense tables, many languages. Runs as a hosted service, so your pages leave your infrastructure.",
+      family: "mistral",
+    },
+    {
+      id: "paddleocr-ppocrv5",
+      name: "PaddleOCR PP-OCRv5",
+      outcome:
+        "The fastest on plain, cleanly laid-out pages — a good fit for large volumes of simple documents. Less accurate on difficult ones.",
+      family: "paddle",
+    },
+  ],
+  embed: [
+    {
+      id: "bge-m3",
+      name: "BGE-M3",
+      outcome:
+        "The recommended choice. Strong search across many languages, and it can run entirely on your own infrastructure.",
+      family: "baai",
+      isRecommended: true,
+    },
+    {
+      id: "qwen3-embedding-8b",
+      name: "Qwen3-Embedding-8B",
+      outcome:
+        "The strongest search quality — the pick when questions keep missing facts you know are there. Needs more computing power, so builds take longer.",
+      family: "qwen",
+    },
+    {
+      id: "voyage-4-lite",
+      name: "voyage-4-lite",
+      outcome:
+        "A hosted option with nothing to run yourself. Light and quick; search quality sits a step below the recommended choice.",
+      family: "voyage",
+    },
+    {
+      id: "voyage-domain-models",
+      name: "Voyage domain models (legal · finance · code)",
+      outcome:
+        "Tuned for legal, financial, or code documents — stronger search in those fields. Hosted, so your text leaves your infrastructure.",
+      family: "voyage",
+    },
+  ],
+  validate: [
+    {
+      id: "granite-guardian",
+      name: "Granite Guardian",
+      outcome:
+        "The recommended check. Clear cases pass quickly, unclear ones get a stronger look, and anything still uncertain waits for your verdict.",
+      family: "ibm",
+      isRecommended: true,
+    },
+    {
+      id: "frontier-hosted",
+      name: "Frontier hosted model (Claude, Gemini, or GPT)",
+      outcome:
+        "The most thorough check for high-stakes work — a model from a different maker re-checks each fact. The slowest option, and facts go to that provider.",
+      family: "frontier",
+    },
+    {
+      id: "hhem-2.1-open",
+      name: "HHEM-2.1-Open",
+      outcome:
+        "The lightest check — fast, and it runs on your own infrastructure. It settles fewer cases on its own, so more facts wait for your verdict.",
+      family: "vectara",
+    },
+  ],
+};
+
+/**
+ * The single incompatibility reason line — copy pack §2.7, VERBATIM (decisions B + D).
+ * Stage-table language; the word "checker" never appears. Rendered ONCE, as a muted
+ * line in the affected slot row, only when the current selections exclude at least one
+ * cleared option from that slot's list.
+ */
+export const PIPELINE_SLOT_INCOMPATIBILITY_REASON =
+  "Some options aren't offered with your current choices. The stage that checks against sources always uses a different maker from the stage that reads your documents, so the check stays independent." as const;
+
+/** The recommended default option id for a slot (the first, `isRecommended` entry). */
+export function recommendedSlotOptionId(slot: PipelineSlotId): string {
+  const rec = SLOT_CATALOG[slot].find((o) => o.isRecommended) ?? SLOT_CATALOG[slot][0];
+  return rec.id;
+}
+
+/** One curated option as derived for a host to render. */
+export type PipelineSlotOption = {
+  id: string;
+  /** Copy pack §2.7 display name, verbatim. */
+  name: string;
+  /** Copy pack §2.7 outcome line, verbatim. */
+  outcome: string;
+  /** True for the recommended default (rendered first, `RECOMMENDED` tag). */
+  isRecommended: boolean;
+  /** True when this is the slot's current choice (drives the "■ selected" mark). */
+  isSelected: boolean;
+};
+
+/** One derived slot row — the unit both hosts render. No vendor/family fields leak here. */
+export type PipelineSlotRow = {
+  slot: PipelineSlotId;
+  /** §0 on-screen stage name (from `journeyStageName`), verbatim — never re-authored. */
+  stageName: string;
+  /** The current choice's display name. */
+  currentName: string;
+  /** True when the current choice is the recommended default (⇒ no receipt, no "changed"). */
+  isDefault: boolean;
+  /** CLEARED options offered for this slot, recommended first, incompatible ones excluded. */
+  options: PipelineSlotOption[];
+  /** Present only when ≥1 cleared option was excluded for cross-family independence. */
+  blockedReason?: string;
+  /** Present (true) only when this slot was reverted server-side (PR-5 revert notice). */
+  reverted?: true;
+};
+
+/** Which slots resolve, in order, when reading a bundle. */
+function currentOptionId(bundle: GraphTargetBundle, slot: PipelineSlotId): string {
+  const chosen = bundle?.pipeline_slots?.[slot];
+  if (chosen && SLOT_CATALOG[slot].some((o) => o.id === chosen)) return chosen;
+  return recommendedSlotOptionId(slot);
+}
+
+/** The bundle shape the slot derivation reads (the non-null branch of `GraphTarget`). */
+type GraphTargetBundle = NonNullable<NonNullable<GraphTarget>["bundle"]> | undefined;
+
+/**
+ * Cross-family independence filter (REC-ADR-023 invariant 1), extracted as a pure,
+ * exported-for-test seam. Given a slot's full CLEARED menu, the current choice id, and
+ * the family the *paired* slot currently sits on (or null when the slot is unpaired),
+ * returns the offered menu with any option that shares the paired family EXCLUDED —
+ * except the current choice itself is always kept so a row can always show what it runs.
+ *
+ * NOTE on the shipped catalog: `extract` families ({paddle, mistral}) and `validate`
+ * families ({ibm, frontier, vectara}) are disjoint by construction, so no exclusion
+ * fires with today's CLEARED menus (the invariant holds for free). This helper is the
+ * enforcement seam that keeps it holding when REC-GOV-022 later admits an option that
+ * would collide — and it is unit-tested directly against a crafted collision so the
+ * exclusion + reason-line mechanism is genuinely covered, not merely asserted.
+ */
+export function offeredOptionsForFamilyConflict(
+  full: readonly CuratedOption[],
+  currentId: string,
+  pairedFamily: ComponentFamily | null,
+): { offered: CuratedOption[]; excludedAny: boolean } {
+  if (pairedFamily == null) return { offered: [...full], excludedAny: false };
+  const offered = full.filter((o) => o.family !== pairedFamily || o.id === currentId);
+  return { offered, excludedAny: offered.length < full.length };
+}
+
+/**
+ * Derive the plug-point slot rows for a graph's bundle. Pure function of the bundle.
+ *
+ * Cross-family independence (REC-ADR-023 invariant 1) is enforced via
+ * {@link offeredOptionsForFamilyConflict}: an option for the `validate` slot is
+ * EXCLUDED when it shares a maker family with the current `extract` choice (and
+ * vice-versa). Excluded options are absent from `options` (decision B — never
+ * disabled-and-teasing); their absence sets `blockedReason` to the single §2.7 line.
+ * BLOCKED/AMBIGUOUS components can never appear because they are absent from
+ * `SLOT_CATALOG` — this function only ever filters the CLEARED set.
+ */
+export function resolveM1PipelineSlots(bundle: GraphTargetBundle): PipelineSlotRow[] {
+  const currentByFamily: Record<PipelineSlotId, ComponentFamily> = {
+    extract: familyOf("extract", currentOptionId(bundle, "extract")),
+    embed: familyOf("embed", currentOptionId(bundle, "embed")),
+    validate: familyOf("validate", currentOptionId(bundle, "validate")),
+  };
+  const revertedSet = new Set(bundle?.reverted_slots ?? []);
+
+  return PIPELINE_SLOT_IDS.map((slot): PipelineSlotRow => {
+    const currentId = currentOptionId(bundle, slot);
+    const recId = recommendedSlotOptionId(slot);
+
+    // The family the OTHER paired slot currently sits on, for the independence check.
+    // extract⇄validate are the paired stages the invariant names; embed is unconstrained.
+    const pairedFamily =
+      slot === "validate"
+        ? currentByFamily.extract
+        : slot === "extract"
+          ? currentByFamily.validate
+          : null;
+
+    const { offered, excludedAny } = offeredOptionsForFamilyConflict(
+      SLOT_CATALOG[slot],
+      currentId,
+      pairedFamily,
+    );
+
+    const options: PipelineSlotOption[] = offered.map((o) => ({
+      id: o.id,
+      name: o.name,
+      outcome: o.outcome,
+      isRecommended: o.isRecommended === true,
+      isSelected: o.id === currentId,
+    }));
+
+    const row: PipelineSlotRow = {
+      slot,
+      stageName: journeyStageName(SLOT_STAGE_KEY[slot]),
+      currentName: nameOf(slot, currentId),
+      isDefault: currentId === recId,
+      options,
+    };
+    if (excludedAny) row.blockedReason = PIPELINE_SLOT_INCOMPATIBILITY_REASON;
+    if (revertedSet.has(slot)) row.reverted = true;
+    return row;
+  });
+}
+
+/** True when the bundle runs the recommended default for every slot (a "default bundle"). */
+export function isDefaultPipelineBundle(bundle: GraphTargetBundle): boolean {
+  return PIPELINE_SLOT_IDS.every((slot) => currentOptionId(bundle, slot) === recommendedSlotOptionId(slot));
+}
+
+/** Count of slots changed from the recommended default — drives the §2.7 customisation summary. */
+export function changedPipelineSlotCount(bundle: GraphTargetBundle): number {
+  return PIPELINE_SLOT_IDS.filter((slot) => currentOptionId(bundle, slot) !== recommendedSlotOptionId(slot)).length;
+}
+
+function familyOf(slot: PipelineSlotId, optionId: string): ComponentFamily {
+  const opt = SLOT_CATALOG[slot].find((o) => o.id === optionId) ?? SLOT_CATALOG[slot][0];
+  return opt.family;
+}
+
+function nameOf(slot: PipelineSlotId, optionId: string): string {
+  const opt = SLOT_CATALOG[slot].find((o) => o.id === optionId) ?? SLOT_CATALOG[slot][0];
+  return opt.name;
 }
