@@ -352,157 +352,101 @@ export function isPipelineWizardPath(pathname: string): boolean {
   return pathname === CONNECT_PIPELINE_BASE;
 }
 
-// ── RES-113 · M1 "Build" friendly reskin model (PR-C) ────────────────────────
-// Additive + purely presentational. Every export below is consumed ONLY behind
-// the `onboardingJourney` module flag (default OFF). With the flag OFF these are
-// dead code: the live Provider→Sources→Domain→Review wizard and the seven-stage
-// run console render byte-for-byte unchanged. This is a RESKIN over the real
-// components, never a re-route — the underlying wizard steps and pipeline stages
-// are untouched. Grounding: REC-ADR-013 (M0–M4 ladder), REC-ADR-015 (model
-// choice happens at ingest, never retroactively), REC-ADR-016 (honest pipeline
-// states — name the real state, never fake progress).
-
-/** The friendly four-rung M1 grouping (03_SCREENS §M1: Sources · Configure · Ingest · Ask). */
-export type M1BuildRungId = "sources" | "configure" | "running" | "done";
-
-export type M1BuildRung = {
-  id: M1BuildRungId;
-  /** Stepper chip text. */
-  label: string;
-  /** Friendly screen title. */
-  title: string;
-  /** One-line friendly lead. */
-  lead: string;
-};
-
-export const M1_BUILD_RUNGS: readonly M1BuildRung[] = [
-  {
-    id: "sources",
-    label: "Sources",
-    title: "Add your sources",
-    lead: "Point us at where your documents live — uploads, URLs, connectors, or a crawl.",
-  },
-  {
-    id: "configure",
-    label: "Configure",
-    title: "Choose models",
-    lead: "Recommended models are picked for you. Models are chosen here, at ingest — never retroactively.",
-  },
-  {
-    id: "running",
-    label: "Running",
-    title: "Building your graph",
-    lead: "Reading your documents and turning them into a connected, citable graph. This can take a few minutes.",
-  },
-  {
-    id: "done",
-    label: "Done",
-    title: "Ask your own data",
-    lead: "Your graph is ready. Ask a question and get a grounded answer with citations — from your sources.",
-  },
-] as const;
+// ── RES-113 · M1 "Build" journey model (PR-5, supersedes the PR-C rung reskin) ──
+// Every export below is consumed ONLY behind the `onboardingJourney` module flag
+// (default OFF). With the flag OFF these are dead code: the live
+// Provider→Sources→Domain→Review wizard and the seven-stage run console render
+// byte-for-byte unchanged. Grounding: plan §3.2 (one state-derived panel — the
+// interactive stepper is killed on the flag-ON path), the copy pack
+// docs/design/res113-copy-pack.md §2 (strings verbatim), REC-ADR-015 (model
+// choice at ingest), REC-ADR-016 (honest states — never fake progress).
 
 /**
- * Map each live wizard step → its friendly M1 rung. Provider key, domain pack,
- * and the demoted store aside all FOLD INTO "Configure" (one friendly decision
- * point); the launch/review panel is the final Configure sub-state before the
- * run starts. "Running" and "Done" are owned by the run console, not the wizard.
+ * PR-5: the ONE Build panel, derived from the real signals
+ * `PipelineWizardProgress` already carries. This extends the
+ * `DEMOTED_PIPELINE_WIZARD_STEP` pattern: the flag-ON spine has no step strip at
+ * all — a single return value is the structural guarantee that no two asks can
+ * ever co-exist on screen.
+ */
+export type M1BuildPanelId = "provider" | "sources" | "launch";
+
+/**
+ * Provider key first (nothing can run without it), then documents, then launch.
  *
- * Note: the live wizard orders provider→sources→domain→launch, while the
- * friendly ladder reads Sources→Configure. Rung state is therefore derived from
- * real completion signals (not live step position) so the friendly stepper never
- * shows a step backwards — see `m1CompletedRungsFromSteps`.
+ * The sources ask keys on `selectedDocumentCount === 0`, NOT `connectionCount`:
+ * `connectionCount` counts cloud CONNECTOR connections only — uploads/URLs
+ * produce documents without one, and a connector with nothing imported produces
+ * no documents. The wizard's own Sources completion signal (`stepDone`) and the
+ * server's `resolveDefaultPipelineStep` both key on documents, and the copy
+ * pack's advance rule (§2.2) is "once one source exists".
  */
-export const M1_WIZARD_STEP_TO_RUNG: Record<PipelineWizardStepId, M1BuildRungId> = {
-  provider: "configure",
-  sources: "sources",
-  domain: "configure",
-  store: "configure",
-  launch: "configure",
-};
-
-export function m1RungForWizardStep(step: PipelineWizardStepId): M1BuildRungId {
-  return M1_WIZARD_STEP_TO_RUNG[step] ?? "sources";
+export function resolveM1BuildPanel(
+  p: Pick<PipelineWizardProgress, "hasProviderKey" | "selectedDocumentCount">,
+): M1BuildPanelId {
+  if (!p.hasProviderKey) return "provider";
+  if (p.selectedDocumentCount === 0) return "sources";
+  return "launch";
 }
 
-export function m1BuildRung(id: M1BuildRungId): M1BuildRung {
-  return M1_BUILD_RUNGS.find((r) => r.id === id) ?? M1_BUILD_RUNGS[0];
-}
-
-export type M1RungVisualState = "completed" | "active" | "upcoming";
+/** Copy pack §2: the four honest steps — 1 provider key · 2 documents · 3 build · 4 ask. */
+export const M1_BUILD_TOTAL_STEPS = 4;
 
 /**
- * The friendly rungs that are genuinely complete, derived from the wizard's own
- * per-step completion signals (REC-ADR-016: real state, not position). "Sources"
- * is done once a document is selected; "Configure" once a domain pack or provider
- * key is in place. Running/Done are never complete inside the wizard.
+ * Copy pack §2 + Appendix A-1: the non-interactive plain-language orientation
+ * eyebrow renders ONLY on the two ask panels; it is suppressed on launch (and on
+ * the console's running/completion states), where the CTA or tracker owns the
+ * frame. Steps 3 and 4 (build, ask) exist so "of 4" stays honest even though
+ * their eyebrows never render. Null = no eyebrow.
  */
-export function m1CompletedRungsFromSteps(completedStepIds: readonly PipelineWizardStepId[]): M1BuildRungId[] {
-  const out: M1BuildRungId[] = [];
-  if (completedStepIds.includes("sources")) out.push("sources");
-  if (completedStepIds.includes("domain") || completedStepIds.includes("provider")) out.push("configure");
-  return out;
-}
-
-export function m1RungVisualState(
-  rung: M1BuildRungId,
-  ctx: { activeRung: M1BuildRungId; completedRungs: readonly M1BuildRungId[] },
-): M1RungVisualState {
-  if (rung === ctx.activeRung) return "active";
-  if (ctx.completedRungs.includes(rung)) return "completed";
-  return "upcoming";
+export function m1BuildEyebrow(panel: M1BuildPanelId): string | null {
+  if (panel === "provider") return `STEP 1 OF ${M1_BUILD_TOTAL_STEPS}`;
+  if (panel === "sources") return `STEP 2 OF ${M1_BUILD_TOTAL_STEPS}`;
+  return null;
 }
 
 /**
- * The friendly active/completed rungs FOR THE RUN CONSOLE. By the time a run is
- * executing, Sources + Configure are behind the user; "Running" is active until
- * the job completes, then "Done" (ask your data) takes over. Honest: nothing is
- * marked done until the run actually completes (REC-ADR-016).
+ * Copy pack §2.1–§2.3 header strings, verbatim (a string change is a change to
+ * the copy pack first). The launch meta line renders the first-run "{n}
+ * documents ready." variant in BOTH launch states: the re-run variant's "last
+ * built {relative time} ago" segment has no honest source signal in
+ * `PipelineWizardProgress`, and a missing measurement renders absent — never
+ * fabricated (copy pack §0).
  */
-export function m1RunConsoleRungs(input: {
-  isCompleted: boolean;
-}): { activeRung: M1BuildRungId; completedRungs: M1BuildRungId[] } {
-  const completedRungs: M1BuildRungId[] = ["sources", "configure"];
-  if (input.isCompleted) {
-    completedRungs.push("running");
-    return { activeRung: "done", completedRungs };
-  }
-  return { activeRung: "running", completedRungs };
+export const M1_BUILD_PANEL_COPY = {
+  provider: {
+    headline: "Add an AI provider key",
+    supporting:
+      "Restormel uses an AI model to read your documents, and the model needs a key — a password-like code from a provider such as OpenAI or Anthropic.",
+    modelsLine: "Recommended models are pre-chosen. Change them under Advanced.",
+    advancedLabel: "Advanced — choose a model per stage",
+  },
+  sources: {
+    headline: "Add your documents",
+    supporting:
+      "These are what your answers come from. Upload files, or connect Notion, Google Drive, or a code repository.",
+  },
+  launch: {
+    headlineFirstRun: "Ready to build",
+    headlineReRun: "Rebuild your graph",
+    outcome: "Turn your documents into cited answers.",
+    expectation: "Usually takes 1–3 minutes.",
+    cta: "Run ingest →",
+  },
+} as const;
+
+/** Copy pack §2.3 meta line: "{n} documents ready." with the §0 singular variant. */
+export function m1LaunchMetaLine(documentCount: number): string {
+  return documentCount === 1 ? "1 document ready." : `${documentCount} documents ready.`;
 }
 
 /**
- * Friendly, plain-language relabels for the seven technical pipeline stages,
- * shown in the run console's friendly view. The real `PIPELINE_STAGES` keys are
- * unchanged — this is a display map only.
- */
-export const M1_FRIENDLY_STAGE_LABELS: Record<(typeof PIPELINE_STAGES)[number], string> = {
-  extracting: "Reading your documents",
-  relating: "Connecting the ideas",
-  grouping: "Organising into topics",
-  embedding: "Making it searchable",
-  validating: "Checking the claims",
-  remediating: "Fixing weak spots",
-  storing: "Saving to your graph",
-};
-
-export function m1FriendlyStageLabel(stageKey: string): string {
-  return (M1_FRIENDLY_STAGE_LABELS as Record<string, string>)[stageKey] ?? stageKey;
-}
-
-/** Front-half stages (build the graph) — shown up front in the friendly run view. */
-export const M1_RUN_FRONT_STAGES = ["extracting", "relating", "grouping", "embedding"] as const;
-/** Back-half stages (check & store) — the detail tucked under the "what's happening" expander. */
-export const M1_RUN_BACK_STAGES = ["validating", "remediating", "storing"] as const;
-
-/**
- * Presentational rate-limit banner copy (03_SCREENS §M1 edge states). Shown as an
- * AMBER, no-action-needed state — the run keeps itself moving. As of PR-I this lights
- * from a REAL structured backoff signal threaded engine→job-record→SSE (REC-ADR-016) —
- * it never fabricates a state that isn't happening.
+ * Rate-limit banner copy — copy pack §2.4, verbatim. Shown as an AMBER,
+ * no-action-needed state — the run keeps itself moving. As of PR-I this lights
+ * from a REAL structured backoff signal threaded engine→job-record→SSE
+ * (REC-ADR-016) — it never fabricates a state that isn't happening.
  */
 export const M1_RATE_LIMIT_BANNER = {
-  title: "Provider rate-limited",
-  body: "Backing off and retrying automatically — no action needed. Your run resumes on its own.",
+  body: "The AI provider asked us to slow down. We're pausing and retrying automatically — nothing for you to do.",
 } as const;
 
 /**

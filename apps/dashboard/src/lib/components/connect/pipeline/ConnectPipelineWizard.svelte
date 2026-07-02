@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto, invalidate } from "$app/navigation";
+  import { browser } from "$app/environment";
   import { HOME_HREF } from "$lib/nav-config";
   import { page } from "$app/stores";
   import { tick } from "svelte";
@@ -9,13 +10,15 @@
     DEMOTED_PIPELINE_WIZARD_STEP,
     nextPipelineWizardStep,
     pipelineWizardHref,
-    m1RungForWizardStep,
-    m1BuildRung,
+    resolveM1BuildPanel,
+    m1BuildEyebrow,
+    m1LaunchMetaLine,
+    M1_BUILD_PANEL_COPY,
+    type M1BuildPanelId,
     type PipelineRunDefaults,
     type PipelineWizardProgress,
     type PipelineWizardStepId,
   } from "$lib/connect/pipeline-config";
-  import { MILESTONE_LABEL } from "$lib/connect/connect-journey";
   import { INGEST_ROUTES_HREF } from "$lib/nav-config";
   import PipelineWizardStepper from "$lib/components/connect/pipeline/PipelineWizardStepper.svelte";
   import type { ConnectTrustScorecard } from "@restormel/contracts";
@@ -67,17 +70,11 @@
   $: isStoreAside = step === "store";
   // R4-S2(c): the auto-provision promise only holds when the host-managed Postgres store is ON.
   $: hostManagedGraphStoreOn = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).connectHostManagedGraphStore;
-  // RES-113 PR-C: the M1 "Build" friendly reskin. DEFAULT-OFF — with the flag off
-  // this whole component renders byte-for-byte unchanged (every `onboarding*`
-  // branch below is additive and gated). Presentational reskin only.
+  // RES-113 PR-5: the journey Build (plan §3.2). DEFAULT-OFF — with the flag off
+  // the {:else} wizard below renders byte-for-byte unchanged. With it ON the
+  // interactive stepper is GONE: `resolveM1BuildPanel` derives the ONE panel from
+  // real signals, so no two asks can ever co-exist (structural guarantee).
   $: onboardingJourney = ($page.data.moduleFlags ?? MVP_MODULE_DEFAULTS).onboardingJourney;
-  // The friendly rung the current step belongs to (provider/domain/store/launch
-  // all fold into "Configure"; sources is its own rung). Drives the reskinned
-  // header eyebrow + title without touching routing.
-  $: friendlyRung = m1BuildRung(m1RungForWizardStep(step));
-  // Configure is where model choice lives — surface the "models chosen at ingest"
-  // (REC-ADR-015) Advanced disclosure here, on the provider/domain panels.
-  $: onConfigureRung = onboardingJourney && (step === "provider" || step === "domain");
   // Flag-gated store lead: append the "provisioned automatically" claim ONLY when
   // the module is ON. With it OFF (MVP default) the base BYO-honest lead stands.
   $: storeLead = hostManagedGraphStoreOn
@@ -95,6 +92,66 @@
       : (PIPELINE_WIZARD_STEPS[stepIndex] ?? PIPELINE_WIZARD_STEPS[0]);
   $: isFirst = !isStoreAside && stepIndex <= 0;
   $: showRepeatRunKicker = journeyPhase === "operational" && Boolean(progress?.hasGraph);
+
+  // ── RES-113 PR-5 · journey Build derivations (flag-ON only) ────────────────
+  // Store + domain are off the spine: store keeps its existing aside; domain
+  // (plan §3.2 point 3) becomes an Advanced aside — a built-in pack applies
+  // silently on the spine, and pack/schema design is reached from the Sources
+  // page's "Advanced — full pipeline control" disclosure or a deep link.
+  //
+  // 5-lens review fix (lens 2 §1/§2): an EXPLICIT `?step=sources` visit that
+  // ARRIVES with a non-empty selection is a document-manage aside — explicit
+  // visit wins. `ConnectSourcesPanel` is the only mount of the selection
+  // editor, so the spine's URL correction must never rewrite it away (the
+  // completion ledger's "Run again with more documents" link and deep links
+  // land here). The ask→launch auto-advance still fires for a visit that
+  // arrives with an EMPTY selection (copy pack §2.2: the ask "advances to the
+  // launch panel automatically once one source exists").
+  let sourcesManageVisit = false;
+  let lastVisitStep: PipelineWizardStepId | null = null;
+  $: trackSourcesVisit(step, progress);
+  function trackSourcesVisit(s: PipelineWizardStepId, p: PipelineWizardProgress | null) {
+    if (s === lastVisitStep) return;
+    lastVisitStep = s;
+    sourcesManageVisit = s === "sources" && (p?.selectedDocumentCount ?? 0) > 0;
+  }
+  $: journeyAside =
+    onboardingJourney &&
+    (step === "store" || step === "domain" || (step === "sources" && sourcesManageVisit))
+      ? step
+      : null;
+  // The ONE spine panel (reveal predicate, quoted per ux-craft 2.1):
+  // `!hasProviderKey` → provider ask; `selectedDocumentCount === 0` → sources
+  // ask; else → launch. Exactly one renders; the others do not mount.
+  $: journeyPanel = onboardingJourney && progress && !journeyAside ? resolveM1BuildPanel(progress) : null;
+  // Copy pack Appendix A-1: eyebrow on the two ask panels only; launch owns its frame.
+  $: journeyEyebrow = journeyPanel ? m1BuildEyebrow(journeyPanel) : null;
+  $: journeyLaunchDocCount = runDefaults?.documents.length ?? progress?.selectedDocumentCount ?? 0;
+
+  // Keep the URL `?step=` aligned with the derived panel so the server loads the
+  // launch data (runDefaults / preflight / previous scorecard) exactly when the
+  // launch panel shows. replaceState — the correction is not a history entry.
+  let journeyNavPending: M1BuildPanelId | null = null;
+  $: if (step === journeyNavPending) journeyNavPending = null;
+  $: if (browser && journeyPanel && step !== journeyPanel && journeyNavPending !== journeyPanel) {
+    journeyNavPending = journeyPanel;
+    goToStep(journeyPanel, true);
+  }
+
+  // Focus relocation on the state-derived panel swap (a11y skill: never destroy
+  // the focused element in an {#if} swap without relocating focus — e.g. the
+  // sources ask advancing to launch unmounts the control the user just used).
+  // Programmatic-only target: tabindex="-1", visible outline suppressed.
+  let journeyHeadingEl: HTMLHeadingElement | undefined;
+  let lastJourneyPanel: M1BuildPanelId | null = null;
+  $: trackJourneyPanelFocus(journeyPanel);
+  function trackJourneyPanelFocus(panel: M1BuildPanelId | null) {
+    if (panel === null || panel === lastJourneyPanel) return;
+    const isFirstPanel = lastJourneyPanel === null;
+    lastJourneyPanel = panel;
+    if (isFirstPanel || !browser) return;
+    void tick().then(() => journeyHeadingEl?.focus());
+  }
 
   // Real completion per step (not position): drives the stepper's ✓ marks so a
   // deep link to a later step can't show unconfigured steps as done.
@@ -225,6 +282,271 @@
       <a class="btn btn-primary btn-sm" href="{DASHBOARD_BASE}/login">Sign in</a>
     </div>
   {/if}
+{:else if onboardingJourney}
+  <!-- ── RES-113 PR-5: journey Build — ONE state-derived panel (plan §3.2) ─────
+       No interactive stepper on this path. `resolveM1BuildPanel(progress)` returns
+       exactly one of provider-ask / sources-ask / launch, so competing asks are
+       structurally impossible. All strings verbatim from the copy pack §2.
+       Reveal predicates: provider ask ⇐ `!hasProviderKey`; sources ask ⇐
+       `selectedDocumentCount === 0`; launch otherwise. Flag-OFF renders the
+       {:else} wizard below byte-for-byte unchanged. -->
+  {#if showTemplateBanner}
+    <div class="notice template-banner" role="status">
+      You came from the <strong>{pendingTemplateTitle}</strong> template — finish setup and we'll pre-fill your domain
+      config at the Domain step.
+      <!-- 5-lens review fix (lens 5 §1): no arrow on a secondary — the → glyph
+           belongs to the state's one yellow primary alone (copy pack §0). The
+           flag-OFF banner below keeps its shipped string (out of gate). -->
+      <button type="button" class="btn btn-outline btn-sm template-banner-btn" on:click={goToDomainForTemplate}>
+        Go to Domain step
+      </button>
+    </div>
+  {:else if pendingTemplateId && !progress?.hasGraphStore}
+    <div class="notice template-banner" role="status">
+      Template <strong>{pendingTemplateTitle}</strong> selected — we'll pre-fill your domain config when you reach the
+      Domain step.
+    </div>
+  {/if}
+
+  {#if journeyAside === "store"}
+    <nav class="wizard-crumb" aria-label="Breadcrumb">
+      <a href={HOME_HREF}>Home</a>
+      <span aria-hidden="true">›</span>
+      <a href={pipelineWizardHref("launch")}>Build</a>
+      <span aria-hidden="true">›</span>
+      <span aria-current="page">Configure store</span>
+    </nav>
+    <header class="wizard-header">
+      <p class="wizard-kicker">Optional · graph store override</p>
+      <h2 class="wizard-title">{DEMOTED_PIPELINE_WIZARD_STEP.title}</h2>
+      <p class="wizard-lead">{storeLead}</p>
+      {#if showProvisionReceipt}
+        <p class="wizard-provision-receipt" role="status">
+          ✓ Provisioned automatically — <strong>{progress?.graphStoreLabel ?? "Host-managed Postgres graph store"}</strong>
+          is your graph store. Connect a store you manage below to override it.
+        </p>
+      {/if}
+    </header>
+    <div class="wizard-body">
+      {#await storePanelImport()}
+        <BrutalLoadingState message="Loading graph store panel…" rows={3} />
+      {:then { default: ConnectGraphStorePanel }}
+        <ConnectGraphStorePanel embedded on:updated={onPanelUpdated} />
+      {:catch}
+        <BrutalErrorBanner title="Graph store" message="Could not load this panel." />
+        <div class="wizard-fallback-actions">
+          <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+        </div>
+      {/await}
+    </div>
+    <footer class="wizard-footer">
+      <div class="wizard-footer-left">
+        <a class="btn btn-outline btn-sm" href={pipelineWizardHref("launch")}>← Back to Build</a>
+      </div>
+    </footer>
+  {:else if journeyAside === "domain"}
+    <!-- Domain is OFF the spine (plan §3.2 point 3): a built-in pack applies
+         silently on the golden path; pack/schema design lives here, reached from
+         the Sources page's "Advanced — full pipeline control" disclosure. -->
+    <nav class="wizard-crumb" aria-label="Breadcrumb">
+      <a href={HOME_HREF}>Home</a>
+      <span aria-hidden="true">›</span>
+      <a href={pipelineWizardHref("launch")}>Build</a>
+      <span aria-hidden="true">›</span>
+      <span aria-current="page">Domain packs</span>
+    </nav>
+    <header class="wizard-header">
+      <p class="wizard-kicker">Advanced · domain packs</p>
+      <h2 class="wizard-title">Define how documents become a graph</h2>
+      <p class="wizard-lead">
+        A built-in pack is already applied for you — nothing here is required. Design or import
+        your own pack only if your domain needs a different shape.
+      </p>
+    </header>
+    <div class="wizard-body">
+      {#await domainPanelImport()}
+        <BrutalLoadingState message="Loading domain packs…" rows={3} />
+      {:then { default: ConnectDomainPacksPanel }}
+        <ConnectDomainPacksPanel
+          embedded
+          wizardStep={step}
+          {modelsReady}
+          on:updated={onPanelUpdated}
+          on:stepState={onDomainStepState}
+        />
+      {:catch}
+        <BrutalErrorBanner title="Domain packs" message="Could not load this panel." />
+        <div class="wizard-fallback-actions">
+          <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+        </div>
+      {/await}
+    </div>
+    <footer class="wizard-footer">
+      <div class="wizard-footer-left">
+        <a class="btn btn-outline btn-sm" href={pipelineWizardHref("launch")}>← Back to Build</a>
+      </div>
+    </footer>
+  {:else if journeyAside === "sources"}
+    <!-- 5-lens review fix (lens 2 §1/§2): the document-manage aside. An explicit
+         `?step=sources` visit that arrives with documents already selected renders
+         the selection editor (its ONLY mount) instead of being force-corrected to
+         launch — the completion ledger's "Run again with more documents" and deep
+         links land here. Header strings reuse copy pack §2.2 verbatim; no eyebrow
+         (the visitor is past step 2 — a step count here would be dishonest). -->
+    <nav class="wizard-crumb" aria-label="Breadcrumb">
+      <a href={HOME_HREF}>Home</a>
+      <span aria-hidden="true">›</span>
+      <a href={pipelineWizardHref("launch")}>Build</a>
+      <span aria-hidden="true">›</span>
+      <span aria-current="page">Sources</span>
+    </nav>
+    <header class="wizard-header">
+      <h2 class="wizard-title">{M1_BUILD_PANEL_COPY.sources.headline}</h2>
+      <p class="wizard-lead">{M1_BUILD_PANEL_COPY.sources.supporting}</p>
+    </header>
+    <div class="wizard-body">
+      {#await sourcesPanelImport()}
+        <BrutalLoadingState message="Loading sources…" rows={3} />
+      {:then { default: ConnectSourcesPanel }}
+        <ConnectSourcesPanel embedded wizardStep="sources" on:updated={onPanelUpdated} />
+      {:catch}
+        <BrutalErrorBanner title="Sources" message="Could not load this panel." />
+        <div class="wizard-fallback-actions">
+          <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+        </div>
+      {/await}
+    </div>
+    <footer class="wizard-footer">
+      <div class="wizard-footer-left">
+        <a class="btn btn-outline btn-sm" href={pipelineWizardHref("launch")}>← Back to Build</a>
+      </div>
+    </footer>
+  {:else if journeyPanel}
+    <header class="wizard-header">
+      {#if journeyEyebrow}
+        <!-- Non-interactive orientation eyebrow (copy pack §2 / Appendix A-1):
+             plain "STEP N OF 4", ask panels only — suppressed on launch, where
+             the CTA owns the frame. -->
+        <p class="wizard-kicker">{journeyEyebrow}</p>
+      {/if}
+      {#if journeyPanel === "provider"}
+        <h2 class="wizard-title journey-panel-title" tabindex="-1" bind:this={journeyHeadingEl}>
+          {M1_BUILD_PANEL_COPY.provider.headline}
+        </h2>
+        <p class="wizard-lead">{M1_BUILD_PANEL_COPY.provider.supporting}</p>
+      {:else if journeyPanel === "sources"}
+        <h2 class="wizard-title journey-panel-title" tabindex="-1" bind:this={journeyHeadingEl}>
+          {M1_BUILD_PANEL_COPY.sources.headline}
+        </h2>
+        <p class="wizard-lead">{M1_BUILD_PANEL_COPY.sources.supporting}</p>
+      {:else}
+        <h2 class="wizard-title journey-panel-title" tabindex="-1" bind:this={journeyHeadingEl}>
+          {progress.hasGraph
+            ? M1_BUILD_PANEL_COPY.launch.headlineReRun
+            : M1_BUILD_PANEL_COPY.launch.headlineFirstRun}
+        </h2>
+        <p class="journey-launch-meta">{m1LaunchMetaLine(journeyLaunchDocCount)}</p>
+        <p class="wizard-lead">{M1_BUILD_PANEL_COPY.launch.outcome}</p>
+        <p class="journey-expectation">{M1_BUILD_PANEL_COPY.launch.expectation}</p>
+      {/if}
+    </header>
+
+    <div class="wizard-body">
+      {#if journeyPanel === "provider"}
+        {#await providerPanelImport()}
+          <BrutalLoadingState message="Loading provider step…" rows={2} />
+        {:then { default: ConnectProviderKeyPanel }}
+          <ConnectProviderKeyPanel
+            hasProviderKey={Boolean(progress?.hasProviderKey)}
+            verifyReceipt={data.providerVerify ?? null}
+            {modelsReady}
+          />
+        {:catch}
+          <BrutalErrorBanner title="Provider key" message="Could not load this panel." />
+          <div class="wizard-fallback-actions">
+            <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+          </div>
+        {/await}
+        <!-- Configure = one field (REC-ADR-015): recommended models pre-chosen;
+             the per-stage picker is an Advanced disclosure, collapsed by default.
+             Reveal predicate: static disclosure licensed by REC-ADR-015 (model
+             choice happens at ingest — this is where ingest is configured). -->
+        <p class="journey-models-line">{M1_BUILD_PANEL_COPY.provider.modelsLine}</p>
+        <details class="wizard-advanced-models">
+          <summary>{M1_BUILD_PANEL_COPY.provider.advancedLabel}</summary>
+          <p class="wizard-advanced-models-lead">
+            Recommended models are already chosen for each pipeline stage. Models are picked
+            <strong>now, at ingest</strong> — not changed retroactively on an existing graph. Open the
+            ingest routes to assign a specific model per stage.
+          </p>
+          <a class="btn btn-outline btn-sm" href={INGEST_ROUTES_HREF}>Edit ingest routes</a>
+        </details>
+      {:else if journeyPanel === "sources"}
+        {#await sourcesPanelImport()}
+          <BrutalLoadingState message="Loading sources…" rows={3} />
+        {:then { default: ConnectSourcesPanel }}
+          <!-- wizardStep is pinned to "sources" (not the raw URL step) so the
+               panel's returnTo side-task links come back to the spine. -->
+          <ConnectSourcesPanel embedded wizardStep="sources" on:updated={onPanelUpdated} />
+        {:catch}
+          <BrutalErrorBanner title="Sources" message="Could not load this panel." />
+          <div class="wizard-fallback-actions">
+            <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+          </div>
+        {/await}
+      {:else if runDefaults}
+        {#await launchStepImport()}
+          <BrutalLoadingState message="Loading review…" rows={3} />
+        {:then { default: ConnectPipelineReviewLaunch }}
+          <ConnectPipelineReviewLaunch
+            bind:this={launchStep}
+            bind:submitting={runSubmitting}
+            bind:canStart={runCanStart}
+            {runDefaults}
+            {progress}
+            {modelsReady}
+            previousScorecard={data.previousScorecard ?? null}
+            preflight={data.runPreflight ?? null}
+            onBack={() => goToStep("sources")}
+          />
+        {:catch}
+          <BrutalErrorBanner title="Review" message="Could not load this panel." />
+          <div class="wizard-fallback-actions">
+            <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+          </div>
+        {/await}
+      {:else}
+        <!-- Derived panel is launch but the URL step hasn't caught up yet — the
+             replaceState correction above is in flight and brings runDefaults. -->
+        <BrutalLoadingState message="Loading review…" rows={3} />
+      {/if}
+    </div>
+
+    {#if journeyPanel === "launch" && runDefaults}
+      <!-- One yellow primary, no Skip beside it (plan §3.2). Disabled reason is
+           announced via aria-describedby (a title alone is not reliably read on
+           a disabled control). -->
+      <footer class="wizard-footer">
+        <div class="wizard-footer-right">
+          <button
+            type="button"
+            class="btn btn-primary btn-lg"
+            disabled={!runCanStart || runSubmitting}
+            title={!runCanStart ? "Select documents, a domain pack, a graph store, configure routes, and clear the provider preflight to start" : undefined}
+            aria-describedby={!runCanStart ? "start-run-hint" : undefined}
+            on:click={() => launchStep?.submitRun()}
+          >
+            {runSubmitting ? "Starting…" : M1_BUILD_PANEL_COPY.launch.cta}
+          </button>
+          {#if !runCanStart}
+            <span id="start-run-hint" class="sr-only">
+              Select documents, a domain pack, a graph store, configure routes, and clear the provider preflight to start.
+            </span>
+          {/if}
+        </div>
+      </footer>
+    {/if}
+  {/if}
 {:else}
   {#if showTemplateBanner}
     <div class="notice template-banner" role="status">
@@ -247,7 +569,6 @@
       onNavigate={goToStep}
       completedIds={completedStepIds}
       navigable={laterStepsReachable}
-      friendly={onboardingJourney}
     />
   {/if}
 
@@ -264,14 +585,7 @@
   </nav>
 
   <header class="wizard-header">
-    {#if onboardingJourney && !isStoreAside}
-      <!-- RES-113 PR-C: friendly M1 framing. Mono eyebrow "M1 · BUILD" + the
-           rung name; the real step title stays as the working sub-line so the
-           user still knows exactly which panel they're on. -->
-      <p class="wizard-kicker wizard-kicker--m1">
-        M1 · {MILESTONE_LABEL.m1} · {friendlyRung.label}
-      </p>
-    {:else if isStoreAside}
+    {#if isStoreAside}
       <p class="wizard-kicker">Optional · graph store override</p>
     {:else}
       <p class="wizard-kicker">
@@ -370,22 +684,6 @@
           <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
         </div>
       {/await}
-    {/if}
-
-    {#if onConfigureRung}
-      <!-- RES-113 PR-C · REC-ADR-015: model choice happens HERE, at ingest, never
-           retroactively. Recommended models are the default; choosing a model per
-           stage is an Advanced disclosure, collapsed by default. Presentational —
-           the real per-stage routing lives on the Ingest routes builder. -->
-      <details class="wizard-advanced-models">
-        <summary>Advanced · choose a model per stage</summary>
-        <p class="wizard-advanced-models-lead">
-          Recommended models are already chosen for each pipeline stage. Models are picked
-          <strong>now, at ingest</strong> — not changed retroactively on an existing graph. Open the
-          ingest routes to assign a specific model per stage.
-        </p>
-        <a class="btn btn-outline btn-sm" href={INGEST_ROUTES_HREF}>Edit ingest routes →</a>
-      </details>
     {/if}
   </div>
 

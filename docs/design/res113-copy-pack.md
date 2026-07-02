@@ -299,6 +299,53 @@ secondary is plain muted text with an inline text link — no arrow, no button s
 
 *Square brackets mark the inline link text; the sentence renders as one muted line.*
 
+### 2.6 Build strings registered by PR-5 (implementation deviations + additions)
+
+PR-5 shipped these strings in code; this section registers them per this pack's own
+"a string change is a change to this document first" rule (the §1.5 precedent). Each row
+cites the governing rule.
+
+**Deviations from §2.3/§2.4/§2.5, forced by honest absence (§0):**
+
+| Element | Literal string | Why it deviates |
+|---|---|---|
+| Completion supporting sentence | We found {n} facts across your documents. ("We found 1 fact across your documents.") | The run payload carries no per-run document count `{m}` — the "across {m} documents" segment renders absent, never fabricated (§0). When the run reported no unit count the sentence is absent entirely; the second sentence ("Ask a question to see it work — every answer shows where it came from.") always renders. |
+| Launch meta line, re-run | {n} documents ready. ("1 document ready." singular) | The §2.3 re-run variant's "last built {relative time} ago" has no honest source signal in the wizard payload — the first-run meta line renders in both launch states. |
+| Stage-failure banner, unclassified errors | {Stage name} stopped partway. Everything finished so far is saved. Retry to pick up where it left off. | The §2.4 "— the AI provider returned an error" clause is reserved for provider-classified failures. An error the failure mapper can't classify must not assert a cause (REC-ADR-016); the raw error stays reachable below. |
+
+**Journey run-console states (REC-ADR-016 — the h1 names the real run state):**
+
+| Element | Literal string |
+|---|---|
+| Console h1, failed | Build stopped |
+| Console h1, cancelled | Build cancelled |
+| Console h1, completed preview (stub) run | Preview run finished |
+| Starting line (`role="status"`) | Starting your run… |
+| Failed banner title | Build stopped |
+| Raw-error disclosure label (muted, inside the failure banner) | Raw error (for support) |
+| Cancelled / preview restart secondary | Restart run |
+| Persistent announcer, stage transition (sr-only `role="status"`) | {Stage name}… *(shared stage table names)* |
+| Persistent announcer, terminal states | {Console h1}. *(e.g. "Your graph is built.")* |
+| Persistent announcer, rate limit | *(the §2.4 rate-limit banner body, verbatim)* |
+| Persistent announcer, stall | A stalled run is reclaimed automatically and resumes from the last checkpoint — nothing is lost. *(echoes the visible stall notice)* |
+| Stage chip accessible names | done · running · waiting · failed with an error *(§0, verbatim)* |
+
+**Build asides (store/domain/sources off the spine — plan §3.2 point 3):**
+
+| Element | Literal string |
+|---|---|
+| Aside back link (store · domain · sources asides) | ← Back to Build |
+| Breadcrumb trail | Home › Build › {Configure store · Domain packs · Sources} |
+| Domain aside kicker | Advanced · domain packs |
+| Domain aside title | Define how documents become a graph *(reuses the registry Domain step title)* |
+| Domain aside lede | A built-in pack is already applied for you — nothing here is required. Design or import your own pack only if your domain needs a different shape. |
+| Sources manage aside (explicit `?step=sources` visit with documents selected) | *(reuses §2.2 headline + supporting sentence verbatim; no eyebrow — the visitor is past step 2)* |
+| Sources page Advanced action (flag-ON) | Design a domain pack |
+| Build shell h1 (flag-ON) | Build *(page title: "Build – Restormel Dashboard")* |
+
+The provider-key panel's field-level §2.1 strings ("Provider key", "Save key →",
+"Paste a key to continue.") remain deferred to a panel-internals PR (PR-5 decision 8).
+
 ---
 
 ## 3. Verify (M2)

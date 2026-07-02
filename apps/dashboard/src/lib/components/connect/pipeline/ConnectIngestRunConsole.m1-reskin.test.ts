@@ -1,12 +1,22 @@
 // @vitest-environment jsdom
 /**
- * RES-113 PR-C — flag-gated friendly M1 run-console reskin.
+ * RES-113 PR-5 — flag-gated journey M1 run console (supersedes the PR-C reskin).
  *
- * The reskin is ADDITIVE. With `onboardingJourney` OFF (the default) none of the
- * friendly DOM exists and every honest hook (.heartbeat-strip / .completion-ledger)
- * renders unchanged. With it ON, the friendly build ladder, the amber rate-limit
- * banner (only when a stage actually reports backoff), and the "ask your own data"
- * Done card render ALONGSIDE — never replacing — the honest instrumentation.
+ * With `onboardingJourney` OFF (the default) none of the journey DOM exists and
+ * every honest operator hook (.heartbeat-strip / .completion-ledger) renders in
+ * its original position, unchanged. With it ON, plain runs get ONE honest
+ * per-stage tracker (shared stage vocabulary — copy pack §2.4), the
+ * instrumentation collapses behind a single closed-by-default "Show details"
+ * disclosure that auto-opens on failure/rate-limit, and completion renders
+ * exactly one primary CTA with the Verify secondary as muted text ONLY when the
+ * run flagged something (copy pack §2.5).
+ *
+ * Query convention: interactive elements are asserted role-first (getByRole).
+ * The remaining `querySelector(".class")` assertions are justified per the
+ * a11y-skill testing convention: they pin CSS-hook PLACEMENT — which block
+ * renders, and inside/outside which disclosure — for non-interactive chrome
+ * (trackers, banners, ledgers) that carries no queryable role/name contract,
+ * i.e. the flag-OFF byte-identical DOM contract itself.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render } from "@testing-library/svelte";
@@ -50,7 +60,7 @@ function runningJob(stageStatus = "running") {
   };
 }
 
-function completedJob() {
+function completedJob(quarantineCount = 0) {
   return {
     id: "run-1",
     status: "completed",
@@ -61,8 +71,29 @@ function completedJob() {
       processed: 7,
       total: 7,
       execution_mode: "full",
-      quality_report: { ok_pct: 92, kg_audit: { trust_score: 88 }, units: 412 },
+      quality_report: {
+        ok_pct: 92,
+        kg_audit: { trust_score: 88 },
+        units: 412,
+        quarantine_count: quarantineCount,
+      },
     },
+  };
+}
+
+function failedJob() {
+  return {
+    id: "run-1",
+    status: "failed",
+    error: "boom: something engine-shaped went wrong",
+    created_at: "2026-06-12T10:00:00.000Z",
+    updated_at: "2026-06-12T10:08:00.000Z",
+    current_stage: "embedding",
+    progress: { percent: 60, processed: 4, total: 7, execution_mode: "full" },
+    stages: [
+      { stage: "extracting", status: "completed", progress: { percent: 100, processed: 412, total: 412 } },
+      { stage: "embedding", status: "failed" },
+    ],
   };
 }
 
@@ -86,55 +117,98 @@ describe("Run console — flag OFF (live, unchanged)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("running: no friendly frame, honest heartbeat strip still renders", async () => {
+  it("running: operator console — no journey tracker, honest heartbeat strip in place", async () => {
     const { container } = await renderConsole(runningJob(), {});
     await vi.waitFor(() => expect(container.querySelector(".heartbeat-strip")).not.toBeNull());
-    expect(container.querySelector(".m1-build-frame")).toBeNull();
+    expect(container.querySelector(".journey-tracker")).toBeNull();
+    expect(container.querySelector(".journey-details")).toBeNull();
     expect(container.querySelector(".m1-rate-limit")).toBeNull();
+    // The heartbeat strip is NOT tucked inside any disclosure on this path.
+    expect(container.querySelector("details .heartbeat-strip")).toBeNull();
   });
 
-  it("completed: no Done card, honest completion ledger still renders", async () => {
+  it("completed: honest completion ledger renders, no journey Done panel", async () => {
     const { container } = await renderConsole(completedJob(), {});
     await vi.waitFor(() => expect(container.querySelector(".completion-ledger")).not.toBeNull());
-    expect(container.querySelector(".m1-done-ask")).toBeNull();
+    expect(container.querySelector(".journey-done")).toBeNull();
+    expect(container.querySelector("details.journey-details")).toBeNull();
   });
 });
 
-describe("Run console — friendly M1 reskin (flag ON)", () => {
+describe("Run console — journey M1 (flag ON)", () => {
   beforeEach(() => (captured = null));
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
-  it("running: friendly ladder renders ALONGSIDE the honest heartbeat strip", async () => {
+  it("running: ONE honest per-stage tracker in the shared stage vocabulary", async () => {
     const { container } = await renderConsole(runningJob(), { onboardingJourney: true });
-    await vi.waitFor(() => expect(container.querySelector(".m1-build-frame")).not.toBeNull());
-    // Additive — the honest instrumentation is untouched.
-    expect(container.querySelector(".heartbeat-strip")).not.toBeNull();
-    // Four StateChips, one per rung; "running" is the active state mid-run.
-    expect(container.querySelectorAll(".m1-build-ladder [data-testid='state-chip']").length).toBe(4);
-    const running = container.querySelector(".m1-build-ladder [data-state='running']");
-    expect(running?.textContent).toContain("Running");
+    await vi.waitFor(() => expect(container.querySelector(".journey-tracker")).not.toBeNull());
+    const text = container.querySelector(".journey-tracker")?.textContent ?? "";
+    // Real stage named in copy-pack vocabulary, with real counted units.
+    expect(text).toContain("Reading your documents");
+    expect(text).toContain("10 of 412");
+    // `storing` is unmapped in the pack — falls back, never leaks the key.
+    expect(text).toContain("Getting ready");
+    expect(text).not.toContain("storing");
+    // Honesty footnote + background line (copy pack §2.4).
+    expect(text).toContain("Progress here is real");
+    expect(text).toContain("You can leave this page");
+    // Chip accessible names are the copy pack §0 vocabulary — never StateChip's
+    // composed "Running: Running" / "Idle: Waiting" (5-lens fix, lens 5 §3).
+    const chipNames = [
+      ...(container.querySelector(".journey-tracker")?.querySelectorAll("[data-testid='state-chip']") ?? []),
+    ].map((c) => c.getAttribute("aria-label"));
+    expect(chipNames).toEqual(["running", "waiting"]);
   });
 
-  it("running: amber rate-limit banner ONLY when a stage reports backoff", async () => {
-    const clean = await renderConsole(runningJob("running"), { onboardingJourney: true });
-    await vi.waitFor(() => expect(clean.container.querySelector(".m1-build-frame")).not.toBeNull());
-    expect(clean.container.querySelector(".m1-rate-limit")).toBeNull();
-
-    captured = null;
-    vi.unstubAllGlobals();
-    const limited = await renderConsole(runningJob("rate_limited"), { onboardingJourney: true });
-    await vi.waitFor(() => expect(limited.container.querySelector(".m1-rate-limit")).not.toBeNull());
-    expect(limited.container.querySelector(".m1-rate-limit")?.textContent ?? "").toMatch(
-      /no action needed/i,
-    );
+  it("running → completion announces on the persistent journey status region", async () => {
+    // 5-lens fix (lens 4 §1): the tracker/log live regions sit inside the closed
+    // disclosure (hidden from AT), so the journey path carries ONE persistent
+    // polite announcer. It boots empty, then speaks stage transitions and the
+    // terminal "Your graph is built." when the h1 would otherwise swap silently.
+    const { container } = await renderConsole(runningJob(), { onboardingJourney: true });
+    await vi.waitFor(() => expect(container.querySelector(".journey-tracker")).not.toBeNull());
+    const region = container.querySelector('p.sr-only[role="status"]');
+    expect(region).not.toBeNull();
+    // First observation after load is NOT announced — the visible h1/tracker carries it.
+    expect(region?.textContent).toBe("");
+    // The running stage moves on → the transition announces in the shared vocabulary.
+    captured?.onEvent({
+      type: "delta",
+      job: {
+        ...runningJob(),
+        current_stage: "storing",
+        stages: [
+          { stage: "extracting", status: "completed", progress: { percent: 100, processed: 412, total: 412 } },
+          { stage: "storing", status: "running" },
+        ],
+      },
+    } as unknown as LiveRunStreamEvent);
+    await tick();
+    expect(region?.textContent).toBe("Getting ready…");
+    // The run finishes → the completion is announced, not just an h1 swap.
+    captured?.onEvent({ type: "delta", job: completedJob(0) } as unknown as LiveRunStreamEvent);
+    await tick();
+    expect(region?.textContent).toBe("Your graph is built.");
   });
 
-  it("running: amber banner lights from the REAL structured backoff field (PR-I)", async () => {
+  it("running: instrumentation collapses behind ONE closed-by-default Show details", async () => {
+    const { container } = await renderConsole(runningJob(), { onboardingJourney: true });
+    await vi.waitFor(() => expect(container.querySelector("details.journey-details")).not.toBeNull());
+    const details = container.querySelector("details.journey-details") as HTMLDetailsElement;
+    expect(details.open).toBe(false);
+    expect(details.textContent).toContain("Show details");
+    // Heartbeat strip / machine room / log all live INSIDE the one disclosure.
+    expect(details.querySelector(".heartbeat-strip")).not.toBeNull();
+    expect(details.querySelector(".log-screen")).not.toBeNull();
+    // Nothing instrumentation-shaped leaks outside it.
+    expect(container.querySelectorAll(".heartbeat-strip")).toHaveLength(1);
+  });
+
+  it("running: real backoff signal lights the amber banner AND auto-opens details", async () => {
     const job = runningJob("running");
-    // The engine's structured signal — a rate-limit backoff on the running stage row.
     (job.stages[0] as Record<string, unknown>).backoff = {
       reason_code: "rate_limit",
       attempt: 2,
@@ -143,26 +217,82 @@ describe("Run console — friendly M1 reskin (flag ON)", () => {
     };
     const { container } = await renderConsole(job, { onboardingJourney: true });
     await vi.waitFor(() => expect(container.querySelector(".m1-rate-limit")).not.toBeNull());
-    expect(container.querySelector(".m1-rate-limit")?.textContent ?? "").toMatch(/no action needed/i);
+    expect(container.querySelector(".m1-rate-limit")?.textContent ?? "").toContain(
+      "The AI provider asked us to slow down.",
+    );
+    const details = container.querySelector("details.journey-details") as HTMLDetailsElement;
+    expect(details.open).toBe(true);
   });
 
-  it("running: a non-throttle backoff (timeout) does NOT light amber (honest labelling)", async () => {
-    const job = runningJob("running");
-    (job.stages[0] as Record<string, unknown>).backoff = { reason_code: "timeout", attempt: 2, delay_ms: 0, at: "t" };
-    const { container } = await renderConsole(job, { onboardingJourney: true });
-    await vi.waitFor(() => expect(container.querySelector(".m1-build-frame")).not.toBeNull());
+  it("running: no amber banner without a real throttle signal", async () => {
+    const { container } = await renderConsole(runningJob("running"), { onboardingJourney: true });
+    await vi.waitFor(() => expect(container.querySelector(".journey-tracker")).not.toBeNull());
     expect(container.querySelector(".m1-rate-limit")).toBeNull();
   });
 
-  it("completed: 'ask your own data' Done card renders with the ledger", async () => {
-    const { container } = await renderConsole(completedJob(), { onboardingJourney: true });
-    await vi.waitFor(() => expect(container.querySelector(".m1-done-ask")).not.toBeNull());
-    // The honest ledger is still the completion summary — Done is additive.
-    expect(container.querySelector(".completion-ledger")).not.toBeNull();
-    const cta = container.querySelector(".m1-done-cta") as HTMLAnchorElement | null;
-    expect(cta?.getAttribute("href")).toContain("/prove/proof");
-    expect(container.querySelector(".m1-build-frame .m1-build-title")?.textContent).toContain(
-      "ready",
+  it("failed: honest stage-failure banner with Retry run → as the one primary; details auto-open", async () => {
+    const { container, getByRole } = await renderConsole(failedJob(), { onboardingJourney: true });
+    await vi.waitFor(() => expect(container.querySelector(".run-error-banner")).not.toBeNull());
+    const banner = container.querySelector(".run-error-banner");
+    expect(banner?.getAttribute("role")).toBe("alert");
+    // Stage named in the shared vocabulary — the engineering key never leaks.
+    expect(banner?.textContent).toContain("Making it searchable stopped partway");
+    expect(banner?.textContent).toContain("Everything finished so far is saved.");
+    // 5-lens fix (lens 2 §3): an UNCLASSIFIED error never fabricates a cause —
+    // the §2.4 provider clause is reserved for provider-classified failures.
+    expect(banner?.textContent).not.toContain("the AI provider returned an error");
+    // Raw error stays reachable for support.
+    expect(banner?.textContent).toContain("boom: something engine-shaped went wrong");
+    const primary = getByRole("button", { name: "Retry run →" });
+    expect(primary.classList.contains("btn-primary")).toBe(true);
+    const details = container.querySelector("details.journey-details") as HTMLDetailsElement;
+    expect(details.open).toBe(true);
+  });
+
+  it("completed: exactly one primary CTA to the ask; ledger tucked into details", async () => {
+    const { container, getByRole } = await renderConsole(completedJob(0), { onboardingJourney: true });
+    await vi.waitFor(() => expect(container.querySelector(".journey-done")).not.toBeNull());
+    expect(getByRole("heading", { level: 1 }).textContent).toBe("Your graph is built");
+    const done = container.querySelector(".journey-done");
+    expect(done?.textContent).toContain("We found 412 facts across your documents.");
+    const cta = getByRole("link", { name: "Ask your first question →" });
+    expect(cta.classList.contains("btn-primary")).toBe(true);
+    expect(cta.getAttribute("href")).toContain("#home-ask-input");
+    // No Verify line when this run flagged nothing.
+    expect(container.querySelector(".journey-verify-line")).toBeNull();
+    // The honest ledger still exists — as depth behind the single disclosure.
+    const details = container.querySelector("details.journey-details") as HTMLDetailsElement;
+    expect(details.open).toBe(false);
+    expect(details.querySelector(".completion-ledger")).not.toBeNull();
+    // One yellow primary OUTSIDE the closed disclosure.
+    const primariesOutsideDetails = [...container.querySelectorAll(".btn-primary")].filter(
+      (el) => !el.closest("details.journey-details"),
     );
+    expect(primariesOutsideDetails).toHaveLength(1);
+  });
+
+  it("completed with flagged claims: the Verify secondary is muted text, no arrow, no button", async () => {
+    const { container } = await renderConsole(completedJob(6), { onboardingJourney: true });
+    await vi.waitFor(() => expect(container.querySelector(".journey-verify-line")).not.toBeNull());
+    const line = container.querySelector(".journey-verify-line");
+    expect(line?.textContent).toContain(
+      "6 of the facts we found couldn't be fully matched to their sources.",
+    );
+    const link = line?.querySelector("a.journey-verify-link");
+    expect(link?.textContent?.trim()).toBe("Review them in Verify");
+    // Demotion (copy pack Appendix A-2): plain inline link — no arrow glyph, no btn styling.
+    expect(line?.textContent).not.toContain("→");
+    expect(line?.querySelector(".btn")).toBeNull();
+  });
+
+  it("graph-tool runs keep the operator console even with the flag ON", async () => {
+    const { container } = await renderConsole(runningJob(), {
+      onboardingJourney: true,
+      fromGraph: true,
+      graphTask: "revalidate",
+    });
+    await vi.waitFor(() => expect(container.querySelector(".run-head")).not.toBeNull());
+    expect(container.querySelector(".journey-tracker")).toBeNull();
+    expect(container.querySelector("details.journey-details")).toBeNull();
   });
 });

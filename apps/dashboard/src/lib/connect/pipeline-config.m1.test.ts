@@ -1,125 +1,89 @@
 /**
- * RES-113 · PR-C — M1 "Build" friendly reskin model.
+ * RES-113 · PR-5 — M1 "Build" journey model (supersedes the PR-C rung reskin).
  *
- * These cover the additive, flag-gated presentation helpers only. They assert the
- * friendly grouping maps onto the REAL wizard steps / pipeline stages without
- * changing them, and that rung states are derived from honest completion signals
- * (REC-ADR-016) rather than live step position.
+ * These cover the flag-gated presentation helpers only. They assert the ONE
+ * state-derived Build panel is a pure function of the real signals
+ * `PipelineWizardProgress` carries (plan §3.2 — no two asks can co-exist), the
+ * conditional plain-language eyebrow (copy pack Appendix A-1), and the honest
+ * rate-limit signal helpers (REC-ADR-016).
  */
 import { describe, it, expect } from "vitest";
 import {
-  M1_BUILD_RUNGS,
-  M1_WIZARD_STEP_TO_RUNG,
-  M1_FRIENDLY_STAGE_LABELS,
-  M1_RUN_FRONT_STAGES,
-  M1_RUN_BACK_STAGES,
+  M1_BUILD_PANEL_COPY,
+  M1_BUILD_TOTAL_STEPS,
   M1_RATE_LIMIT_BANNER,
-  PIPELINE_STAGES,
-  ALL_PIPELINE_WIZARD_STEP_IDS,
-  m1RungForWizardStep,
-  m1BuildRung,
-  m1CompletedRungsFromSteps,
-  m1RungVisualState,
-  m1RunConsoleRungs,
-  m1FriendlyStageLabel,
+  m1BuildEyebrow,
+  m1LaunchMetaLine,
+  resolveM1BuildPanel,
   isM1RateLimitedStatus,
   isM1StageBackingOff,
   isM1StageRateLimited,
-  type M1BuildRungId,
 } from "./pipeline-config";
 
-describe("M1 friendly rung model", () => {
-  it("has exactly the four friendly rungs in ladder order", () => {
-    expect(M1_BUILD_RUNGS.map((r) => r.id)).toEqual(["sources", "configure", "running", "done"]);
+describe("resolveM1BuildPanel — one state-derived panel (plan §3.2)", () => {
+  it("asks for the provider key first when none exists", () => {
+    expect(resolveM1BuildPanel({ hasProviderKey: false, selectedDocumentCount: 0 })).toBe("provider");
+    // Provider outranks everything — even with documents already present.
+    expect(resolveM1BuildPanel({ hasProviderKey: false, selectedDocumentCount: 5 })).toBe("provider");
   });
 
-  it("maps every live wizard step (incl. demoted store) to a friendly rung", () => {
-    for (const step of ALL_PIPELINE_WIZARD_STEP_IDS) {
-      expect(M1_WIZARD_STEP_TO_RUNG[step]).toBeDefined();
+  it("asks for documents once keyed but nothing is selected", () => {
+    expect(resolveM1BuildPanel({ hasProviderKey: true, selectedDocumentCount: 0 })).toBe("sources");
+  });
+
+  it("shows the launch panel once keyed with at least one document", () => {
+    expect(resolveM1BuildPanel({ hasProviderKey: true, selectedDocumentCount: 1 })).toBe("launch");
+    expect(resolveM1BuildPanel({ hasProviderKey: true, selectedDocumentCount: 412 })).toBe("launch");
+  });
+
+  it("structural guarantee: exactly one panel for every signal combination", () => {
+    for (const hasProviderKey of [true, false]) {
+      for (const selectedDocumentCount of [0, 1, 7]) {
+        const panel = resolveM1BuildPanel({ hasProviderKey, selectedDocumentCount });
+        expect(["provider", "sources", "launch"]).toContain(panel);
+      }
     }
   });
+});
 
-  it("folds provider key, domain pack and store into Configure", () => {
-    expect(m1RungForWizardStep("provider")).toBe("configure");
-    expect(m1RungForWizardStep("domain")).toBe("configure");
-    expect(m1RungForWizardStep("store")).toBe("configure");
-    expect(m1RungForWizardStep("launch")).toBe("configure");
-    expect(m1RungForWizardStep("sources")).toBe("sources");
+describe("m1BuildEyebrow — conditional orientation (copy pack Appendix A-1)", () => {
+  it("renders plain STEP N OF 4 on the two ask panels only", () => {
+    expect(m1BuildEyebrow("provider")).toBe("STEP 1 OF 4");
+    expect(m1BuildEyebrow("sources")).toBe("STEP 2 OF 4");
   });
 
-  it("resolves a rung definition by id with a safe fallback", () => {
-    expect(m1BuildRung("done").title).toBe("Ask your own data");
-    expect(m1BuildRung("nope" as M1BuildRungId).id).toBe("sources");
+  it("is suppressed on the launch panel — the CTA owns the frame", () => {
+    expect(m1BuildEyebrow("launch")).toBeNull();
+  });
+
+  it("stays honest about the four real steps (build and ask never render an eyebrow)", () => {
+    expect(M1_BUILD_TOTAL_STEPS).toBe(4);
   });
 });
 
-describe("m1CompletedRungsFromSteps", () => {
-  it("marks Sources complete once a source step is done", () => {
-    expect(m1CompletedRungsFromSteps(["sources"])).toEqual(["sources"]);
+describe("M1 copy-pack strings (verbatim — a string change starts in the copy pack)", () => {
+  it("provider ask (copy pack §2.1)", () => {
+    expect(M1_BUILD_PANEL_COPY.provider.headline).toBe("Add an AI provider key");
+    expect(M1_BUILD_PANEL_COPY.provider.modelsLine).toBe(
+      "Recommended models are pre-chosen. Change them under Advanced.",
+    );
+    expect(M1_BUILD_PANEL_COPY.provider.advancedLabel).toBe("Advanced — choose a model per stage");
   });
 
-  it("marks Configure complete on a domain pack OR a provider key", () => {
-    expect(m1CompletedRungsFromSteps(["domain"])).toEqual(["configure"]);
-    expect(m1CompletedRungsFromSteps(["provider"])).toEqual(["configure"]);
+  it("sources ask (copy pack §2.2)", () => {
+    expect(M1_BUILD_PANEL_COPY.sources.headline).toBe("Add your documents");
   });
 
-  it("never marks Running or Done complete inside the wizard", () => {
-    const done = m1CompletedRungsFromSteps(["provider", "sources", "domain"]);
-    expect(done).toContain("sources");
-    expect(done).toContain("configure");
-    expect(done).not.toContain("running");
-    expect(done).not.toContain("done");
+  it("launch panel (copy pack §2.3) — CTA keeps the canonical Ingest noun with the arrow", () => {
+    expect(M1_BUILD_PANEL_COPY.launch.headlineFirstRun).toBe("Ready to build");
+    expect(M1_BUILD_PANEL_COPY.launch.headlineReRun).toBe("Rebuild your graph");
+    expect(M1_BUILD_PANEL_COPY.launch.outcome).toBe("Turn your documents into cited answers.");
+    expect(M1_BUILD_PANEL_COPY.launch.cta).toBe("Run ingest →");
   });
 
-  it("is empty when nothing is configured yet", () => {
-    expect(m1CompletedRungsFromSteps([])).toEqual([]);
-  });
-});
-
-describe("m1RungVisualState", () => {
-  const ctx = { activeRung: "configure" as M1BuildRungId, completedRungs: ["sources"] as M1BuildRungId[] };
-
-  it("is active for the active rung", () => {
-    expect(m1RungVisualState("configure", ctx)).toBe("active");
-  });
-  it("is completed for a completed rung", () => {
-    expect(m1RungVisualState("sources", ctx)).toBe("completed");
-  });
-  it("is upcoming otherwise", () => {
-    expect(m1RungVisualState("running", ctx)).toBe("upcoming");
-    expect(m1RungVisualState("done", ctx)).toBe("upcoming");
-  });
-});
-
-describe("m1RunConsoleRungs", () => {
-  it("runs as active with Sources+Configure behind, while a run is in flight", () => {
-    const r = m1RunConsoleRungs({ isCompleted: false });
-    expect(r.activeRung).toBe("running");
-    expect(r.completedRungs).toEqual(["sources", "configure"]);
-  });
-
-  it("flips to Done only once the run actually completes", () => {
-    const r = m1RunConsoleRungs({ isCompleted: true });
-    expect(r.activeRung).toBe("done");
-    expect(r.completedRungs).toEqual(["sources", "configure", "running"]);
-  });
-});
-
-describe("M1 friendly stage labels", () => {
-  it("relabels every real pipeline stage", () => {
-    for (const stage of PIPELINE_STAGES) {
-      expect(M1_FRIENDLY_STAGE_LABELS[stage]).toBeTruthy();
-    }
-  });
-
-  it("partitions the real stages into front (build) and back (check & store) halves", () => {
-    const union = [...M1_RUN_FRONT_STAGES, ...M1_RUN_BACK_STAGES].sort();
-    expect(union).toEqual([...PIPELINE_STAGES].sort());
-  });
-
-  it("falls back to the raw key for an unknown stage", () => {
-    expect(m1FriendlyStageLabel("extracting")).toBe("Reading your documents");
-    expect(m1FriendlyStageLabel("mystery")).toBe("mystery");
+  it("launch meta line ships singular and plural variants (§0 i18n rule)", () => {
+    expect(m1LaunchMetaLine(1)).toBe("1 document ready.");
+    expect(m1LaunchMetaLine(3)).toBe("3 documents ready.");
   });
 });
 
@@ -138,9 +102,10 @@ describe("M1 rate-limit state (presentational, honest)", () => {
     expect(isM1RateLimitedStatus(undefined)).toBe(false);
   });
 
-  it("carries amber no-action-needed banner copy", () => {
-    expect(M1_RATE_LIMIT_BANNER.title).toMatch(/rate-limited/i);
-    expect(M1_RATE_LIMIT_BANNER.body).toMatch(/no action needed/i);
+  it("carries the copy-pack §2.4 no-action-needed banner copy", () => {
+    expect(M1_RATE_LIMIT_BANNER.body).toBe(
+      "The AI provider asked us to slow down. We're pausing and retrying automatically — nothing for you to do.",
+    );
   });
 });
 

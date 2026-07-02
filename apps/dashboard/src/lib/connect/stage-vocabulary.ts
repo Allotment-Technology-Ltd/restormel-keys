@@ -5,8 +5,8 @@
  * never drift apart.
  *
  * Flag-ON (`onboardingJourney`) surfaces only. The flag-OFF run console keeps
- * its own `M1_FRIENDLY_STAGE_LABELS` map untouched (byte-identity invariant);
- * a later PR may fold the two once the copy pack governs both paths.
+ * its own honest technical stage timeline untouched (byte-identity invariant);
+ * PR-5 retired the PR-C `M1_FRIENDLY_STAGE_LABELS` map in favour of this table.
  *
  * Honesty rule (copy pack §0, REC-ADR-016): unknown or internal stages fall
  * back to "Getting ready" — engineering stage names NEVER leak to the screen.
