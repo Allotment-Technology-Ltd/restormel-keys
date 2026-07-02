@@ -71,7 +71,6 @@
   $: builderReturnContext = returnContext;
 
   let selectedProjectId = data.models?.projectId ?? "";
-  let selectedEnvironmentId = data.models?.environmentId ?? "";
   let saving = false;
   let creatingStage: string | null = null;
   let applyingRecommended = false;
@@ -89,9 +88,6 @@
 
   $: if (data.models && !selectedProjectId && data.models.projectId) {
     selectedProjectId = data.models.projectId;
-  }
-  $: if (data.models && !selectedEnvironmentId && data.models.environmentId) {
-    selectedEnvironmentId = data.models.environmentId;
   }
 
   function withSideTaskReturn(href: string): string {
@@ -118,8 +114,9 @@
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // ENV-FREE BINDING (B2): environment is resolved server-side from the
+          // project's canonical default; the client no longer chooses one.
           project_id: selectedProjectId,
-          ...(selectedEnvironmentId ? { environment_id: selectedEnvironmentId } : {}),
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -140,10 +137,13 @@
 
   async function createStageRoute(row: StageRow) {
     const projectId = selectedProjectId || data.models?.projectId;
-    const environmentId = selectedEnvironmentId || data.models?.environmentId;
-    if (!projectId || !environmentId) {
+    // ENV-FREE BINDING (B2): the environment is the loader-resolved project
+    // default (connect-models-load resolves it whenever projectId is set), so it
+    // is always co-present with projectId — the guard collapses to project only.
+    const environmentId = data.models?.environmentId;
+    if (!projectId) {
       error = true;
-      msg = "Select a project and environment above before creating a route.";
+      msg = "Select a project above before creating a route.";
       return;
     }
     creatingStage = row.key;
@@ -258,8 +258,10 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // ENV-FREE BINDING (B2): the apply-recommended endpoint resolves the
+          // environment from the project default (its own listEnvironments
+          // fallback), so the client sends only the project.
           project_id: selectedProjectId || data.models.projectId,
-          environment_id: selectedEnvironmentId || data.models.environmentId,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -343,9 +345,9 @@
     </section>
 
     <section class="card" aria-labelledby="project-heading">
-      <h2 id="project-heading" class="h2">Project &amp; environment</h2>
+      <h2 id="project-heading" class="h2">Project</h2>
       <p class="card-desc">
-        Routes live under a Keys project. Pick which project and environment ingestion should resolve against.
+        Routes live under a Keys project. Pick which project ingestion should resolve against.
       </p>
       {#if data.models.projects.length === 0}
         <p class="muted">Create a project under Keys first, then return here.</p>
@@ -360,14 +362,6 @@
               {/each}
             </select>
           </label>
-          <label class="field">
-            <span class="field-label">Environment</span>
-            <select class="input" bind:value={selectedEnvironmentId}>
-              {#each data.models.environments as e}
-                <option value={e.id}>{e.name}</option>
-              {/each}
-            </select>
-          </label>
           <div class="actions">
             <button type="submit" class="btn btn-primary" disabled={saving}>
               {saving ? "Saving…" : "Save project binding"}
@@ -377,7 +371,22 @@
       {/if}
     </section>
 
-    {#if data.models.projectId && data.models.environmentId}
+    {#if data.models.activeGraph}
+      <!-- PRESET LEADS (B1): the "Where your pipeline runs" preset leads the page
+           so the cause (deployment choice) sits above its effect (the per-stage
+           routes below). Same {#if activeGraph} gate as before (m1PlugPoints
+           server-gated) — NOT re-gated on projectId/environmentId. The registered
+           §2.7 field label + helper are owned by ConnectPipelinePresetControl;
+           this card adds no heading/sub (copy-token fix §10a). -->
+      <section class="card preset-card" aria-label="Deployment preset">
+        <ConnectPipelinePresetControl
+          graphTargetId={data.models.activeGraph.id}
+          bundle={data.models.activeGraph.bundle}
+        />
+      </section>
+    {/if}
+
+    {#if data.models.projectId}
       <section class="card" aria-labelledby="routes-heading">
         <div class="routes-head">
           <div>
@@ -488,17 +497,29 @@
                 {/if}
 
                 {#if row.recommended}
-                  <details class="stage-rec-details" open={!row.route}>
-                    <summary class="stage-rec-summary">View recommendation</summary>
-                    <span class="stage-rec">
-                      Recommended: <code>{row.recommended.modelId}</code>
-                      <span class="muted">({row.recommended.provider})</span>
-                      {#if row.key === "validation" && row.recommended.sameProviderFallback}
-                        <span class="muted"> — add another provider key for cross-model validation</span>
-                      {/if}
-                    </span>
-                    <span class="stage-rec-rationale muted">{row.recommended.rationale}</span>
-                  </details>
+                  {#if row.visualHref}
+                    <!-- STAGE-ROUTES DEMOTE (B5): once a route exists, the
+                         recommendation is viewable and actionable inside the
+                         route builder that owns this stage, so demote the former
+                         inline disclosure to a de-emphasized link. The stage-list
+                         core (active model + status) keeps primary weight. -->
+                    <a class="stage-rec-link" href={builderHref(row.visualHref)}>View recommendation</a>
+                  {:else}
+                    <!-- No route yet: there is no builder to link into, so keep
+                         the inline recommendation to inform the Create route
+                         decision below (non-destructive). -->
+                    <details class="stage-rec-details" open>
+                      <summary class="stage-rec-summary">View recommendation</summary>
+                      <span class="stage-rec">
+                        Recommended: <code>{row.recommended.modelId}</code>
+                        <span class="muted">({row.recommended.provider})</span>
+                        {#if row.key === "validation" && row.recommended.sameProviderFallback}
+                          <span class="muted"> — add another provider key for cross-model validation</span>
+                        {/if}
+                      </span>
+                      <span class="stage-rec-rationale muted">{row.recommended.rationale}</span>
+                    </details>
+                  {/if}
                 {/if}
 
                 <div class="stage-footer">
@@ -548,16 +569,6 @@
     {/if}
 
     {#if data.models.activeGraph}
-      <!-- RES-113 PR-3: the ONE writable deployment preset (decision A) — the
-           "Where your pipeline runs" field extending the shipped reset. Renders
-           above the disclosure ("adjust individual stages below"); a switch
-           re-derives the slot rows with their "Part of {preset}." annotation. -->
-      <section class="card preset-card" aria-label="Deployment preset">
-        <ConnectPipelinePresetControl
-          graphTargetId={data.models.activeGraph.id}
-          bundle={data.models.activeGraph.bundle}
-        />
-      </section>
       <!-- RES-113 PR-2: per-stage plug-point rows — the operator twin of the
            sources-page Advanced disclosure (one derivation, one renderer, two
            hosts; placement spec §3.4-C). The summary reuses the registered §2.1
@@ -575,7 +586,7 @@
       </details>
     {/if}
 
-    {#if msg && !(data.models.projectId && data.models.environmentId)}
+    {#if msg && !data.models.projectId}
       <p class:err={error} class:notice={!error} role="status">{msg}</p>
     {/if}
   {/if}
@@ -760,6 +771,21 @@
   }
   .stage-rec-summary::-webkit-details-marker {
     display: none;
+  }
+  /* B5: the demoted recommendation link carries the same de-emphasized mono
+     weight as the former disclosure summary, so the stage-list core stays
+     dominant. */
+  .stage-rec-link {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-sm);
+    color: var(--color-ink-faint);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    align-self: flex-start;
+  }
+  .stage-rec-link:hover,
+  .stage-rec-link:focus-visible {
+    color: var(--color-ink);
   }
   .stage-rec {
     display: block;
