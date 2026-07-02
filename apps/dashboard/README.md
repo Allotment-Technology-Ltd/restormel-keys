@@ -149,3 +149,5 @@ Run migrations in `migrations/` (sorted `001` … `030`+ as needed) against the 
 
 - **Gateway Key** — Credential your app uses to authenticate to Restormel (format `rk_...`). Created under Access.
 - **Provider credential** — Under **Connections**: optional **hosted API key** (encrypted at rest when `RESTORMEL_CREDENTIALS_ENCRYPTION_KEY` is set) or a **credential reference** (vault label only). Restormel Testing resolve can use decrypted material server-side; the CLI still uses a **Gateway key** as `RESTORMEL_GATEWAY_KEY` (alias `RESTORMEL_KEYS_API_TOKEN`). See [docs/guides/keys-testing-onboarding.md](../../docs/guides/keys-testing-onboarding.md).
+
+# retrigger merge→integration (UX #442-#445) 2026-07-02T21:38:40Z
