@@ -893,9 +893,10 @@
       land here (OSS-scrub rules in the same ADR). Branch protection on `main` mirrors this repo's
       own rule shape (required CI status checks, 0 required approvals, apply_to_admins true, no
       signed-commit requirement) — applied 2026-07-02. STATE: scaffold only, no product code, no
-      live deployment, no evidence data. [PLACEHOLDER — founder: confirm whether a GitHub push-mirror
-      should be added to match the restormel-keys/allotmentology.tech pattern, or whether an OSS repo
-      is better served by GitHub-primary instead — not yet decided.]
+      live deployment, no evidence data. GitHub push-mirror confirmed (Adam, 2026-07-02) and
+      configured to https://github.com/Allotment-Technology-Ltd/teasynaer (Forgejo push-mirror,
+      8h interval + sync_on_commit — same mechanism as restormel-keys/allotmentology.tech;
+      overwrote a placeholder "Initial commit" that pre-existed on the empty GitHub repo).
 
   - id: AST-032
     asset: "Hetzner Load Balancer (restormel-ingress) — public ingress front-end"
