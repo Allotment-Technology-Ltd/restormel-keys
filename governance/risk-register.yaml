@@ -464,7 +464,7 @@ risks:
     rating: Medium
     treatment_type: mitigate
     treatment: >
-      STRUCTURAL (REC-PLAN-017): strict two-stream separation — transactional via Migadu on a
+      STRUCTURAL (REC-PLAN-028): strict two-stream separation — transactional via Migadu on a
       dedicated send.restormel.dev subdomain; marketing via Brevo (managed EU deliverability) on a
       separate news.restormel.dev subdomain; each with its own SPF/DKIM/DMARC so reputations are
       isolated and a marketing complaint cannot harm auth delivery. DMARC ramped none→quarantine→
@@ -473,7 +473,7 @@ risks:
       ledger (email_preferences) honouring opt-out immediately; transactional email never gated by
       marketing prefs. Plain-text alternative on all mail. Public privacy notice marketing section
       live BEFORE first marketing send (gated, publish-when-live).
-    treatment_status: "Open — plan approved as REC-PLAN-017; Phase 1 (transactional pilot) in build; marketing stack (Brevo, subdomains, DMARC, unsubscribe, consent ledger) is Phase 2, not yet implemented"
+    treatment_status: "Open — plan approved as REC-PLAN-028; Phase 1 (transactional pilot) in build; marketing stack (Brevo, subdomains, DMARC, unsubscribe, consent ledger) is Phase 2, not yet implemented"
     owner: founder
     status: open
     review: 2026-12-15

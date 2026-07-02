@@ -32,7 +32,7 @@ published on the launch calendar, not ad-hoc.
   link them from public surfaces until the feature is live.
 - Public legal/privacy text (sub-processors, RoPA-derived notices) goes live **with or just before** the
   processing it describes — never ahead of it (see [[restormel-isms-records]]).
-- Email/marketing: this is decision **D9 in REC-PLAN-017** — newsletter/release-notes templates and the
+- Email/marketing: this is decision **D9 in REC-PLAN-028** — newsletter/release-notes templates and the
   public privacy-notice marketing section are built now but **published only when the marketing stream is
   live**. Transactional email (already live) is exempt — it's operational, not marketing.
 
@@ -44,4 +44,4 @@ published on the launch calendar, not ad-hoc.
 
 ## Related
 - Build-ahead delivery: [[restormel-swarm-delivery]]. Governance records: [[restormel-isms-records]].
-- Suite/marketing IA: restormel-suite-integrations-marketing. Email plan: REC-PLAN-017 (D9).
+- Suite/marketing IA: restormel-suite-integrations-marketing. Email plan: REC-PLAN-028 (D9).

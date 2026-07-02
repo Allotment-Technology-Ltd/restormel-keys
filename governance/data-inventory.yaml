@@ -178,7 +178,7 @@ data:
     retention: "While subscribed; on unsubscribe retain a minimal suppression record (email hash + timestamp) to honour opt-out; consent audit trail per accountability needs"
     product: restormel
     notes: >
-      Not yet built — sets the privacy-by-design target (REC-PLAN-017). Maps to RoPA PROC-009.
+      Not yet built — sets the privacy-by-design target (REC-PLAN-028). Maps to RoPA PROC-009.
       Lawful basis: consent (double opt-in, net-new) + PECR soft opt-in (existing customers/
       enquirers). The consent ledger is OUR Postgres (sovereign source of truth, re-platformable);
       Brevo holds only the operational send list. Every marketing email carries RFC-8058 one-click

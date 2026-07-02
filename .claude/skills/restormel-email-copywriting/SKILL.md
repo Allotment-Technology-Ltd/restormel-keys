@@ -12,7 +12,7 @@ description: >-
 
 Make every Restormel email earn its send: one clear purpose, one obvious next action, in the brand
 voice, compliant, and unlikely to land in spam. Builds on the house voice in `skills/content-writing`;
-this skill is the email-specific layer. Plan + consent model: REC-PLAN-017.
+this skill is the email-specific layer. Plan + consent model: REC-PLAN-028.
 
 ## Brand voice (apply to all email)
 Confident, plain, technically credible. **No hype, no fake urgency, no exclamation spam.** Short

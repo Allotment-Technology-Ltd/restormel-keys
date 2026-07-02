@@ -1,5 +1,5 @@
 ---
-id: REC-PLAN-017
+id: REC-PLAN-028
 title: Product email system — transactional + marketing streams, neo-brutalist Svelte templates, consent & preferences
 class: planning
 owner: founder
@@ -12,7 +12,7 @@ review-interval: P6M
 retention: review-only
 ---
 
-# REC-PLAN-017 — Product email system
+# REC-PLAN-028 — Product email system
 
 Plan for evolving Restormel Keys email from the current minimal transactional-only setup into a
 governed, **two-stream** email system (transactional + marketing) that is on-brand

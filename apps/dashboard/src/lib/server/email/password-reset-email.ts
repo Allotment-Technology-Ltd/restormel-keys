@@ -1,5 +1,5 @@
 /**
- * Password-reset request — HTML transactional email (REC-PLAN-017 Phase 2).
+ * Password-reset request — HTML transactional email (REC-PLAN-028 Phase 2).
  * Sent by the Better Auth `emailAndPassword.sendResetPassword` hook on the
  * `AUTH_PROVIDER === "self"` path.
  *

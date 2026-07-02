@@ -1,5 +1,5 @@
 /**
- * Profile & settings — server data + email-preference form action (REC-PLAN-017 Phase 3).
+ * Profile & settings — server data + email-preference form action (REC-PLAN-028 Phase 3).
  *
  * Authz: this is a signed-in human surface. We resolve the session user with
  * `requireSessionUser` (throws 401 for signed-out / Bearer-key requests) so the

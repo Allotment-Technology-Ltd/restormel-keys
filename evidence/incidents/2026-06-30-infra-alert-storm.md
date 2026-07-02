@@ -1,5 +1,5 @@
 ---
-id: REC-INC-026
+id: REC-INC-028
 title: "Infra alert storm — multi-day automation + observability degradations triaged & remediated (node3 cx33→cx43 rescale, webhook/alloy/cert/netpol/alert fixes)"
 class: evidence
 owner: founder

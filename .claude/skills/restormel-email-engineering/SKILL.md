@@ -11,7 +11,7 @@ description: >-
 # Restormel email engineering
 
 How Restormel emails are built so they render correctly, accessibly, and on-brand across the
-real-world client matrix. Canonical plan: `planning/email-system-plan.md` (REC-PLAN-017).
+real-world client matrix. Canonical plan: `planning/email-system-plan.md` (REC-PLAN-028).
 Design language: [[restormel-email-design]]. Copy: [[restormel-email-copywriting]].
 
 ## The pipeline (Svelte → HTML)
@@ -65,7 +65,7 @@ white-on-yellow, which fails contrast.** Manage it explicitly:
 - SMTP: Migadu `smtp.migadu.com`, **port 587 / STARTTLS** (not 465), auth var **`SMTP_PASS`**
   (code accepts `SMTP_PASS ?? SMTP_PASSWORD`); transactional `From notify@`, `Reply-To contact@`.
 - Subdomain split + per-subdomain SPF/DKIM/DMARC, and **RFC-8058 one-click `List-Unsubscribe`** on all
-  **marketing** mail (never transactional). See REC-PLAN-017 §3.1.
+  **marketing** mail (never transactional). See REC-PLAN-028 §3.1.
 
 ## Test & preview loop
 - **Unit-test the pure pieces** (subject, plain-text, identity) in vitest. **Do NOT** assert
