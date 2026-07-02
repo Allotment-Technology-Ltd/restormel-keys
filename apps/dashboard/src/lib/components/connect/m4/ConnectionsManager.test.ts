@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, waitFor } from "@testing-library/svelte";
+import { render, fireEvent, waitFor, within } from "@testing-library/svelte";
 import ConnectionsManager from "./ConnectionsManager.svelte";
 import type { ConnectAgentSetupData } from "$lib/connect/agent-setup-types";
 
@@ -105,6 +105,9 @@ describe("ConnectionsManager — S1 guided fork (built, zero connections)", () =
 
     // Success screen (copy pack §4.3): display-once key + endpoint + one CTA to Home's ask.
     await waitFor(() => expect(getByRole("heading", { name: "Connection created" })).toBeTruthy());
+    // The region's accessible name tracks the RENDERED heading (5-lens fix:
+    // aria-labelledby must not dangle on the success screen).
+    expect(getByRole("region", { name: "Connection created" })).toBeTruthy();
     expect(getByText("rk_live_zz_secret")).toBeTruthy();
     expect(
       getByText("This is the only time the full key is shown. Copy it now and store it somewhere safe."),
@@ -132,6 +135,22 @@ describe("ConnectionsManager — S1 guided fork (built, zero connections)", () =
     await fireEvent.click(getByRole("button", { name: /Create connection/i }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({ label: "backend" });
+  });
+
+  it("blocks create with the registered no-project error when the workspace has no project (copy pack §4.5)", async () => {
+    const { getByRole } = render(ConnectionsManager, {
+      props: {
+        setup: setupData({ projects: [], defaultProjectId: null }),
+        enforceScope: true,
+      },
+    });
+    await fireEvent.click(getByRole("button", { name: /Connect an agent/i }));
+    await fireEvent.click(getByRole("button", { name: /Create connection/i }));
+    await waitFor(() =>
+      expect(getByRole("alert").textContent).toMatch(
+        /We couldn't create the connection — this workspace has no project yet\. Create a project first\./,
+      ),
+    );
   });
 
   it("keeps the fork with an inline alert when create fails (input preserved)", async () => {
@@ -271,6 +290,39 @@ describe("ConnectionsManager — S2 manager (list-plus-nudge)", () => {
     expect(init.method).toBe("DELETE");
     expect(JSON.parse(init.body as string)).toEqual({ keyId: "k1" });
     await waitFor(() => expect(queryByText("agent")).toBeNull());
+  });
+
+  it("a failed delete renders a VISIBLE error inside the confirm block, next to its retry action", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getByRole, getByText } = render(ConnectionsManager, {
+      props: { setup: setupData({ gatewayKeys: [KEY] }), enforceScope: true },
+    });
+    await fireEvent.click(getByRole("button", { name: "Details" }));
+    await fireEvent.click(getByRole("button", { name: "Delete this connection" }));
+    await fireEvent.click(getByRole("button", { name: "Delete connection" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    // ux-contracts §3 recovery floor: visible message + adjacent recovery action —
+    // not just the polite announcement (5-lens fix).
+    const confirm = getByRole("group", { name: "Delete agent?" });
+    await waitFor(() =>
+      expect(
+        within(confirm).getByText("We couldn't delete the connection. Try again."),
+      ).toBeTruthy(),
+    );
+    // The row survives; the retry affordance sits right next to the message.
+    expect(getByText("agent")).toBeTruthy();
+    expect(within(confirm).getByRole("button", { name: "Delete connection" })).toBeTruthy();
+
+    // Cancelling clears the stale failure so a re-opened confirm starts clean.
+    await fireEvent.click(getByRole("button", { name: "Keep it" }));
+    await fireEvent.click(getByRole("button", { name: "Delete this connection" }));
+    const reopened = getByRole("group", { name: "Delete agent?" });
+    expect(
+      within(reopened).queryByText("We couldn't delete the connection. Try again."),
+    ).toBeNull();
   });
 
   it("Keep it cancels and returns focus to the delete affordance", async () => {

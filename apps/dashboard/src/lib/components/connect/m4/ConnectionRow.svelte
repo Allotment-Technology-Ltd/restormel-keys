@@ -25,6 +25,12 @@
   /** True while a delete request for THIS connection is in flight. */
   export let deleting = false;
   /**
+   * Visible delete-failure message for THIS connection (copy pack §4.5) —
+   * rendered inline in the confirm block, next to its retry action (ux-contracts
+   * §3 recovery floor). The manager announces it politely as well.
+   */
+  export let deleteError = "";
+  /**
    * REAL observed traffic for this key in the last 24h (ingest excluded) —
    * the ONLY thing that renders the `LIVE` chip (REC-ADR-016).
    */
@@ -34,6 +40,8 @@
     delete: { keyId: string };
     /** Bubble copy feedback so the manager's persistent live region announces it. */
     announce: { text: string };
+    /** Ask the manager to clear this row's stale delete error (confirm re-opened / cancelled). */
+    cleardeleteerror: { keyId: string };
   }>();
 
   let detailOpen = false;
@@ -52,6 +60,8 @@
       setTimeout(() => (copied = false), 2000);
     } catch {
       copied = false;
+      // Clipboard failure reaches the status region too (copy pack §4.5).
+      dispatch("announce", { text: "We couldn't copy — select the text and copy it manually." });
     }
   }
 
@@ -61,6 +71,8 @@
   }
 
   async function requestDelete() {
+    // A fresh confirm never shows a stale failure from an earlier attempt.
+    if (deleteError) dispatch("cleardeleteerror", { keyId: connection.keyId });
     // The "Delete this connection" button is destroyed by the {#if} swap —
     // relocate focus to the safe choice (a11y skill: focus relocation on swap).
     confirmingDelete = true;
@@ -69,6 +81,7 @@
   }
 
   async function cancelDelete() {
+    if (deleteError) dispatch("cleardeleteerror", { keyId: connection.keyId });
     confirmingDelete = false;
     await tick();
     document.getElementById(`${detailId}-delete`)?.focus();
@@ -99,7 +112,7 @@
     {/if}
 
     <div class="row-acts">
-      <button type="button" class="ibtn" on:click={copyEndpoint}>{copied ? "Copied" : "Copy"}</button>
+      <button type="button" class="ibtn" on:click={copyEndpoint}>{copied ? "Copied." : "Copy"}</button>
       <button
         type="button"
         class="ibtn"
@@ -135,6 +148,11 @@
             Delete {connection.name}? Your app loses access immediately — any code using this key
             stops working. This can't be undone.
           </p>
+          {#if deleteError}
+            <!-- Visible failure adjacent to its retry action (ux-contracts §3 recovery
+                 floor); the manager's persistent polite region carries the announcement. -->
+            <p class="delete-error">{deleteError}</p>
+          {/if}
           <div class="confirm-acts">
             <button
               type="button"
@@ -330,6 +348,14 @@
     margin: 0 0 var(--space-3);
     font-size: var(--text-sm);
     line-height: 1.5;
+    max-width: 62ch;
+  }
+  .delete-error {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--state-fail-fg, #b00);
     max-width: 62ch;
   }
   .confirm-acts {

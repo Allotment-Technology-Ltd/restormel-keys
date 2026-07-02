@@ -37,7 +37,7 @@ describe("ConnectWizard (guided fork)", () => {
   });
 
   it("Create is disabled with a visible hint until a card is chosen; zero typing needed after", async () => {
-    const { getByRole, getByText, queryByText, container } = render(ConnectWizard);
+    const { getByRole, getByText, queryByText } = render(ConnectWizard);
     const create = getByRole("button", { name: /Create connection/i }) as HTMLButtonElement;
     expect(create.disabled).toBe(true);
     expect(getByText("Choose one to continue.")).toBeTruthy();
@@ -46,13 +46,13 @@ describe("ConnectWizard (guided fork)", () => {
     expect(create.disabled).toBe(false);
     expect(queryByText("Choose one to continue.")).toBeNull();
     // Prefilled name — Create accepts the default with zero typing.
-    const nameInput = container.querySelector("#m4-conn-name") as HTMLInputElement;
+    const nameInput = getByRole("textbox", { name: /Connection name/i }) as HTMLInputElement;
     expect(nameInput.value).toBe("agent");
   });
 
   it("name prefill tracks the chosen card until the user edits it", async () => {
-    const { getByRole, container } = render(ConnectWizard);
-    const nameInput = container.querySelector("#m4-conn-name") as HTMLInputElement;
+    const { getByRole } = render(ConnectWizard);
+    const nameInput = getByRole("textbox", { name: /Connection name/i }) as HTMLInputElement;
 
     await fireEvent.click(getByRole("button", { name: /Connect an agent/i }));
     expect(nameInput.value).toBe("agent");
@@ -66,11 +66,15 @@ describe("ConnectWizard (guided fork)", () => {
   });
 
   it("selection is exposed via aria-pressed (glyph + state, never fill alone)", async () => {
-    const { getByRole } = render(ConnectWizard);
+    const { getByRole, getByText, getAllByText } = render(ConnectWizard);
     const agent = getByRole("button", { name: /Connect an agent/i });
     expect(agent.getAttribute("aria-pressed")).toBe("false");
+    // BOTH mark states pair glyph + word — a lone □ reads as debris (5-lens fix).
+    expect(getAllByText("□ select").length).toBe(2);
     await fireEvent.click(agent);
     expect(agent.getAttribute("aria-pressed")).toBe("true");
+    expect(getByText("■ selected")).toBeTruthy();
+    expect(getAllByText("□ select").length).toBe(1);
   });
 
   it("states the enforced read-only line for the first connection (copy pack §4.2)", () => {
@@ -123,5 +127,12 @@ describe("ConnectWizard (guided fork)", () => {
       props: { createError: "We couldn't create the connection — something failed on our side. Try again in a moment." },
     });
     expect(getByRole("alert").textContent).toMatch(/couldn't create the connection/i);
+  });
+
+  it("the alert region persists empty at boot — never created on demand inside {#if}", () => {
+    const { getByRole } = render(ConnectWizard);
+    // A live region born with its content does not announce (a11y skill anti-pattern);
+    // the region must exist before any error text is injected.
+    expect(getByRole("alert").textContent?.trim()).toBe("");
   });
 });

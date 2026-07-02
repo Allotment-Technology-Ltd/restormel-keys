@@ -108,7 +108,8 @@
         </span>
         <span class="card-title">{m.title}</span>
         <span class="card-desc">{m.description}</span>
-        <span class="card-mark" aria-hidden="true">{method === m.id ? "■ selected" : "□"}</span>
+        <!-- Glyph + word in BOTH states (copy pack §4.5): a lone □ reads as debris. -->
+        <span class="card-mark" aria-hidden="true">{method === m.id ? "■ selected" : "□ select"}</span>
       </button>
     {/each}
   </div>
@@ -154,9 +155,9 @@
     </div>
   {/if}
 
-  {#if createError}
-    <p class="create-error" role="alert">{createError}</p>
-  {/if}
+  <!-- Persistent alert region — rendered empty at boot, NEVER inside {#if}
+       (a11y skill: live regions created on demand don't announce). -->
+  <p class="create-error" role="alert">{createError}</p>
 
   <div class="fork-foot">
     <button type="button" class="btn btn-primary" on:click={submit} disabled={!method || creating}>
@@ -373,6 +374,10 @@
     color: var(--state-fail-fg, #b00);
     font-size: var(--text-sm);
     margin: 0 0 var(--space-3);
+  }
+  .create-error:empty {
+    /* The region persists empty at boot (live-region contract) — no ghost gap. */
+    margin: 0;
   }
 
   .fork-foot {

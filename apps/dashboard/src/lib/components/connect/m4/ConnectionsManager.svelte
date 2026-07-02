@@ -95,6 +95,10 @@
   let creating = false;
   let createError = "";
   let deletingKeyId: string | null = null;
+  // The row whose last delete attempt failed — its confirm block renders the
+  // visible failure message (copy pack §4.5; ux-contracts §3 recovery floor).
+  let deleteErrorKeyId: string | null = null;
+  const DELETE_FAILED = "We couldn't delete the connection. Try again.";
 
   // The just-created key — the display-once success screen (copy pack §4.3).
   let newKey: {
@@ -154,7 +158,8 @@
     e: CustomEvent<{ method: ConnectionMethodId; access: ConnectionAccessId; name: string }>,
   ) {
     if (!projectId) {
-      createError = "Create a Keys project before adding a connection.";
+      createError =
+        "We couldn't create the connection — this workspace has no project yet. Create a project first.";
       return;
     }
     const { method, access, name } = e.detail;
@@ -215,6 +220,7 @@
     const pid = conn?.projectId || projectId;
     if (!pid) return;
     deletingKeyId = keyId;
+    deleteErrorKeyId = null;
     try {
       const res = await fetch(`${DASHBOARD_BASE}/api/projects/${pid}/keys`, {
         method: "DELETE",
@@ -232,13 +238,20 @@
         await tick();
         (document.getElementById("m4-connect-heading") as HTMLElement | null)?.focus();
       } else {
-        announce("We couldn't delete the connection. Try again.");
+        // Visible in the row's confirm block (recovery = its retry button) AND announced.
+        deleteErrorKeyId = keyId;
+        announce(DELETE_FAILED);
       }
     } catch {
-      announce("We couldn't delete the connection. Try again.");
+      deleteErrorKeyId = keyId;
+      announce(DELETE_FAILED);
     } finally {
       deletingKeyId = null;
     }
+  }
+
+  function handleClearDeleteError(e: CustomEvent<{ keyId: string }>) {
+    if (deleteErrorKeyId === e.detail.keyId) deleteErrorKeyId = null;
   }
 
   function handleRowAnnounce(e: CustomEvent<{ text: string }>) {
@@ -254,6 +267,8 @@
       setTimeout(() => (copiedKey = false), 2000);
     } catch {
       copiedKey = false;
+      // Clipboard failure reaches the status region too (copy pack §4.5).
+      announce("We couldn't copy — select the text and copy it manually.");
     }
   }
 
@@ -266,11 +281,14 @@
       setTimeout(() => (copiedEndpoint = false), 2000);
     } catch {
       copiedEndpoint = false;
+      announce("We couldn't copy — select the text and copy it manually.");
     }
   }
 </script>
 
-<section class="manager" aria-labelledby="m4-connect-heading">
+<!-- The success branch renders m4-success-heading instead of m4-connect-heading —
+     the label must track the rendered heading or the region loses its name. -->
+<section class="manager" aria-labelledby={newKey ? "m4-success-heading" : "m4-connect-heading"}>
   <!-- Persistent polite region — outside every {#if}, rendered empty at boot. -->
   <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{announceText}</div>
 
@@ -359,19 +377,22 @@
           connection={conn}
           connectApiBase={setup.connectApiBase}
           deleting={deletingKeyId === conn.keyId}
+          deleteError={deleteErrorKeyId === conn.keyId ? DELETE_FAILED : ""}
           live={liveIds.includes(conn.keyId)}
           on:delete={handleDelete}
           on:announce={handleRowAnnounce}
+          on:cleardeleteerror={handleClearDeleteError}
         />
       {/each}
     </ul>
 
     {#if showReadWriteSuggestion(connections) && !addFormOpen}
+      <!-- The full stop lives INSIDE the link's inline box — a period after the
+           padded button renders as a detached floating glyph (5-lens fix). -->
       <p class="suggestion">
         Need your app to add or update facts in your graph too?
         <button type="button" class="suggest-link" on:click={() => openAddForm("read_write")}>
-          Add a read + write connection</button
-        >.
+          Add a read + write connection.</button>
       </p>
     {/if}
 
