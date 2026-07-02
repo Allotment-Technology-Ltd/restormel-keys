@@ -316,12 +316,78 @@
   $: journeyTrackerVisible =
     journeyConsole && journeyStages.length > 0 && !isCompleted;
 
-  /** Stage chip: real status → StateChip state + copy-pack word (DONE/RUNNING/WAITING/FAILED). */
-  function journeyChip(status: JourneyStageRow["status"]): { state: StateChipState; label: string } {
-    if (status === "completed") return { state: "done", label: "Done" };
-    if (status === "running") return { state: "running", label: "Running" };
-    if (status === "failed") return { state: "error", label: "Failed" };
-    return { state: "idle", label: "Waiting" };
+  /**
+   * Stage chip: real status → StateChip state + copy-pack word (DONE/RUNNING/
+   * WAITING/FAILED). `aria` is the pack §0 accessible name, passed as an
+   * override so screen readers hear "waiting"/"failed with an error" — never
+   * StateChip's composed "Idle: Waiting"/"Error: Failed" (5-lens fix, lens 5 §3).
+   */
+  function journeyChip(
+    status: JourneyStageRow["status"],
+  ): { state: StateChipState; label: string; aria: string } {
+    if (status === "completed") return { state: "done", label: "Done", aria: "done" };
+    if (status === "running") return { state: "running", label: "Running", aria: "running" };
+    if (status === "failed") return { state: "error", label: "Failed", aria: "failed with an error" };
+    return { state: "idle", label: "Waiting", aria: "waiting" };
+  }
+
+  // ── 5-lens review fix (lens 4 §1): persistent journey announcer ─────────────
+  // Flag-ON, every live region (the progress readout, stall/reclaim notices, the
+  // activity log) sits INSIDE the closed `journey-details` disclosure, whose
+  // content is hidden from AT — so nothing ever announced, and completion swapped
+  // the h1 silently. One ALWAYS-RENDERED sr-only polite region (never inside an
+  // `{#if}` — a11y skill §SvelteKit: recreated regions don't announce) carries
+  // stage transitions, the rate-limit pause, and the terminal titles. Messages
+  // are injected atomically, one sentence, echoing the visible strings verbatim.
+  // The FIRST observation after load is skipped — the visible h1/tracker carries
+  // it, and SvelteKit's title announcement covers arrival.
+  let journeyAnnouncement = "";
+  let journeyAnnouncedTitle: string | null = null;
+  let journeyAnnouncedStage: string | null = null;
+  let journeyAnnouncedRateLimit = false;
+  let journeyAnnouncedStall = false;
+  $: journeyRunningStageName = journeyStages.find((r) => r.status === "running")?.name ?? "";
+  $: if (journeyConsole && job) {
+    syncJourneyAnnouncement(journeyTitle, journeyRunningStageName, m1RateLimited, isStalled);
+  }
+  function syncJourneyAnnouncement(
+    title: string,
+    runningStage: string,
+    rateLimited: boolean,
+    stalled: boolean,
+  ) {
+    if (journeyAnnouncedTitle === null) {
+      journeyAnnouncedTitle = title;
+      journeyAnnouncedStage = runningStage || null;
+      journeyAnnouncedRateLimit = rateLimited;
+      journeyAnnouncedStall = stalled;
+      return;
+    }
+    if (title !== journeyAnnouncedTitle) {
+      journeyAnnouncedTitle = title;
+      // A failure already interrupts via the banner's role="alert" — announcing
+      // the title too would double-speak it.
+      if (job?.status !== "failed") journeyAnnouncement = `${title}.`;
+      return;
+    }
+    if (rateLimited && !journeyAnnouncedRateLimit) {
+      journeyAnnouncedRateLimit = true;
+      journeyAnnouncement = M1_RATE_LIMIT_BANNER.body;
+      return;
+    }
+    if (!rateLimited) journeyAnnouncedRateLimit = false;
+    if (stalled && !journeyAnnouncedStall) {
+      // Echoes the visible stall-notice sentence (one sentence, atomic).
+      journeyAnnouncedStall = true;
+      journeyAnnouncement =
+        "A stalled run is reclaimed automatically and resumes from the last checkpoint — nothing is lost.";
+      return;
+    }
+    if (!stalled) journeyAnnouncedStall = false;
+    if (runningStage && runningStage !== journeyAnnouncedStage) {
+      journeyAnnouncedStage = runningStage;
+      journeyAnnouncement = `${runningStage}…`;
+    }
   }
 
   // ONE closed-by-default "Show details" disclosure for the instrumentation
@@ -1181,6 +1247,12 @@
         <h1 id="run-console-heading" class="run-title journey-run-title">{journeyTitle}</h1>
       </header>
 
+      <!-- 5-lens review fix (lens 4 §1): the persistent journey announcer. Always
+           rendered on this path (never inside an {#if}), empty until a transition
+           happens, so stage changes, the rate-limit pause, and "Your graph is
+           built." reach screen readers even while the details disclosure is closed. -->
+      <p class="sr-only" role="status" aria-live="polite">{journeyAnnouncement}</p>
+
       {#if startingRun}
         <p class="run-starting" role="status">Starting your run…</p>
       {/if}
@@ -1205,7 +1277,7 @@
               {@const chip = journeyChip(row.status)}
               <li class="journey-stage" class:journey-stage--running={row.status === "running"}>
                 <span class="journey-stage-chip">
-                  <StateChip state={chip.state} label={chip.label} dot={false} />
+                  <StateChip state={chip.state} label={chip.label} ariaLabel={chip.aria} dot={false} />
                 </span>
                 <span class="journey-stage-text">
                   <span class="journey-stage-name">{row.name}</span>
@@ -1244,10 +1316,15 @@
               <strong>{failureHelp.title}.</strong>
               {failureHelp.body}
             {:else}
-              <!-- Copy pack §2.4 stage-failure banner — the stage is named in the
-                   shared vocabulary, never an engineering key. -->
-              {journeyStageName(job.current_stage)} stopped partway — the AI provider returned an
-              error. Everything finished so far is saved. Retry to pick up where it left off.
+              <!-- Unclassified failure (5-lens review fix, lens 2 §3): the stage is
+                   named in the shared vocabulary, never an engineering key — but an
+                   error `mapConnectRunFailure` can't classify must not assert a
+                   cause (REC-ADR-016: name what actually failed, or nothing). The
+                   copy pack §2.4 "the AI provider returned an error" clause is
+                   reserved for provider-classified failures; the raw error stays
+                   below for support. Registered as a §2.4 deviation in the pack. -->
+              {journeyStageName(job.current_stage)} stopped partway.
+              Everything finished so far is saved. Retry to pick up where it left off.
             {/if}
           </p>
           {#if !isWorkerLost}
@@ -2653,6 +2730,15 @@
     font-size: var(--text-mono-sm);
     font-weight: 700;
     color: var(--color-ink-muted);
+  }
+  /* Ink-paired focus ring (5-lens fix, lens 4 §2; a11y skill: never a bare
+     yellow ring on cream — `.brut-focus` alone is ~1.1:1 against the console
+     surface). Yellow ring + 2px ink band outside it gives the focus boundary
+     its 3:1 (same pairing as PR-4's .journey-link, outward variant). */
+  .journey-details-summary:focus-visible {
+    outline: 2px solid var(--color-yellow);
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px var(--brut-ink);
   }
   /* display:flex drops the native ::marker — restore an explicit caret so the
      toggle still LOOKS like one (glyph + word, never colour/motion alone). */

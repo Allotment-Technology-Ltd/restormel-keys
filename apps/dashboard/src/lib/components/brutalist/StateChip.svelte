@@ -23,6 +23,13 @@
   export let dot = true;
   /** Optional inline content; overrides `label`. */
   export let children: Snippet | undefined = undefined;
+  /**
+   * Optional accessible-name override for call sites whose vocabulary pins the
+   * exact screen-reader string (e.g. the RES-113 copy pack §0 stage chips:
+   * "waiting", "failed with an error"). Default (undefined) keeps the composed
+   * "{State word}: {label}" name unchanged for every existing consumer.
+   */
+  export let ariaLabel: string | undefined = undefined;
 
   const STATE_WORD: Record<StateChipState, string> = {
     idle: "Idle",
@@ -41,7 +48,7 @@
   data-testid="state-chip"
   data-state={state}
   role="status"
-  aria-label={`${STATE_WORD[state]}${label ? `: ${label}` : ""}`}
+  aria-label={ariaLabel ?? `${STATE_WORD[state]}${label ? `: ${label}` : ""}`}
 >
   {#if dot}
     <span class="state-chip-dot" class:is-running={state === "running"} aria-hidden="true"></span>

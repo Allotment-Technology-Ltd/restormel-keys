@@ -10,6 +10,13 @@
  * disclosure that auto-opens on failure/rate-limit, and completion renders
  * exactly one primary CTA with the Verify secondary as muted text ONLY when the
  * run flagged something (copy pack §2.5).
+ *
+ * Query convention: interactive elements are asserted role-first (getByRole).
+ * The remaining `querySelector(".class")` assertions are justified per the
+ * a11y-skill testing convention: they pin CSS-hook PLACEMENT — which block
+ * renders, and inside/outside which disclosure — for non-interactive chrome
+ * (trackers, banners, ledgers) that carries no queryable role/name contract,
+ * i.e. the flag-OFF byte-identical DOM contract itself.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render } from "@testing-library/svelte";
@@ -148,6 +155,43 @@ describe("Run console — journey M1 (flag ON)", () => {
     // Honesty footnote + background line (copy pack §2.4).
     expect(text).toContain("Progress here is real");
     expect(text).toContain("You can leave this page");
+    // Chip accessible names are the copy pack §0 vocabulary — never StateChip's
+    // composed "Running: Running" / "Idle: Waiting" (5-lens fix, lens 5 §3).
+    const chipNames = [
+      ...(container.querySelector(".journey-tracker")?.querySelectorAll("[data-testid='state-chip']") ?? []),
+    ].map((c) => c.getAttribute("aria-label"));
+    expect(chipNames).toEqual(["running", "waiting"]);
+  });
+
+  it("running → completion announces on the persistent journey status region", async () => {
+    // 5-lens fix (lens 4 §1): the tracker/log live regions sit inside the closed
+    // disclosure (hidden from AT), so the journey path carries ONE persistent
+    // polite announcer. It boots empty, then speaks stage transitions and the
+    // terminal "Your graph is built." when the h1 would otherwise swap silently.
+    const { container } = await renderConsole(runningJob(), { onboardingJourney: true });
+    await vi.waitFor(() => expect(container.querySelector(".journey-tracker")).not.toBeNull());
+    const region = container.querySelector('p.sr-only[role="status"]');
+    expect(region).not.toBeNull();
+    // First observation after load is NOT announced — the visible h1/tracker carries it.
+    expect(region?.textContent).toBe("");
+    // The running stage moves on → the transition announces in the shared vocabulary.
+    captured?.onEvent({
+      type: "delta",
+      job: {
+        ...runningJob(),
+        current_stage: "storing",
+        stages: [
+          { stage: "extracting", status: "completed", progress: { percent: 100, processed: 412, total: 412 } },
+          { stage: "storing", status: "running" },
+        ],
+      },
+    } as unknown as LiveRunStreamEvent);
+    await tick();
+    expect(region?.textContent).toBe("Getting ready…");
+    // The run finishes → the completion is announced, not just an h1 swap.
+    captured?.onEvent({ type: "delta", job: completedJob(0) } as unknown as LiveRunStreamEvent);
+    await tick();
+    expect(region?.textContent).toBe("Your graph is built.");
   });
 
   it("running: instrumentation collapses behind ONE closed-by-default Show details", async () => {
@@ -186,31 +230,34 @@ describe("Run console — journey M1 (flag ON)", () => {
     expect(container.querySelector(".m1-rate-limit")).toBeNull();
   });
 
-  it("failed: copy-pack stage-failure banner with Retry run → as the one primary; details auto-open", async () => {
-    const { container } = await renderConsole(failedJob(), { onboardingJourney: true });
+  it("failed: honest stage-failure banner with Retry run → as the one primary; details auto-open", async () => {
+    const { container, getByRole } = await renderConsole(failedJob(), { onboardingJourney: true });
     await vi.waitFor(() => expect(container.querySelector(".run-error-banner")).not.toBeNull());
     const banner = container.querySelector(".run-error-banner");
     expect(banner?.getAttribute("role")).toBe("alert");
     // Stage named in the shared vocabulary — the engineering key never leaks.
     expect(banner?.textContent).toContain("Making it searchable stopped partway");
     expect(banner?.textContent).toContain("Everything finished so far is saved.");
+    // 5-lens fix (lens 2 §3): an UNCLASSIFIED error never fabricates a cause —
+    // the §2.4 provider clause is reserved for provider-classified failures.
+    expect(banner?.textContent).not.toContain("the AI provider returned an error");
     // Raw error stays reachable for support.
     expect(banner?.textContent).toContain("boom: something engine-shaped went wrong");
-    const primary = banner?.querySelector(".btn-primary");
-    expect(primary?.textContent).toContain("Retry run →");
+    const primary = getByRole("button", { name: "Retry run →" });
+    expect(primary.classList.contains("btn-primary")).toBe(true);
     const details = container.querySelector("details.journey-details") as HTMLDetailsElement;
     expect(details.open).toBe(true);
   });
 
   it("completed: exactly one primary CTA to the ask; ledger tucked into details", async () => {
-    const { container } = await renderConsole(completedJob(0), { onboardingJourney: true });
+    const { container, getByRole } = await renderConsole(completedJob(0), { onboardingJourney: true });
     await vi.waitFor(() => expect(container.querySelector(".journey-done")).not.toBeNull());
-    expect(container.querySelector("h1")?.textContent).toBe("Your graph is built");
+    expect(getByRole("heading", { level: 1 }).textContent).toBe("Your graph is built");
     const done = container.querySelector(".journey-done");
     expect(done?.textContent).toContain("We found 412 facts across your documents.");
-    const cta = done?.querySelector("a.btn-primary") as HTMLAnchorElement | null;
-    expect(cta?.textContent).toContain("Ask your first question →");
-    expect(cta?.getAttribute("href")).toContain("#home-ask-input");
+    const cta = getByRole("link", { name: "Ask your first question →" });
+    expect(cta.classList.contains("btn-primary")).toBe(true);
+    expect(cta.getAttribute("href")).toContain("#home-ask-input");
     // No Verify line when this run flagged nothing.
     expect(container.querySelector(".journey-verify-line")).toBeNull();
     // The honest ledger still exists — as depth behind the single disclosure.

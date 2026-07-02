@@ -98,7 +98,28 @@
   // (plan §3.2 point 3) becomes an Advanced aside — a built-in pack applies
   // silently on the spine, and pack/schema design is reached from the Sources
   // page's "Advanced — full pipeline control" disclosure or a deep link.
-  $: journeyAside = onboardingJourney && (step === "store" || step === "domain") ? step : null;
+  //
+  // 5-lens review fix (lens 2 §1/§2): an EXPLICIT `?step=sources` visit that
+  // ARRIVES with a non-empty selection is a document-manage aside — explicit
+  // visit wins. `ConnectSourcesPanel` is the only mount of the selection
+  // editor, so the spine's URL correction must never rewrite it away (the
+  // completion ledger's "Run again with more documents" link and deep links
+  // land here). The ask→launch auto-advance still fires for a visit that
+  // arrives with an EMPTY selection (copy pack §2.2: the ask "advances to the
+  // launch panel automatically once one source exists").
+  let sourcesManageVisit = false;
+  let lastVisitStep: PipelineWizardStepId | null = null;
+  $: trackSourcesVisit(step, progress);
+  function trackSourcesVisit(s: PipelineWizardStepId, p: PipelineWizardProgress | null) {
+    if (s === lastVisitStep) return;
+    lastVisitStep = s;
+    sourcesManageVisit = s === "sources" && (p?.selectedDocumentCount ?? 0) > 0;
+  }
+  $: journeyAside =
+    onboardingJourney &&
+    (step === "store" || step === "domain" || (step === "sources" && sourcesManageVisit))
+      ? step
+      : null;
   // The ONE spine panel (reveal predicate, quoted per ux-craft 2.1):
   // `!hasProviderKey` → provider ask; `selectedDocumentCount === 0` → sources
   // ask; else → launch. Exactly one renders; the others do not mount.
@@ -273,8 +294,11 @@
     <div class="notice template-banner" role="status">
       You came from the <strong>{pendingTemplateTitle}</strong> template — finish setup and we'll pre-fill your domain
       config at the Domain step.
+      <!-- 5-lens review fix (lens 5 §1): no arrow on a secondary — the → glyph
+           belongs to the state's one yellow primary alone (copy pack §0). The
+           flag-OFF banner below keeps its shipped string (out of gate). -->
       <button type="button" class="btn btn-outline btn-sm template-banner-btn" on:click={goToDomainForTemplate}>
-        Go to Domain step →
+        Go to Domain step
       </button>
     </div>
   {:else if pendingTemplateId && !progress?.hasGraphStore}
@@ -352,6 +376,41 @@
         />
       {:catch}
         <BrutalErrorBanner title="Domain packs" message="Could not load this panel." />
+        <div class="wizard-fallback-actions">
+          <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
+        </div>
+      {/await}
+    </div>
+    <footer class="wizard-footer">
+      <div class="wizard-footer-left">
+        <a class="btn btn-outline btn-sm" href={pipelineWizardHref("launch")}>← Back to Build</a>
+      </div>
+    </footer>
+  {:else if journeyAside === "sources"}
+    <!-- 5-lens review fix (lens 2 §1/§2): the document-manage aside. An explicit
+         `?step=sources` visit that arrives with documents already selected renders
+         the selection editor (its ONLY mount) instead of being force-corrected to
+         launch — the completion ledger's "Run again with more documents" and deep
+         links land here. Header strings reuse copy pack §2.2 verbatim; no eyebrow
+         (the visitor is past step 2 — a step count here would be dishonest). -->
+    <nav class="wizard-crumb" aria-label="Breadcrumb">
+      <a href={HOME_HREF}>Home</a>
+      <span aria-hidden="true">›</span>
+      <a href={pipelineWizardHref("launch")}>Build</a>
+      <span aria-hidden="true">›</span>
+      <span aria-current="page">Sources</span>
+    </nav>
+    <header class="wizard-header">
+      <h2 class="wizard-title">{M1_BUILD_PANEL_COPY.sources.headline}</h2>
+      <p class="wizard-lead">{M1_BUILD_PANEL_COPY.sources.supporting}</p>
+    </header>
+    <div class="wizard-body">
+      {#await sourcesPanelImport()}
+        <BrutalLoadingState message="Loading sources…" rows={3} />
+      {:then { default: ConnectSourcesPanel }}
+        <ConnectSourcesPanel embedded wizardStep="sources" on:updated={onPanelUpdated} />
+      {:catch}
+        <BrutalErrorBanner title="Sources" message="Could not load this panel." />
         <div class="wizard-fallback-actions">
           <button type="button" class="btn btn-primary btn-sm" on:click={retryLoad}>Refresh and try again</button>
         </div>
