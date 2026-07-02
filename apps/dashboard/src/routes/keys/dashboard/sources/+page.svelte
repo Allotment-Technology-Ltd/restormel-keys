@@ -1,5 +1,4 @@
 <script lang="ts">
-  import ConnectGraphLibrary from "$lib/components/connect/ConnectGraphLibrary.svelte";
   import ConnectPipelineSlotRows from "$lib/components/connect/pipeline/ConnectPipelineSlotRows.svelte";
   import SignInNotice from "$lib/components/connect/SignInNotice.svelte";
   import SourceHealthCards from "$lib/components/connect/sources/SourceHealthCards.svelte";
@@ -10,7 +9,7 @@
   import { invalidateAll } from "$app/navigation";
   import { page } from "$app/stores";
   import { MVP_MODULE_DEFAULTS } from "$lib/module-flags-types";
-  import { INGEST_FLOW_HREF, RUNS_HREF } from "$lib/nav-config";
+  import { INGEST_FLOW_HREF, RUNS_HREF, GRAPHS_HREF } from "$lib/nav-config";
   import { pipelineWizardHref } from "$lib/connect/pipeline-config";
   import { formatSourceKind, pipelineStatusClass } from "$lib/connect/pipeline-utils";
   import type { ConnectGraphTarget } from "@restormel/contracts/connect";
@@ -195,6 +194,11 @@
               <a class="btn btn-outline btn-sm" href={INGEST_FLOW_HREF}>Open guided ingest flow →</a>
             {/if}
 
+            <!-- Spec §6 Decision A — the graph library is no longer embedded here;
+                 it lives at the standing graph home (GRAPHS_HREF). This Advanced
+                 disclosure repoints there so no connect/switch/manage capability is
+                 left stranded behind Advanced. (Flag-independent — deliberate, not
+                 byte-identical; the sources plug-point snapshot is re-baselined.) -->
             <div class="advanced-packs">
               <div class="section-head">
                 <h3 class="section-subtitle">Packs &amp; graphs</h3>
@@ -202,7 +206,7 @@
                   <span class="section-meta">Flow pack: {selectedPack.title}</span>
                 {/if}
               </div>
-              <ConnectGraphLibrary initialGraphs={panels.graphs} packs={panels.packs} />
+              <a class="btn btn-outline btn-sm" href={GRAPHS_HREF}>Manage graphs &amp; data store →</a>
             </div>
           </div>
         {/if}

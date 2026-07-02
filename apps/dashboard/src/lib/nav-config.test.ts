@@ -8,6 +8,8 @@ import {
   TESTING_NAV_ITEM,
   HOME_HREF,
   SOURCES_HREF,
+  GRAPHS_HREF,
+  JOURNEY_NAV_GROUPS,
   RUNS_HREF,
   CLAIMS_HREF,
   CLAIMS_MEMORY_HREF,
@@ -494,19 +496,48 @@ describe("RES-113 journey IA re-spine (onboardingJourney flag-gated)", () => {
     ]);
   });
 
-  it("flag ON — nav groups collapse to one tucked-away Settings group (design §3)", () => {
+  it("flag ON — nav groups collapse to one tucked-away Workspace group (spec §6 B/C)", () => {
     const groups = resolveNavGroupsForModuleFlags(ON);
-    expect(groups.map((g) => g.label)).toEqual(["Settings"]);
+    // Decision B: "Settings" → "Workspace" (ends the /settings personal collision).
+    expect(groups.map((g) => g.label)).toEqual(["Workspace"]);
     expect(groups[0].defaultOpen).toBe(false);
+    // Decision A/C: the standing graph home is a foundation sibling, after "Store".
     expect(groups[0].items.map((i) => i.label)).toEqual([
       "Providers",
       "Store",
+      "Graph & data store",
       "Routes",
       "Audit log",
       "Metrics",
     ]);
-    // No primary north-star surface leaks into the journey Settings group.
+    // The graph item points at the standing /graphs route.
+    expect(groups[0].items.map((i) => [i.label, i.href])).toContainEqual([
+      "Graph & data store",
+      GRAPHS_HREF,
+    ]);
+    // No primary north-star surface leaks into the journey Workspace group.
     expect(groups[0].items.map((i) => i.label)).not.toContain("Stamping desk");
+  });
+
+  it("spec §6 Decision A/B/C — JOURNEY_NAV_GROUPS is the relabelled Workspace group with the graph home", () => {
+    // Group label relabelled; graph item present with the decided noun; id unchanged
+    // (localStorage open-state keying + NavGroupId type stay stable).
+    expect(JOURNEY_NAV_GROUPS[0].id).toBe("foundation");
+    expect(JOURNEY_NAV_GROUPS[0].label).toBe("Workspace");
+    expect(JOURNEY_NAV_GROUPS[0].items.map((i) => [i.label, i.href])).toContainEqual([
+      "Graph & data store",
+      GRAPHS_HREF,
+    ]);
+    // The graph item sits directly after "Store".
+    const labels = JOURNEY_NAV_GROUPS[0].items.map((i) => i.label);
+    expect(labels[labels.indexOf("Store") + 1]).toBe("Graph & data store");
+  });
+
+  it("spec §6 Decision C — the graph home topbar title is 'Graph & data store'", () => {
+    expect(topbarTitle(GRAPHS_HREF)).toBe("Graph & data store");
+    // Flag-ON journey branch resolves it too (falls back to topbarTitle for the
+    // non-spine foundation route).
+    expect(resolveJourneyTopbarTitle(GRAPHS_HREF, ON)).toBe("Graph & data store");
   });
 
   it("Testing nav: OFF delegates to the testing flag; ON folds away (no primary destination)", () => {
@@ -611,11 +642,13 @@ describe("RES-113 PR-2 — resolveJourneyNav (state-derived journey nav)", () =>
     expect(shouldShowVerifyTab(sig())).toBe(false);
   });
 
-  it("Settings group (incl. Store) is present from S1, collapsed", () => {
+  it("Workspace group (incl. Store + graph home) is present from S1, collapsed", () => {
     const nav = resolveJourneyNav(sig(), ON);
-    expect(nav.groups.map((g) => g.label)).toEqual(["Settings"]);
+    expect(nav.groups.map((g) => g.label)).toEqual(["Workspace"]);
     expect(nav.groups[0].defaultOpen).toBe(false);
     expect(nav.groups[0].items.map((i) => i.label)).toContain("Store");
+    // The standing graph home rides the same foundation group (never lost).
+    expect(nav.groups[0].items.map((i) => i.label)).toContain("Graph & data store");
   });
 
   it("project switcher shows only when projectCount > 1", () => {
