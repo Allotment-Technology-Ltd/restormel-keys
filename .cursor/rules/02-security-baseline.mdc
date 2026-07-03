@@ -1,0 +1,13 @@
+---
+description: BYOK-safe defaults; no secrets in repo or logs; redaction and trust boundaries
+globs:
+alwaysApply: true
+---
+
+# Security baseline
+
+- **No committed secrets.** No live credentials or realistic secret strings in repo, docs, or screenshots.
+- **No raw key logging.** No logging of secrets in code, debug paths, or "temporary" logs.
+- **No unsafe placeholders** in docs or code that resemble real secrets; use obvious placeholders and document redaction in docs/governance/security-baseline.md.
+- **Redaction and data minimisation** for sensitive data in logs, docs, tests.
+- Before editing auth, secrets, or key handling: read docs/governance/security-baseline.md and docs/governance/threat-model-starter.md; apply trust-boundary thinking.

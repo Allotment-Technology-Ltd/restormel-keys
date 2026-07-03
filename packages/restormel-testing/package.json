@@ -1,0 +1,22 @@
+{
+  "name": "@restormel/testing-bundle",
+  "version": "0.1.8",
+  "description": "Meta-package: depends on @restormel/testing-cli and browser adaptor so consumers can add one devDependency line.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/restormel-testing"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@restormel/testing-browser-playwright": "workspace:*",
+    "@restormel/testing-cli": "workspace:*"
+  },
+  "scripts": {
+    "build": "node -e \"process.exit(0)\"",
+    "typecheck": "node -e \"process.exit(0)\""
+  }
+}

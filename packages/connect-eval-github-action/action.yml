@@ -1,0 +1,131 @@
+name: Restormel Connect Eval
+description: >
+  Context-regression CI gate for Restormel Connect: run `keys connect eval --baseline`
+  against a graph's quality report (remote, via gateway key) or a local counts document,
+  post/update ONE sticky PR comment with the regression diff table, and fail the check on
+  regression or quality-bar miss. Exit contract: 0 pass / 1 quality fail / 2 config error /
+  3 regression (warn mode downgrades 1 and 3 to 0, never 2).
+author: Restormel
+
+branding:
+  icon: shield
+  color: gray-dark
+
+inputs:
+  gateway_key:
+    description: >
+      Restormel gateway key (SECRET — pass `secrets.RESTORMEL_GATEWAY_KEY`). Required for
+      remote mode (evaluating a workspace's latest ingest run); leave empty when using
+      `counts_path` local mode. Never logged; forwarded to the CLI via env only.
+    required: false
+    default: ""
+  workspace:
+    description: Keys workspace id for remote mode (RESTORMEL_WORKSPACE_ID equivalent).
+    required: false
+    default: ""
+  project:
+    description: Keys project id for remote mode (optional narrowing).
+    required: false
+    default: ""
+  job_id:
+    description: Evaluate a specific ingest job id (default is the latest run with a quality report).
+    required: false
+    default: ""
+  counts_path:
+    description: >
+      Local mode: path (relative to working_directory) to a counts JSON document
+      ({ok,weak,unsupported,...} or a saved quality report). Mutually exclusive with remote mode.
+    required: false
+    default: ""
+  baseline_path:
+    description: >
+      Path to a committed baseline (from `keys connect eval --save-baseline`). When set,
+      the action diffs against it and exits 3 on regression; without it only the absolute
+      G2 bar is enforced.
+    required: false
+    default: ""
+  tolerance:
+    description: Allowed ok_pct / trust_score drop in points before flagging a regression (CLI default 1).
+    required: false
+    default: ""
+  site_base:
+    description: Restormel site origin for remote mode (default https://restormel.dev).
+    required: false
+    default: ""
+  warn_only:
+    description: >
+      "true" — non-blocking warn mode: quality fail (1) and regression (3) are reported in
+      the summary and sticky comment but the step exits 0. Config errors (2) still fail.
+    required: false
+    default: "false"
+  github_token:
+    description: >
+      Token for the sticky PR comment (pass `secrets.GITHUB_TOKEN`; needs pull-requests:
+      write). Leave empty to skip commenting. Works against any GitHub-compatible issues
+      API (GITHUB_API_URL), including Forgejo.
+    required: false
+    default: ""
+  sticky_comment:
+    description: '"true" (default) to post/update the single marker-keyed PR comment; "false" to disable.'
+    required: false
+    default: "true"
+  comment_discriminator:
+    description: >
+      Optional marker suffix so several gates can each keep their own sticky comment on one
+      PR (e.g. "philosophy-starter").
+    required: false
+    default: ""
+  pr_number:
+    description: Pull request number override (defaults to the workflow event's pull_request.number).
+    required: false
+    default: ""
+  working_directory:
+    description: Subdirectory of the repository to run from (relative to GITHUB_WORKSPACE).
+    required: false
+    default: "."
+  cli_js:
+    description: >
+      Path to the built keys CLI entry (dist/index.js of @restormel/keys-cli). Default
+      resolves the monorepo sibling packages/cli/dist/index.js relative to this action —
+      build it first (pnpm --filter @restormel/keys-cli run build).
+    required: false
+    default: ""
+
+outputs:
+  verdict:
+    description: pass, quality_fail, regression, config_error, or error
+    value: ${{ steps.exec.outputs.verdict }}
+  exit_code:
+    description: Raw `keys connect eval` exit code (0/1/2/3) before any warn-mode downgrade
+    value: ${{ steps.exec.outputs.exit_code }}
+  regression:
+    description: The string "true" when the baseline diff flagged a regression
+    value: ${{ steps.exec.outputs.regression }}
+  commented:
+    description: The string "true" when the sticky PR comment was created or updated
+    value: ${{ steps.exec.outputs.commented }}
+
+runs:
+  using: composite
+  steps:
+    - id: exec
+      shell: bash
+      env:
+        RESTORMEL_CONNECT_EVAL_MAIN_JS: ${{ github.action_path }}/dist/main.js
+        RESTORMEL_CONNECT_EVAL_DEFAULT_CLI_JS: ${{ github.action_path }}/../cli/dist/index.js
+        RESTORMEL_CONNECT_EVAL_CLI_JS: ${{ inputs.cli_js }}
+        RESTORMEL_GATEWAY_KEY: ${{ inputs.gateway_key }}
+        RESTORMEL_CONNECT_EVAL_WORKSPACE: ${{ inputs.workspace }}
+        RESTORMEL_CONNECT_EVAL_PROJECT: ${{ inputs.project }}
+        RESTORMEL_CONNECT_EVAL_JOB: ${{ inputs.job_id }}
+        RESTORMEL_CONNECT_EVAL_COUNTS_PATH: ${{ inputs.counts_path }}
+        RESTORMEL_CONNECT_EVAL_BASELINE_PATH: ${{ inputs.baseline_path }}
+        RESTORMEL_CONNECT_EVAL_TOLERANCE: ${{ inputs.tolerance }}
+        RESTORMEL_CONNECT_EVAL_SITE_BASE: ${{ inputs.site_base }}
+        RESTORMEL_CONNECT_EVAL_WARN_ONLY: ${{ inputs.warn_only }}
+        RESTORMEL_CONNECT_EVAL_GITHUB_TOKEN: ${{ inputs.github_token }}
+        RESTORMEL_CONNECT_EVAL_STICKY_COMMENT: ${{ inputs.sticky_comment }}
+        RESTORMEL_CONNECT_EVAL_COMMENT_DISCRIMINATOR: ${{ inputs.comment_discriminator }}
+        RESTORMEL_CONNECT_EVAL_PR_NUMBER: ${{ inputs.pr_number }}
+        RESTORMEL_CONNECT_EVAL_WORKING_DIRECTORY: ${{ inputs.working_directory }}
+      run: node "$RESTORMEL_CONNECT_EVAL_MAIN_JS"

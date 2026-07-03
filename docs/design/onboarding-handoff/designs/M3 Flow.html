@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — M3 Flow (own your stack)</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root {
+    --brut-ink:#0c0c0c; --brut-white:#fffef0; --brut-canvas:#f3ead0; --brut-neon:#ffd600;
+    --brut-blue:#1a3f8a; --brut-coral:#d94e47; --brut-font:"Space Mono",ui-monospace,Menlo,monospace;
+    --hairline:#d8cfb0; --teal-ink:#1c7c72; --amber-fg:#92400e;
+  }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; color: #4a4538; max-width: 72ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+  .arch { margin: 9px 0 0; font-family: var(--font-mono); font-size: 11px; color: #5a5446; line-height: 1.65; max-width: 72ch; }
+  .arch .t { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #221f18; }
+  .arch .aha { color: var(--teal-ink); }
+
+  .scr { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); overflow: hidden; }
+  .led-strip { display: flex; border-bottom: 2px solid var(--color-ink); background: var(--color-surface); }
+  .led-cell { flex: 1; padding: 9px 12px; border-right: 1.5px solid var(--hairline); display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .led-cell:last-child { border-right: none; }
+  .led-cell .d { width: 16px; height: 16px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-size: 9px; flex: 0 0 auto; }
+  .led-cell.done { color: var(--color-ink); } .led-cell.done .d { background: var(--signal-teal); }
+  .led-cell.now { color: var(--color-ink); background: color-mix(in oklab, var(--color-yellow) 22%, var(--color-surface)); } .led-cell.now .d { background: var(--color-yellow); }
+  .led-cell.lock .d { border-style: dashed; color: var(--color-ink-faint); }
+
+  .body { padding: 24px 26px 26px; }
+  .h-eyebrow { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 9px; }
+  .h-title { font-family: var(--font-display); font-weight: 900; font-size: 34px; line-height: 0.94; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 10px; }
+  .h-desc { font-family: var(--font-body); font-size: 14px; line-height: 1.55; color: var(--color-ink-muted); margin: 0 0 18px; max-width: 54ch; }
+  .h-desc b { color: var(--color-ink); font-weight: 600; }
+
+  /* neutral, non-alarming "current state" banner */
+  .cur { display: flex; align-items: center; gap: 11px; border: 2px solid var(--color-ink); border-left: 8px solid var(--color-blue); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 12px 15px; margin-bottom: 18px; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; }
+  .cur b { color: var(--color-ink); }
+
+  .sec-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 2px solid var(--color-ink); padding-bottom: 8px; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; }
+  .sec-h .ghost { font-weight: 700; font-size: 10px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: 2px 2px 0 var(--color-ink); padding: 6px 10px; cursor: pointer; letter-spacing: 0.04em; }
+
+  .db-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .db { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 14px 10px; text-align: center; font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; cursor: pointer; }
+  .db.sel { background: var(--color-yellow); }
+  .db small { display: block; font-weight: 400; font-size: 9px; color: var(--color-ink-faint); margin-top: 4px; letter-spacing: 0.02em; }
+  .db.sel small { color: var(--color-ink); }
+  .conn { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 6px; }
+  .fld { display: flex; flex-direction: column; gap: 6px; }
+  .fld label { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .fld .in { border: 2px solid var(--color-ink); background: var(--color-bg); padding: 11px 12px; font-family: var(--font-mono); font-size: 12px; color: var(--color-ink-faint); }
+  .row2 { display: flex; gap: 12px; } .row2 .fld { flex: 1; }
+
+  /* what-we-found + safe data decision */
+  .found { display: flex; align-items: center; gap: 12px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 13px 15px; margin-bottom: 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; }
+  .found .fic { width: 28px; height: 28px; flex: 0 0 auto; border: 2px solid var(--color-ink); display: grid; place-items: center; font-weight: 900; font-size: 14px; background: var(--signal-teal); }
+  .found b { color: var(--color-ink); }
+  .prompt { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ink-muted); margin: 0 0 12px; }
+  .dec { display: grid; grid-template-columns: auto 1fr; gap: 12px; border: 2px solid var(--color-ink); background: var(--color-bg); padding: 13px 15px; margin-bottom: 10px; cursor: pointer; }
+  .dec.on { background: color-mix(in oklab, var(--signal-teal) 12%, var(--color-surface)); box-shadow: var(--shadow-sm); }
+  .dec .rd { width: 18px; height: 18px; border-radius: 999px; border: 2px solid var(--color-ink); margin-top: 1px; display: grid; place-items: center; flex: 0 0 auto; }
+  .dec.on .rd { background: var(--signal-teal); } .dec.on .rd::after { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--color-ink); }
+  .dec .dt { font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .dec .ds { font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-faint); margin-top: 3px; line-height: 1.45; }
+  .safe { display: flex; gap: 10px; border: 2px solid var(--color-ink); border-left: 8px solid var(--signal-teal); background: color-mix(in oklab, var(--signal-teal) 9%, var(--color-surface)); padding: 12px 14px; margin: 4px 0 0; font-family: var(--font-mono); font-size: 11px; line-height: 1.55; }
+  .safe b { color: var(--teal-ink); }
+
+  /* stage table */
+  .st-head { display: grid; grid-template-columns: 1fr 230px 150px; gap: 14px; background: var(--color-ink); color: var(--color-surface); font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 10px 16px; border: 2px solid var(--color-ink); border-bottom: none; }
+  .st-tbl { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); }
+  .st-row { display: grid; grid-template-columns: 1fr 230px 150px; gap: 14px; align-items: center; padding: 12px 16px; border-bottom: 1.5px solid var(--hairline); }
+  .st-row:last-child { border-bottom: none; }
+  .st-name { font-family: var(--font-display); font-weight: 900; font-size: 18px; text-transform: uppercase; line-height: 1; }
+  .st-name small { display: block; font-family: var(--font-mono); font-size: 8.5px; font-weight: 400; color: var(--color-ink-faint); margin-top: 3px; letter-spacing: 0.02em; }
+  .msel { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 2px solid var(--color-ink); background: var(--color-bg); box-shadow: 2px 2px 0 var(--color-ink); padding: 8px 11px; font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; }
+  .msel .cv { color: var(--color-ink-faint); }
+  .src-cell { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .kchip { border: 1.5px solid var(--color-ink); background: var(--color-surface); font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 3px 7px; }
+  .rec { display: inline-flex; align-items: center; gap: 5px; border: 1.5px solid var(--signal-teal); color: var(--teal-ink); font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 7px; }
+
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 2px solid var(--color-ink); padding-top: 16px; margin-top: 18px; }
+  .foot-note { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); max-width: 44ch; line-height: 1.45; }
+  .btn-cont { display: inline-flex; align-items: center; gap: 9px; background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); font-family: var(--font-mono); font-size: 14px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 13px 22px; text-decoration: none; white-space: nowrap; }
+  .btn-sec2 { display: inline-flex; align-items: center; gap: 7px; background: var(--color-surface); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 12px 16px; text-decoration: none; cursor: pointer; }
+  .save-pill { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--teal-ink); }
+  .save-pill .sq { width: 9px; height: 9px; background: var(--signal-teal); border: 1.5px solid var(--color-ink); }
+
+  /* production keys (M3 step 2) */
+  .key-list { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); margin-bottom: 14px; }
+  .key-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 16px; align-items: center; padding: 14px 16px; border-bottom: 1.5px solid var(--hairline); }
+  .key-prov { font-family: var(--font-display); font-weight: 900; font-size: 18px; text-transform: uppercase; line-height: 1; }
+  .key-prov small { display: block; font-family: var(--font-mono); font-size: 8.5px; font-weight: 400; color: var(--color-ink-faint); margin-top: 3px; letter-spacing: 0.02em; text-transform: uppercase; }
+  .key-mask { font-family: var(--font-mono); font-size: 11.5px; color: var(--color-ink-muted); }
+  .key-caps { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .live-chip { display: inline-flex; align-items: center; gap: 5px; border: 1.5px solid var(--signal-teal); color: var(--teal-ink); font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 4px 9px; white-space: nowrap; }
+  .addkey-row { display: flex; align-items: center; gap: 9px; padding: 13px 16px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; color: var(--color-ink); }
+</style>
+</head>
+<body>
+
+<!-- ════════════ M3 · STEP 1A — CONNECT A DATABASE (safe) ════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:720px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M3 · step 1a</span><span class="name">Connect a database — a safe, read-only check</span></div>
+    <p class="sub">Rethought: connecting is <b>not</b> a data move. This step only proves Restormel can reach your database — <b>nothing is read into it, copied, or overwritten</b>. The data decision is a separate, explicit step (1b).</p>
+    <p class="arch"><span class="t">AHA-min:</span> <span class="aha">a verified connection to your own DB.</span> · <span class="t">Initial / Learning:</span> skip — managed store is fine. · <span class="t">Advanced:</span> Surreal / Neo / pgvector, your region &amp; backups.</p>
+  </div>
+  <div class="scr" data-screen-label="M3 step 1a — Connect a database">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell done"><span class="d">✓</span>M2</div>
+      <div class="led-cell now"><span class="d">▸</span>M3 · Connect DB</div>
+      <div class="led-cell lock"><span class="d">○</span>M4</div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M3 · own your stack</p>
+      <h1 class="h-title">Connect a database</h1>
+      <div class="cur"><span>ⓘ</span><span>Your graph lives in the <b>Restormel managed store</b> today · 1,204 ideas · trust 100. Connecting your own DB doesn't move it — <b>you'll choose what happens to the data next</b>.</span></div>
+
+      <div class="sec-h">Choose an engine</div>
+      <div class="db-grid">
+        <div class="db sel">SurrealDB<small>graph + vector</small></div>
+        <div class="db">Neo4j<small>graph</small></div>
+        <div class="db">Postgres<small>+ pgvector</small></div>
+        <div class="db">Other<small>bring a URL</small></div>
+      </div>
+
+      <div class="conn">
+        <div class="fld"><label>Connection URL</label><div class="in">wss://db.acme.internal:8000/rpc</div></div>
+        <div class="row2">
+          <div class="fld"><label>Namespace</label><div class="in">acme</div></div>
+          <div class="fld"><label>Database</label><div class="in">prod_graph</div></div>
+        </div>
+        <div class="fld"><label>Credentials</label><div class="in">••••••••  ·  stored encrypted</div></div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note">Read-only check — we only confirm we can reach it. Nothing is written.</span>
+        <a class="btn-cont" href="#">Connect &amp; verify →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ M3 · STEP 1B — WHAT WE FOUND (safe data decision) ════════════ -->
+<div class="frame" style="position:absolute; left:840px; top:80px; width:780px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M3 · step 1b</span><span class="name">What we found → a non-destructive choice</span></div>
+    <p class="sub">The case you flagged: the target DB <b>already contains a graph</b>. So we inspect it, say plainly what's there, and offer an <b>explicit, reversible choice</b> — never an automatic overwrite. (If the DB were empty, this collapses to one line: “Empty — we'll copy your graph in.”)</p>
+    <p class="arch"><span class="t">AHA-min:</span> <span class="aha">your graph served from your DB, safely.</span> · <span class="t">Learning:</span> rarely seen — most stay managed. · <span class="t">Advanced:</span> merge / reuse / isolate existing graphs across environments.</p>
+  </div>
+  <div class="scr" data-screen-label="M3 step 1b — What we found">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell done"><span class="d">✓</span>M2</div>
+      <div class="led-cell now"><span class="d">▸</span>M3 · Data choice</div>
+      <div class="led-cell lock"><span class="d">○</span>M4</div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M3 · own your stack</p>
+      <h1 class="h-title">This database isn't empty</h1>
+
+      <div class="found">
+        <span class="fic">✓</span>
+        <span>Connected to <b>SurrealDB · acme/prod_graph</b>. It already holds a graph — <b>4,210 nodes</b>, last write 3 days ago.</span>
+      </div>
+
+      <p class="prompt">Choose what happens — nothing here is destructive</p>
+      <div class="dec on">
+        <span class="rd"></span>
+        <div><div class="dt">Use the graph that's already here</div><div class="ds">Restormel serves the existing 4,210 nodes. Your managed graph stays as a separate copy, untouched.</div></div>
+      </div>
+      <div class="dec">
+        <span class="rd"></span>
+        <div><div class="dt">Add my managed graph alongside it</div><div class="ds">Copy your 1,204 ideas in next to the existing data. Nothing is overwritten; duplicates are flagged, not merged.</div></div>
+      </div>
+      <div class="dec">
+        <span class="rd"></span>
+        <div><div class="dt">Keep them separate</div><div class="ds">Leave this graph alone and put yours in a new namespace (e.g. acme/restormel).</div></div>
+      </div>
+
+      <div class="safe"><span>🔒</span><span><b>Nothing is deleted or overwritten.</b> Your managed copy remains until you confirm the switch — and you can switch back at any time.</span></div>
+
+      <div class="foot">
+        <span class="foot-note">You're choosing where reads come from — reversible.</span>
+        <a class="btn-cont" href="#">Use this graph →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ M3 · STEP 2 — PRODUCTION KEYS (forward-looking) ════════════ -->
+<div class="frame" style="position:absolute; left:1660px; top:80px; width:820px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M3 · step 2</span><span class="name">Bring your production keys — what the models run on</span></div>
+    <p class="sub">Corrected ordering: you don't pick ingestion models <b>here</b> — that happens at ingest (M1), before a run. This screen binds the <b>provider keys</b> your stack runs on. Keys are forward-looking bindings, safe to set after ingest; the models that use them are chosen the next time you ingest.</p>
+    <p class="arch"><span class="t">AHA-min:</span> <span class="aha">your own keys powering your own stack.</span> · <span class="t">Initial / Learning:</span> the M1 key already covers everything — skip. · <span class="t">Advanced:</span> rotate to production-tier keys, add a cross-check provider, scope per environment.</p>
+  </div>
+  <div class="scr" data-screen-label="M3 step 2 — Production keys">
+    <div class="led-strip">
+      <div class="led-cell done"><span class="d">✓</span>M0</div>
+      <div class="led-cell done"><span class="d">✓</span>M1</div>
+      <div class="led-cell done"><span class="d">✓</span>M2</div>
+      <div class="led-cell now"><span class="d">▸</span>M3 · Keys</div>
+      <div class="led-cell lock"><span class="d">○</span>M4</div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M3 · own your stack</p>
+      <h1 class="h-title">Bring your production keys</h1>
+
+      <div class="sec-h">Keys bound to this stack</div>
+      <div class="key-list">
+        <div class="key-row">
+          <div class="key-prov">Together<small>multi-model</small></div>
+          <div>
+            <div class="key-mask">sk-tog-••••••3f9a · carried from M1</div>
+            <div class="key-caps"><span class="kchip">Extract</span><span class="kchip">Relate</span><span class="kchip">Group</span><span class="kchip">Remediate</span></div>
+          </div>
+          <span class="live-chip">● Live</span>
+        </div>
+        <div class="key-row">
+          <div class="key-prov">Voyage<small>embeddings</small></div>
+          <div>
+            <div class="key-mask">sk-voy-••••••b210 · carried from M1</div>
+            <div class="key-caps"><span class="kchip">Embed</span></div>
+          </div>
+          <span class="live-chip">● Live</span>
+        </div>
+        <div class="key-row">
+          <div class="key-prov">Anthropic<small>cross-check</small></div>
+          <div>
+            <div class="key-mask">sk-ant-••••••c7d1 · added for validation</div>
+            <div class="key-caps"><span class="kchip">Validate</span></div>
+          </div>
+          <span class="live-chip">● Live</span>
+        </div>
+        <div class="addkey-row">+ Add a production key</div>
+      </div>
+
+      <div class="safe"><span>↻</span><span>Which <b>model</b> each stage uses is chosen at <b>ingest</b> — these keys are what those models run on. Change a model later and it applies to your <b>next ingest</b>, quietly.</span></div>
+
+      <div class="foot">
+        <span class="save-pill"><span class="sq"></span>3 keys bound · autosaved</span>
+        <a class="btn-cont" href="#">Continue → M4</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

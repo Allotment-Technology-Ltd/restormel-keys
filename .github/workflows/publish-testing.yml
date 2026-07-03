@@ -1,0 +1,72 @@
+# Publish @restormel/testing-* packages to npm (tag testing-v* or manual dispatch).
+# Does not publish Keys packages. Use tag keys-v* → publish.yml for Keys train.
+# MIRROR DEDUPE (PBI #248): canonical publisher is .forgejo/workflows/publish-testing.yml
+# (same `testing-v*` tag). `push: tags` removed so a mirror tag-push no longer re-fires this
+# copy → avoids the double npm publish race; workflow_dispatch retained for manual recovery.
+name: Publish Testing packages
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "If true, run publish --dry-run only."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-testing-${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: vars.RESTORMEL_PUBLISH_TESTING == 'true' || github.event_name == 'workflow_dispatch'
+    env:
+      TESTING_PUBLISH_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: Validate testing-github-action action.yml (YAML)
+        run: bash scripts/validate-testing-github-action-yml.sh
+
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
+
+      - name: Build @restormel/keys-tokens
+        run: pnpm --filter @restormel/keys-tokens run build
+
+      - name: Build testing packages
+        run: pnpm run build:testing-packages
+
+      - name: Install Playwright Chromium (browser-playwright tests)
+        run: pnpm --filter @restormel/testing-browser-playwright exec playwright install chromium
+
+      - name: Test @restormel/testing-*
+        run: pnpm run test:testing
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN secret is not set."
+            exit 1
+          fi
+          printf '%s\n' "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          EXTRA=""
+          if [ "${TESTING_PUBLISH_DRY_RUN}" = "true" ]; then
+            EXTRA="--dry-run"
+            echo "Dry run only."
+          fi
+          pnpm publish -r --access public --no-git-checks --filter "@restormel/testing-*" ${EXTRA}

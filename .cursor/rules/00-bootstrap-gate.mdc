@@ -1,0 +1,13 @@
+---
+description: Phase 00 bootstrap constraints vs current repo phase (see STATUS.md)
+globs:
+alwaysApply: true
+---
+
+# Bootstrap gate
+
+- **Current phase:** See [STATUS.md](../../STATUS.md). When STATUS lists **Phase 01 — Implementation (gate lifted)**, normal product work in `packages/`, `apps/`, and `docs/` is in scope; this rule is **not** a blanket ban on dashboard features.
+- **Phase 00 (bootstrap only), when active:** Do not add: provider adapters, routing logic, billing, key wallet, hosted proxy/gateway, dashboard app logic.
+- **Phase 00 allowed only:** scaffolding, docs, rules, skills, subagents, scripts, workflows, templates, placeholders.
+- **Plan Mode** required before: changes touching >3 files, CI/workflow changes, rule/skill/subagent work, security-sensitive or repo-structure changes.
+- If STATUS still indicates bootstrap and the change adds **net-new** product or business logic beyond the current phase, **stop and flag** until STATUS and maintainers agree the gate is lifted.

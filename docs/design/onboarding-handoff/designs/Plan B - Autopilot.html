@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="design_doc_mode" content="canvas">
+<title>Plan B — Autopilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-bg: #f3ead0; --color-bg-deep: #e8dfbf; --color-surface: #fffef0;
+    --color-yellow: #ffd600; --color-yellow-dark: #e6bf00; --color-blue: #1a3f8a; --color-on-blue: #fffef0;
+    --color-ink: #0c0c0c; --color-ink-muted: #3a3530; --color-ink-faint: #7a7060;
+    --signal-teal: #2ec4b6; --amber-insight: #ffb84d; --amber-text: #a9741f;
+    --coral-alert: #f25c54; --coral-alert-active: #d94e47; --violet-depth: #9d84b7;
+    --shadow-sm: 3px 3px 0 var(--color-ink); --shadow-md: 5px 5px 0 var(--color-ink); --shadow-lg: 7px 7px 0 var(--color-ink);
+    --font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+    --font-mono: "Space Mono", ui-monospace, Menlo, monospace;
+    --font-body: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-body); color: var(--color-ink); -webkit-font-smoothing: antialiased; }
+
+  .frame { position: absolute; }
+  .flabel { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-family: var(--font-mono); font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; cursor: grab; color: var(--color-ink); }
+  .flabel .num { color: var(--color-ink-faint); }
+  .phase { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; border: 1.5px solid var(--color-ink); }
+  .phase.start { background: var(--color-yellow); color: var(--color-ink); }
+  .phase.build { background: var(--amber-insight); color: var(--color-ink); }
+  .phase.trust { background: var(--signal-teal); color: var(--color-ink); }
+  .phase.connect { background: var(--color-blue); color: var(--color-on-blue); }
+  .phase.manage { background: var(--violet-depth); color: var(--color-ink); }
+
+  /* screen window */
+  .swin { border: 2px solid var(--color-ink); box-shadow: var(--shadow-lg); background: var(--color-surface); overflow: hidden; }
+  .stop { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-bottom: 2px solid var(--color-ink); background: var(--color-bg-deep); }
+  .brand { display: flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-weight: 700; font-size: 13px; }
+  .sq { width: 15px; height: 15px; background: var(--color-yellow); border: 2px solid var(--color-ink); }
+  .stop .st { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-ink-faint); }
+  .sbody { padding: 26px 26px 28px; }
+
+  .ey { margin: 0 0 12px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--signal-teal); }
+  .ey.amber { color: var(--amber-text); }
+  .ey.ink { color: var(--color-ink-faint); }
+  .ey.violet { color: #7c5fa0; }
+  .ey.blue { color: var(--color-blue); }
+  .h1 { margin: 0 0 14px; font-family: var(--font-display); font-weight: 900; font-size: 38px; line-height: 0.94; letter-spacing: 0.01em; text-transform: uppercase; }
+  .lead { margin: 0 0 18px; font-size: 15px; line-height: 1.5; color: var(--color-ink-muted); }
+  .row { display: flex; gap: 12px; align-items: center; }
+  .wrap { flex-wrap: wrap; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; padding: 12px 18px; border: 2px solid var(--color-ink); background: var(--color-surface); color: var(--color-ink); }
+  .btn.primary { background: var(--color-yellow); box-shadow: var(--shadow-sm); }
+  .btn.ghost { background: transparent; }
+  .tag { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 7px; border: 1.5px solid var(--color-ink); background: var(--color-surface); }
+  .tag.rec { background: color-mix(in oklab, var(--signal-teal) 24%, var(--color-surface)); }
+
+  /* run transcript */
+  .run { border: 1.5px solid var(--color-ink); background: var(--color-bg); }
+  .rl { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1.5px solid color-mix(in oklab, var(--color-ink) 20%, transparent); font-family: var(--font-mono); font-size: 13px; }
+  .rl:last-child { border-bottom: none; }
+  .rl .ic { width: 18px; text-align: center; font-weight: 700; }
+  .rl small { margin-left: auto; color: var(--color-ink-faint); font-size: 11px; }
+  .rl.done .ic { color: var(--signal-teal); }
+  .rl.active { background: color-mix(in oklab, var(--amber-insight) 16%, var(--color-bg)); }
+  .rl.active .ic { color: var(--amber-text); }
+  .rl.wait { color: var(--color-ink-faint); }
+  .rail { height: 10px; border: 1.5px solid var(--color-ink); background: var(--color-surface); margin-top: 14px; }
+  .rail > span { display: block; height: 100%; background: var(--amber-insight); }
+
+  /* plan */
+  .plan { border: 1.5px solid var(--color-ink); }
+  .pg { display: flex; align-items: center; gap: 8px; padding: 9px 14px; background: var(--color-ink); color: var(--color-surface); font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; }
+  .pg .pgsq { width: 9px; height: 9px; border: 1.5px solid var(--color-surface); }
+  .ps { display: flex; gap: 11px; align-items: center; padding: 12px 14px; border-bottom: 1.5px solid color-mix(in oklab, var(--color-ink) 16%, transparent); font-size: 13.5px; }
+  .ps:last-child { border-bottom: none; }
+  .ps .pn { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); width: 14px; flex: 0 0 auto; }
+  .ps .px { margin-left: auto; }
+  .needs { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; padding: 13px 15px; border: 1.5px dashed var(--color-ink); background: color-mix(in oklab, var(--color-ink) 4%, var(--color-surface)); }
+  .needs .nb { font-family: var(--font-mono); font-size: 11px; }
+  .needs .nb b { font-family: var(--font-display); font-size: 22px; font-weight: 900; display: block; line-height: 1; margin-bottom: 3px; }
+
+  /* decision */
+  .dec { border: 2px solid var(--color-ink); background: color-mix(in oklab, var(--amber-insight) 14%, var(--color-surface)); box-shadow: var(--shadow-sm); padding: 16px; }
+  .dec .dh { display: flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+  .dec .wic { width: 22px; height: 22px; border: 2px solid var(--color-ink); background: var(--amber-insight); display: grid; place-items: center; font-weight: 900; flex: 0 0 auto; }
+  .opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1.5px solid var(--color-ink); background: var(--color-surface); margin-top: 8px; font-size: 13px; line-height: 1.4; }
+  .opt.sel { background: color-mix(in oklab, var(--signal-teal) 16%, var(--color-surface)); }
+  .radio { width: 15px; height: 15px; border: 2px solid var(--color-ink); border-radius: 50%; flex: 0 0 auto; margin-top: 1px; display: grid; place-items: center; }
+  .radio.on::after { content: ""; width: 7px; height: 7px; background: var(--color-ink); border-radius: 50%; }
+
+  /* trust */
+  .trust { display: flex; align-items: baseline; gap: 14px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 14px 18px; }
+  .trust b { font-family: var(--font-display); font-weight: 900; font-size: 46px; line-height: 1; }
+  .trust .d { font-family: var(--font-mono); font-size: 12px; color: var(--signal-teal); font-weight: 700; }
+  .trust .l { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-ink-faint); margin-left: auto; }
+  .flag { display: flex; gap: 10px; align-items: center; padding: 11px 13px; border: 1.5px solid var(--color-ink); border-left: 6px solid var(--amber-insight); background: var(--color-surface); margin-top: 8px; font-size: 13px; }
+  .flag .v { margin-left: auto; font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; text-transform: uppercase; padding: 3px 7px; border: 1.5px solid var(--color-ink); flex: 0 0 auto; }
+  .flag .v.drop { background: var(--coral-alert); color: var(--color-surface); }
+  .flag .v.keep { background: color-mix(in oklab, var(--signal-teal) 22%, var(--color-surface)); }
+
+  /* proof + connection */
+  .proof { border: 2px solid var(--color-ink); background: var(--color-bg); padding: 16px; }
+  .proof .q { font-family: var(--font-mono); font-size: 12px; font-weight: 700; margin: 0 0 9px; }
+  .proof .q::before { content: "Q "; color: var(--signal-teal); }
+  .proof .a { font-size: 13.5px; line-height: 1.5; margin: 0 0 11px; }
+  .cites { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cite { font-family: var(--font-mono); font-size: 10px; padding: 3px 8px; border: 1.5px solid var(--color-ink); background: var(--color-surface); }
+  .cite::before { content: "↗ "; }
+  .conn { display: flex; align-items: center; gap: 12px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 13px 15px; }
+  .conn .cn { font-family: var(--font-mono); font-weight: 700; font-size: 13px; }
+  .conn .endpoint { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-muted); margin-left: auto; }
+  .dot { width: 9px; height: 9px; border: 1.5px solid var(--color-ink); display: inline-block; flex: 0 0 auto; }
+  .dot.live { background: var(--signal-teal); }
+
+  /* mission */
+  .mission { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-md); padding: 18px; }
+  .mission .mh { display: flex; align-items: center; gap: 11px; margin-bottom: 4px; }
+  .mission .mt { font-family: var(--font-display); font-weight: 900; font-size: 30px; text-transform: uppercase; line-height: 1; }
+  .livepill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 9px; border: 1.5px solid var(--color-ink); background: color-mix(in oklab, var(--signal-teal) 20%, var(--color-surface)); }
+  .stat { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-muted); margin-top: 8px; }
+  .spark { display: flex; align-items: flex-end; gap: 4px; height: 40px; margin: 16px 0 4px; }
+  .spark i { width: 8px; background: var(--signal-teal); border: 1.5px solid var(--color-ink); border-bottom: none; }
+  .intent { display: flex; align-items: center; gap: 10px; border: 2px solid var(--color-ink); background: var(--color-bg); padding: 12px 14px; margin-top: 14px; font-family: var(--font-mono); font-size: 13px; color: var(--color-ink-faint); }
+  .intent .ar { margin-left: auto; font-weight: 700; color: var(--color-ink); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .chip { font-family: var(--font-mono); font-size: 11px; padding: 5px 10px; border: 1.5px solid var(--color-ink); background: var(--color-surface); }
+
+  /* input mock */
+  .inp { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 17px 18px; font-size: 17px; line-height: 1.45; }
+  .inp .cur { display: inline-block; width: 2px; height: 19px; background: var(--color-ink); margin-left: 1px; vertical-align: -3px; animation: blink 1.05s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .parsed { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .pchip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; padding: 5px 10px; border: 1.5px solid var(--color-ink); background: var(--color-surface); }
+  .pchip .k { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-ink-faint); }
+
+  /* annotation */
+  .ann { margin-top: 16px; border: 1.5px solid var(--color-ink); background: var(--color-surface); padding: 14px 16px; }
+  .ann .at { margin: 0 0 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--coral-alert-active); }
+  .ann p { margin: 0 0 8px; font-size: 13px; line-height: 1.5; color: var(--color-ink-muted); }
+  .ann p:last-child { margin-bottom: 0; }
+  .ann b { color: var(--color-ink); }
+
+  /* intro */
+  .intro { border: 2px solid var(--color-ink); background: var(--color-yellow); box-shadow: var(--shadow-lg); padding: 28px; }
+  .intro .k { font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; margin: 0 0 14px; }
+  .intro h1 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 900; font-size: 78px; line-height: 0.86; text-transform: uppercase; }
+  .intro .sub { font-family: var(--font-display); font-weight: 700; font-size: 23px; text-transform: uppercase; letter-spacing: 0.01em; margin: 0 0 18px; }
+  .intro .body { font-size: 15px; line-height: 1.55; margin: 0 0 18px; }
+  .intro .vs { border: 2px solid var(--color-ink); background: var(--color-surface); padding: 13px 15px; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; }
+  .intro .vs b { font-weight: 700; }
+  .legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+  .readhint { margin-top: 16px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* contrast */
+  .ctable { border: 2px solid var(--color-ink); box-shadow: var(--shadow-lg); background: var(--color-surface); overflow: hidden; }
+  .crow { display: grid; grid-template-columns: 150px 1fr 1fr; border-bottom: 1.5px solid var(--color-ink); }
+  .crow:last-child { border-bottom: none; }
+  .crow > div { padding: 13px 15px; font-size: 13.5px; line-height: 1.4; border-right: 1.5px solid color-mix(in oklab, var(--color-ink) 20%, transparent); }
+  .crow > div:last-child { border-right: none; }
+  .crow .rk { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-ink-faint); background: var(--color-bg); }
+  .chead > div { background: var(--color-ink); color: var(--color-surface); font-family: var(--font-display); font-weight: 800; font-size: 19px; text-transform: uppercase; }
+  .chead .b { background: var(--color-yellow); color: var(--color-ink); }
+  .crow .b { background: color-mix(in oklab, var(--color-yellow) 14%, var(--color-surface)); font-weight: 500; }
+  .measure { margin-top: 16px; border: 2px solid var(--color-ink); background: var(--color-ink); color: var(--color-surface); padding: 15px 17px; }
+  .measure .mk { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--amber-insight); margin: 0 0 9px; }
+  .measure .mm { display: flex; gap: 8px; flex-wrap: wrap; }
+  .measure .mm span { font-family: var(--font-mono); font-size: 11px; padding: 4px 9px; border: 1.5px solid var(--color-surface); }
+  .measure .note { margin: 11px 0 0; font-size: 12.5px; line-height: 1.5; color: color-mix(in oklab, var(--color-surface) 80%, var(--color-ink)); }
+</style>
+</head>
+<body>
+
+  <!-- INTRO -->
+  <div class="frame" style="left: 80px; top: 120px; width: 560px;" data-screen-label="Plan B Intro">
+    <div class="flabel" data-drags-parent="1"><span class="num">PLAN B</span> · THE BET</div>
+    <div class="intro">
+      <p class="k">Restormel · A/B Direction</p>
+      <h1>Auto&shy;pilot</h1>
+      <p class="sub">You brief an operator — not a tool</p>
+      <p class="body">A clean-sheet alternative to the guided journey. You state the goal <b>once</b>, approve a plan, and the system runs <b>build → trust → connect</b> end to end — pausing only when a decision is genuinely yours to make.</p>
+      <div class="vs">
+        <b>Plan A</b> — you drive a multi-screen tool.<br>
+        <b>Plan B</b> — you delegate to an agent and approve its work.
+      </div>
+      <div class="legend">
+        <span class="phase build">BUILD</span>
+        <span class="phase trust">TRUST</span>
+        <span class="phase connect">CONNECT</span>
+        <span class="phase manage">MANAGE</span>
+      </div>
+      <p class="readhint">The run, left → right ➝</p>
+    </div>
+    <div class="ann">
+      <p class="at">Same brand · same ahas · different model</p>
+      <p>Identical visual system and the same five aha-moments as Plan A. <b>Only the interaction model changes</b> — that's the variable under test.</p>
+    </div>
+  </div>
+
+  <!-- FRAME 1 — THE BRIEF -->
+  <div class="frame" style="left: 720px; top: 120px; width: 740px;" data-screen-label="01 The Brief">
+    <div class="flabel" data-drags-parent="1"><span class="num">01</span> · THE BRIEF <span class="phase start">START</span></div>
+    <div class="swin">
+      <div class="stop"><span class="brand"><span class="sq"></span>Restormel</span><span class="st">new mission</span></div>
+      <div class="sbody">
+        <p class="ey ink">One sentence to start</p>
+        <h1>What should your<br>knowledge do?</h1>
+        <div class="inp">Answer support questions from our <b>Notion</b> + <b>Zendesk</b> — in <b>Slack</b>, read-only.<span class="cur"></span></div>
+        <div class="parsed">
+          <span class="pchip"><span class="k">Source</span> Notion</span>
+          <span class="pchip"><span class="k">Source</span> Zendesk</span>
+          <span class="pchip"><span class="k">Surface</span> Slack</span>
+          <span class="pchip"><span class="k">Access</span> Read-only</span>
+        </div>
+        <div class="row" style="margin-top: 22px;"><span class="btn primary">Plan it →</span><span class="tag">Restormel parses the rest</span></div>
+      </div>
+    </div>
+    <div class="ann">
+      <p class="at">What's different</p>
+      <p>No setup, no nav, no screens to learn — the product <b>opens as a single prompt</b>. Restormel parses sources, surface, and access straight from your sentence.</p>
+      <p>Plan A opened on "explore the starter graph." Here, <b>intent comes first</b>; the aha is the payoff of the run, not step one.</p>
+    </div>
+  </div>
+
+  <!-- FRAME 2 — THE PLAN -->
+  <div class="frame" style="left: 1540px; top: 120px; width: 740px;" data-screen-label="02 The Plan">
+    <div class="flabel" data-drags-parent="1"><span class="num">02</span> · THE PLAN <span class="phase start">APPROVE</span></div>
+    <div class="swin">
+      <div class="stop"><span class="brand"><span class="sq"></span>Restormel</span><span class="st">proposed plan</span></div>
+      <div class="sbody">
+        <p class="ey">Approve the plan</p>
+        <h1>Here's how I'll do it</h1>
+        <div class="plan">
+          <div class="pg"><span class="pgsq" style="background: var(--amber-insight);"></span>Build</div>
+          <div class="ps"><span class="pn">1</span><span>Connect Notion + Zendesk</span></div>
+          <div class="ps"><span class="pn">2</span><span>Extract ~1,240 ideas, relate &amp; group</span><span class="px tag rec">recommended</span></div>
+          <div class="ps"><span class="pn">3</span><span>Embed for retrieval — Voyage</span><span class="px tag rec">recommended</span></div>
+          <div class="pg"><span class="pgsq" style="background: var(--signal-teal);"></span>Trust</div>
+          <div class="ps"><span class="pn">4</span><span>Validate claims &amp; self-audit low confidence</span></div>
+          <div class="pg"><span class="pgsq" style="background: var(--color-on-blue);"></span>Connect</div>
+          <div class="ps"><span class="pn">5</span><span>Expose read-only MCP, wire to Slack</span></div>
+          <div class="ps"><span class="pn">6</span><span>Prove it with a live grounded answer</span></div>
+        </div>
+        <div class="needs">
+          <span class="nb"><b>2</b>provider keys</span>
+          <span class="nb"><b>1</b>likely decision</span>
+          <span class="nb"><b>~4m</b>to live</span>
+        </div>
+        <div class="row" style="margin-top: 18px;"><span class="btn primary">Approve &amp; run →</span><span class="btn ghost">Edit plan</span></div>
+      </div>
+    </div>
+    <div class="ann">
+      <p class="at">What's different</p>
+      <p>The <b>only upfront commitment</b>: approve a plan — not complete a sequence of forms. Defaults are pre-chosen and labelled <span class="tag rec" style="font-size: 9px;">recommended</span>.</p>
+      <p>Plan A spread these as six milestone screens you each had to finish. Here they're <b>one reviewable run-sheet</b>.</p>
+    </div>
+  </div>
+
+  <!-- FRAME 3 — THE RUN -->
+  <div class="frame" style="left: 2360px; top: 120px; width: 740px;" data-screen-label="03 The Run">
+    <div class="flabel" data-drags-parent="1"><span class="num">03</span> · THE RUN <span class="phase build">BUILD</span></div>
+    <div class="swin">
+      <div class="stop"><span class="brand"><span class="sq"></span>Restormel</span><span class="st"><span class="dot" style="background: var(--amber-insight);"></span>running</span></div>
+      <div class="sbody">
+        <p class="ey amber">Autopilot · working</p>
+        <h1>Building your graph</h1>
+        <p class="lead">You can close this — I'll keep going and ping you in Slack when it's ready, or if I need a decision.</p>
+        <div class="run">
+          <div class="rl done"><span class="ic">✓</span>Connected Notion<small>412 docs</small></div>
+          <div class="rl done"><span class="ic">✓</span>Connected Zendesk<small>828 tickets</small></div>
+          <div class="rl done"><span class="ic">✓</span>Extracted ideas<small>1,240</small></div>
+          <div class="rl active"><span class="ic">●</span>Relating &amp; grouping<small>740 / 1,240</small></div>
+          <div class="rl wait"><span class="ic">○</span>Embedding<small>queued</small></div>
+        </div>
+        <div class="rail"><span style="width: 64%;"></span></div>
+      </div>
+    </div>
+    <div class="ann">
+      <p class="at">What's different</p>
+      <p>The whole <b>BUILD</b> milestone runs autonomously on recommended defaults — the ingest loop (sources + models + store) needs <b>no screens</b>. You watch an operator; you don't drive a wizard.</p>
+      <p>Honest-by-default survives: <b>every action is named as it happens</b>.</p>
+    </div>
+  </div>
+
+  <!-- FRAME 4 — A DECISION COMES TO YOU -->
+  <div class="frame" style="left: 3180px; top: 120px; width: 760px;" data-screen-label="04 Decision Comes To You">
+    <div class="flabel" data-drags-parent="1"><span class="num">04</span> · A DECISION COMES TO YOU <span class="phase build">BUILD · GATE</span></div>
+    <div class="swin">
+      <div class="stop"><span class="brand"><span class="sq"></span>Restormel</span><span class="st"><span class="dot" style="background: var(--amber-insight);"></span>paused</span></div>
+      <div class="sbody">
+        <div class="rl done" style="border: 1.5px solid var(--color-ink); background: var(--color-bg); margin-bottom: 14px;"><span class="ic" style="color: var(--signal-teal);">✓</span><span style="font-family: var(--font-mono); font-size: 13px;">Needed a Together key — you pasted it</span><small>2:14</small></div>
+        <p class="ey amber">Paused for you · mid-run</p>
+        <div class="dec">
+          <div class="dh"><span class="wic">!</span>Your Slack store isn't empty</div>
+          <p style="margin: 0 0 4px; font-size: 13.5px; line-height: 1.5; color: var(--color-ink-muted);">I can add to it non-destructively, or keep this mission in a separate namespace. <b>I won't touch existing data</b> either way.</p>
+          <div class="opt sel"><span class="radio on"></span><span><b>Add, non-destructive</b> — extends what's there <span class="tag rec" style="margin-left: 4px;">recommended</span></span></div>
+          <div class="opt"><span class="radio"></span><span><b>Separate namespace</b> — isolate this mission's graph</span></div>
+          <div class="row" style="margin-top: 14px;"><span class="btn primary">Use recommended →</span><span class="btn ghost">Choose</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="ann">
+      <p class="at">What's different</p>
+      <p>Decisions come <b>to you, inline, mid-run</b> — only when they're genuinely consequential. No mandatory config destinations.</p>
+      <p>This is the autopilot form of Plan A's "own your stack": the <b>data-choice and key lessons survive</b> — as interruptions to a run, not screens you navigate to.</p>
+    </div>
+  </div>
+
+  <!-- FRAME 5 — THE SELF-AUDIT -->
+  <div class="frame" style="left: 4020px; top: 120px; width: 760px;" data-screen-label="05 The Self-Audit">
+    <div class="flabel" data-drags-parent="1"><span class="num">05</span> · THE SELF-AUDIT <span class="phase trust">TRUST</span></div>
+    <div class="swin">
+      <div class="stop"><span class="brand"><span class="sq"></span>Restormel</span><span class="st">self-check</span></div>
+      <div class="sbody">
+        <p class="ey">Trust · the agent checks itself</p>
+        <h1>Before I connect it,<br>I audited my work</h1>
+        <div class="trust"><b>93</b><span class="d">▲ from 88</span><span class="l">Trust / 100</span></div>
+        <div style="margin-top: 14px;">
+          <div class="flag"><span>"Refund window is 30 days" — <b>2 sources disagree</b></span><span class="v drop">I'd drop</span></div>
+          <div class="flag"><span>"SSO ships on Pro plan" — <b>1 weak source</b></span><span class="v keep">Keep + caveat</span></div>
+          <div class="flag"><span>"API limit 60 rpm" — <b>stale, 2023</b></span><span class="v drop">I'd drop</span></div>
+        </div>
+        <p style="font-family: var(--font-mono); font-size: 11.5px; color: var(--color-ink-faint); margin: 12px 0 0;">6 flagged · agent proposes: drop 2, caveat 4, keep 0 risky</p>
+        <div class="row wrap" style="margin-top: 16px;"><span class="btn primary">Approve the agent's calls →</span><span class="btn ghost">Review each (6)</span></div>
+      </div>
+    </div>
+    <div class="ann">
+      <p class="at">What's different</p>
+      <p>TRUST, <b>inverted</b>. In Plan A you hunt for weak claims and triage them yourself. Here the agent <b>audits itself</b> and brings you only the exceptions — pre-triaged.</p>
+      <p>You <b>ratify or override</b>. Same honesty principle, a fraction of the labour.</p>
+    </div>
+  </div>
+
+  <!-- FRAME 6 — IT'S LIVE / THE PROOF -->
+  <div class="frame" style="left: 4860px; top: 120px; width: 760px;" data-screen-label="06 Its Live The Proof">
+    <div class="flabel" data-drags-parent="1"><span class="num">06</span> · IT'S LIVE <span class="phase connect">CONNECT · PROVEN</span></div>
+    <div class="swin">
+      <div class="stop"><span class="brand"><span class="sq"></span>Restormel</span><span class="st"><span class="dot live"></span>live</span></div>
+      <div class="sbody">
+        <p class="ey blue">Connect · proven</p>
+        <h1>It's answering in Slack</h1>
+        <div class="proof">
+          <p class="q">What's our refund window for annual plans?</p>
+          <p class="a">Annual plans can be refunded within <b>14 days</b> of renewal — prorated after that. The older "30-day" figure was retired in 2024.</p>
+          <div class="cites"><span class="cite">Zendesk · Billing macro</span><span class="cite">Notion · Refund policy</span></div>
+        </div>
+        <div class="conn" style="margin-top: 14px;"><span class="dot live"></span><span class="cn">Slack · read-only MCP</span><span class="endpoint">mcp.restormel.io/acme-support</span></div>
+        <div class="row wrap" style="margin-top: 16px;"><span class="btn ghost">Give it write access?</span><span class="tag">one tap, when you're ready</span></div>
+      </div>
+    </div>
+    <div class="ann">
+      <p class="at">What's different</p>
+      <p>CONNECT — the agent <b>wired it and proved it</b> with a real grounded answer. The first aha (it answers, with citations) lands as the <b>run's result</b>, not its first step.</p>
+      <p>Read-vs-write becomes a <b>one-tap upgrade</b>, never a config screen.</p>
+    </div>
+  </div>
+
+  <!-- FRAME 7 — STEADY STATE -->
+  <div class="frame" style="left: 5700px; top: 120px; width: 760px;" data-screen-label="07 Steady State">
+    <div class="flabel" data-drags-parent="1"><span class="num">07</span> · STEADY STATE <span class="phase manage">MANAGE</span></div>
+    <div class="swin">
+      <div class="stop"><span class="brand"><span class="sq"></span>Restormel</span><span class="st">your missions</span></div>
+      <div class="sbody">
+        <p class="ey violet">The anti-dashboard</p>
+        <div class="mission">
+          <div class="mh"><span class="mt">Support answers</span><span class="livepill"><span class="dot live"></span>Live in Slack</span></div>
+          <div class="stat"><span>Trust 95</span><span>·</span><span>2 sources</span><span>·</span><span>Read-only</span><span>·</span><span>1.2k answers / wk</span></div>
+          <div class="spark"><i style="height: 40%;"></i><i style="height: 55%;"></i><i style="height: 48%;"></i><i style="height: 70%;"></i><i style="height: 62%;"></i><i style="height: 85%;"></i><i style="height: 78%;"></i><i style="height: 100%;"></i></div>
+          <div class="intent">Tell Restormel what to change…<span class="ar">→</span></div>
+          <div class="chips"><span class="chip">add our pricing doc</span><span class="chip">why did it answer X?</span><span class="chip">give it write access</span><span class="chip">add a Discord surface</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="ann">
+      <p class="at">What's different</p>
+      <p>What persists isn't a 13-section nav — it's the <b>outcome under management</b>: one mission you steer <b>by intent</b>.</p>
+      <p>The clean-sheet answer to "how people actually use it after day one" — they <b>direct a running mission</b>, they don't navigate a tool.</p>
+    </div>
+  </div>
+
+  <!-- CONTRAST / A-B -->
+  <div class="frame" style="left: 6560px; top: 120px; width: 920px;" data-screen-label="AB Contrast">
+    <div class="flabel" data-drags-parent="1">A / B · WHAT THE TEST MEASURES</div>
+    <div class="ctable">
+      <div class="crow chead"><div></div><div>A · Guided Journey</div><div class="b">B · Autopilot</div></div>
+      <div class="crow"><div class="rk">Mental model</div><div>You operate a tool</div><div class="b">You brief an operator</div></div>
+      <div class="crow"><div class="rk">The work</div><div>You, step by step</div><div class="b">The agent, end-to-end</div></div>
+      <div class="crow"><div class="rk">Commitment</div><div>Complete each milestone screen</div><div class="b">Approve one plan</div></div>
+      <div class="crow"><div class="rk">Trust</div><div>You triage weak claims</div><div class="b">Agent self-audits, you ratify</div></div>
+      <div class="crow"><div class="rk">What persists</div><div>A dashboard of sections</div><div class="b">One mission you steer</div></div>
+      <div class="crow"><div class="rk">Best when</div><div>You want control &amp; to learn the system</div><div class="b">You want speed &amp; to delegate</div></div>
+      <div class="crow"><div class="rk">Risk to test</div><div>Too much work to reach value</div><div class="b">Too little control · trust in autopilot</div></div>
+    </div>
+    <div class="measure">
+      <p class="mk">What the A/B measures</p>
+      <div class="mm"><span>Time → first grounded answer</span><span>Setup completion rate</span><span>Trust in results</span><span>Perceived control</span><span>Returns to edit</span></div>
+      <p class="note">Same brand, same ahas, same honesty principles. The interaction model is the only variable — so the test reads cleanly.</p>
+    </div>
+  </div>
+
+</body>
+</html>

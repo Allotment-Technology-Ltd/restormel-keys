@@ -1,0 +1,72 @@
+# Dependencies
+node_modules/
+# Prefer pnpm; avoid accidental npm lockfile in workspace apps
+apps/dashboard/package-lock.json
+
+# Repomix (local repo packs for LLMs; do not commit)
+*-snapshot.xml
+repomix-output.xml
+repomix-output.md
+repomix-output.txt
+
+# Build and tooling
+dist/
+build/
+# RES-113 PR-G: the journey IA `/build` route is a real source folder, not a build artefact.
+!apps/dashboard/src/routes/keys/dashboard/build/
+!apps/dashboard/src/routes/keys/dashboard/build/**
+infra/bin/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+.restormel/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dashboard dev diagnostics (homepage debug capture)
+apps/dashboard/.dev/
+apps/dashboard/.analyze/
+
+# Logs and temp
+*.log
+.tmp/
+tmp/
+temp/
+
+# Next.js / framework build (do not commit)
+.next/
+
+# SvelteKit / Astro build and generated (do not commit)
+.svelte-kit/
+.astro/
+
+# Optional: uncomment when packages exist
+# packages/*/dist/
+.vercel
+
+# Local Restormel Testing run / runs-api artefacts (do not commit)
+.restormel-testing/
+
+# Local-only internal notes (not committed)
+internal/**
+!internal/README.md
+
+# Founder / investor reference decks — keep local only (clone-safe public repo)
+docs/reference/allotment-technology-pitch-deck.md
+
+# Cursor plan artifacts (local-only)
+.cursor/plans/**
+# Local MCP secrets (use .cursor/mcp.json.example + ~/.cursor/mcp.json)
+.cursor/mcp.json

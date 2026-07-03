@@ -1,0 +1,23 @@
+name: "PNPM workspace install"
+description: "Setup pnpm and Node 20, then pnpm install --frozen-lockfile at repo root (caller must checkout first)."
+inputs:
+  node-version:
+    description: "Node.js version"
+    required: false
+    default: "20"
+  pnpm-version:
+    description: "pnpm major.minor.patch"
+    required: false
+    default: "9.0.0"
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      with:
+        version: ${{ inputs.pnpm-version }}
+    - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+      shell: bash

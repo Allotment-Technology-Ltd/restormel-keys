@@ -1,0 +1,60 @@
+# Public demo — no secrets. Start Next: pnpm dev (port 3040), then run the CLI from this directory.
+# Mirrors testing-basic-web: two observe-only goals, multi-field criteria (P2 shrunk deterministic E2E).
+schema_version: "1"
+
+keys: {}
+
+defaults:
+  retry_policy:
+    max_retries: 1
+    backoff_ms: 400
+  default_timeout_ms: 30000
+  artifact_policy:
+    screenshots: on_failure
+    browser_trace: on_failure
+    console: true
+
+environments:
+  local:
+    base_url: http://127.0.0.1:3040
+    auth_mode: none
+
+suites:
+  - id: web-critical
+    description: >
+      Two browser goals against the local Next.js dev server — same shape as examples/testing-basic-web.
+    environment: local
+    goals:
+      - id: home-shell
+        type: browser
+        description: Home — URL, copy, nav, main + hero (observe-only).
+        success_criteria:
+          url_matches: "/"
+          text_present:
+            - nextjs-playwright
+            - "About this demo"
+            - "3040"
+            - "pnpm dev"
+          dom_signals:
+            - "main"
+            - "nav"
+          structured_checks:
+            - id: hero_h1_text
+              path: "css:main h1"
+              expect: "nextjs-playwright"
+      - id: about-shell
+        type: browser
+        description: About route — URL, copy, main + h1 (observe-only).
+        start_path: /about
+        success_criteria:
+          url_matches: "/about"
+          text_present:
+            - about-nextjs-playwright
+          dom_signals:
+            - "main"
+          structured_checks:
+            - id: about_h1
+              path: "css:main h1"
+              expect: "about-nextjs-playwright"
+
+target_url_overrides: {}

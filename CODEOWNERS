@@ -1,0 +1,16 @@
+# CODEOWNERS — records ownership (Phase 2).
+# codeowners-check asserts every tracked record path is covered by a rule here.
+# Single founder owner for now (Decision #1); split to per-area owners as the team grows.
+
+# Catch-all so no record path is ever orphaned.
+*                  @adam
+
+# Per-area ownership (split to specific owners later as the team grows).
+/docs/             @adam
+/docs/decisions/   @adam
+/records/          @adam
+/governance/       @adam      # ISMS owner
+/evidence/         @adam
+/planning/         @adam
+/legal/            @adam      # counsel reviews out-of-band
+/people/           @adam

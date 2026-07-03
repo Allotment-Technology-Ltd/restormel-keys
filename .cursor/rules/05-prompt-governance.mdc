@@ -1,0 +1,12 @@
+---
+description: Prompt classes and promotion; prevent prompt sprawl and duplicate operating truth
+globs:
+alwaysApply: true
+---
+
+# Prompt governance
+
+- **Classes:** canonical (approved operational), reference (useful, not authoritative), archive (superseded). Store under prompts/canonical, prompts/reference, prompts/archive, or document the location in docs/governance/prompts-reference.md.
+- Every prompt file must have **purpose and status**; inventory in docs/governance/prompts-reference.md.
+- **Promote:** repeated workflows → Skills; stable repo law → Rules; narrow specialist review → Subagents. See docs/governance/prompt-governance.md.
+- Prompt packs in docs/Reference are **reference only** unless docs/governance/prompts-reference.md marks them canonical.

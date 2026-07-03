@@ -1,0 +1,11 @@
+---
+description: Narrow testable changes; deterministic checks; scripts for repeatable validation
+globs:
+alwaysApply: true
+---
+
+# Quality and testing
+
+- **Narrow, testable changes.** Name exact target files; do not make broad speculative edits.
+- When the change touches code or docs: run **lint/typecheck/doc checks** if available; run **scripts/review-docs.sh**, **check-secrets.sh**, **check-repo-hygiene.sh**, **check-dependency-policy.sh** as applicable before marking done.
+- Prefer running these scripts over long agent reasoning for presence/hygiene/secret checks.

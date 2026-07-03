@@ -1,0 +1,59 @@
+{
+  "name": "@restormel/contracts",
+  "version": "0.1.1",
+  "description": "Restormel shared API and reasoning contracts (Zod schemas and types).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/contracts"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./api": { "types": "./dist/api.d.ts", "import": "./dist/api.js" },
+    "./constitution": { "types": "./dist/constitution.d.ts", "import": "./dist/constitution.js" },
+    "./domains": { "types": "./dist/domains.d.ts", "import": "./dist/domains.js" },
+    "./enrichment": { "types": "./dist/enrichment.d.ts", "import": "./dist/enrichment.js" },
+    "./ingestion": { "types": "./dist/ingestion.d.ts", "import": "./dist/ingestion.js" },
+    "./connect": { "types": "./dist/connect.d.ts", "import": "./dist/connect.js" },
+    "./connect-eval": { "types": "./dist/connect-eval.d.ts", "import": "./dist/connect-eval.js" },
+    "./knowledge": { "types": "./dist/knowledge.d.ts", "import": "./dist/knowledge.js" },
+    "./learn": { "types": "./dist/learn.d.ts", "import": "./dist/learn.js" },
+    "./passes": { "types": "./dist/passes.d.ts", "import": "./dist/passes.js" },
+    "./providers": { "types": "./dist/providers.d.ts", "import": "./dist/providers.js" },
+    "./references": { "types": "./dist/references.d.ts", "import": "./dist/references.js" },
+    "./reasoning-compare": { "types": "./dist/reasoning-compare.d.ts", "import": "./dist/reasoning-compare.js" },
+    "./reasoning-lineage": { "types": "./dist/reasoning-lineage.d.ts", "import": "./dist/reasoning-lineage.js" },
+    "./reasoning-object": { "types": "./dist/reasoning-object.d.ts", "import": "./dist/reasoning-object.js" },
+    "./schema-version": { "types": "./dist/schema-version.d.ts", "import": "./dist/schema-version.js" },
+    "./trace": { "types": "./dist/trace.d.ts", "import": "./dist/trace.js" },
+    "./trace-ingestion": { "types": "./dist/trace-ingestion.d.ts", "import": "./dist/trace-ingestion.js" },
+    "./trust-scorecard": { "types": "./dist/trust-scorecard.d.ts", "import": "./dist/trust-scorecard.js" },
+    "./provenance-trace": { "types": "./dist/provenance-trace.d.ts", "import": "./dist/provenance-trace.js" },
+    "./verification": { "types": "./dist/verification.d.ts", "import": "./dist/verification.js" },
+    "./verification-rules": { "types": "./dist/verification-rules.d.ts", "import": "./dist/verification-rules.js" },
+    "./verified-claim": { "types": "./dist/verified-claim.d.ts", "import": "./dist/verified-claim.js" }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

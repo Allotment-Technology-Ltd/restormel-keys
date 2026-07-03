@@ -1,0 +1,18 @@
+---
+description: >-
+  When implementing or triaging restormel-keys GitHub issues whose title contains
+  [Dogfood] (relayed from consumer repos such as SOPHIA), follow the dogfood
+  implementation runbook and security baseline before coding.
+alwaysApply: true
+---
+
+# Dogfood relay issues (`[Dogfood]`)
+
+- **Runbook:** `docs/runbooks/restormel-dogfood-issue-implementation.md` — triage, security, minimal fix, tests, PR linkage, optional reply on source issue.
+- **Policy:** `docs/github-dogfood-feedback.md`.
+- **Security:** Do not copy secrets from relayed issue bodies into code, commits, or PRs. `docs/governance/security-baseline.md`.
+- If the user pastes an issue number or asks to implement a dogfood item, use `gh issue view` when available, then follow the runbook’s **Cursor agent prompt** pattern (issue #N, no secrets).
+- **CI (optional):** `.github/workflows/dogfood-agent-open-pr.yml` can open a **draft** PR via `scripts/dogfood-agent-open-pr.mjs`; humans still review and merge. Do not put API keys in the repo — GitHub Actions **secrets** only (runbook §6).
+- **One draft PR per agent pickup (canonical):** If a **`dogfood/agent-issue-…`** draft PR already exists for the **`[Dogfood]`** issue you are extending, **commit and push on that branch** — do **not** start a parallel **`fix/…`** branch for the same issue. Human-only paths outside the agent allowlist (e.g. `.github/workflows`): still prefer stacking on the same `dogfood/agent-issue-…` branch when possible. Full rule: `docs/runbooks/restormel-dogfood-issue-implementation.md` § *One draft PR per dogfood agent pickup*.
+- **Consumer issue comments (optional):** `.github/workflows/dogfood-pr-comment-consumer.yml` + `scripts/dogfood-pr-notify-consumer.mjs` comment on the **source consumer issue** when a PR to `main` is opened/merged (`DOGFOOD_NOTIFY_CONSUMER` + same PAT as upstream notify). Policy: `docs/github-dogfood-feedback.md`.
+- **Release → SOPHIA backlog (optional):** `.github/workflows/dogfood-upstream-notify-consumer.yml` + `scripts/sophia-release-notify-issue.mjs` open a **SOPHIA triage** issue on **`keys-v*`** or **`restormel-v*`** tag push — **not gated on npm publish** (API/dashboard/docs triage). Policy: `docs/github-dogfood-feedback.md`.

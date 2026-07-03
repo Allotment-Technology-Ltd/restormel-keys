@@ -1,0 +1,72 @@
+{
+  "corsPolicies": [
+    {
+      "name": "restormel-cors",
+      "allowedOrigins": "$env(ALLOWED_CORS_ORIGINS)",
+      "allowedMethods": ["GET", "POST", "DELETE", "OPTIONS"],
+      "allowedHeaders": ["Authorization", "Content-Type", "X-Workspace-Id", "X-Request-Id"],
+      "exposeHeaders": ["X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+      "maxAge": 86400,
+      "allowCredentials": true
+    }
+  ],
+  "policies": [
+    {
+      "name": "api-key-inbound",
+      "policyType": "api-key-inbound",
+      "handler": {
+        "export": "ApiKeyInboundPolicy",
+        "module": "$import(@zuplo/runtime)",
+        "options": {
+          "allowUnauthenticatedRequests": false,
+          "cacheTtlSeconds": 60,
+          "bucketName": "zprj-no1i522htqi4gzoh5uaex0sb-production"
+        }
+      }
+    },
+    {
+      "name": "rate-limit-inbound",
+      "policyType": "rate-limit-inbound",
+      "handler": {
+        "export": "RateLimitInboundPolicy",
+        "module": "$import(@zuplo/runtime)",
+        "options": {
+          "rateLimitBy": "user",
+          "requestsAllowed": 100,
+          "timeWindowMinutes": 1
+        }
+      }
+    },
+    {
+      "name": "quota-inbound",
+      "policyType": "quota-inbound",
+      "handler": {
+        "export": "QuotaInboundPolicy",
+        "module": "$import(@zuplo/runtime)",
+        "options": {
+          "quotaBy": "user",
+          "period": "monthly",
+          "allowances": { "requests": 10000 },
+          "quotaOnStatusCodes": "200-399"
+        }
+      }
+    },
+    {
+      "name": "inject-backend-auth",
+      "policyType": "set-headers-inbound",
+      "handler": {
+        "export": "SetHeadersInboundPolicy",
+        "module": "$import(@zuplo/runtime)",
+        "options": {
+          "headers": [
+            {
+              "name": "Authorization",
+              "value": "Bearer $env(KEYS_BACKEND_API_KEY)",
+              "overwrite": true
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

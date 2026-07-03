@@ -1,0 +1,48 @@
+{
+  "name": "@restormel/testing-runs-server",
+  "version": "0.1.8",
+  "description": "Minimal HTTP server implementing GET/POST /v1/runs for Restormel Testing (embedded runner).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/testing-runs-server"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/server.js",
+  "types": "./dist/server.d.ts",
+  "bin": {
+    "restormel-testing-runs-server": "./dist/bin/runs-server.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "files": [
+    "dist",
+    "schema"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "@restormel/testing-config": "workspace:*",
+    "@restormel/testing-core": "workspace:*",
+    "@restormel/testing-keys-adapter": "workspace:*",
+    "@restormel/testing-report": "workspace:*",
+    "@restormel/testing-runner": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

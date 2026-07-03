@@ -1,0 +1,13 @@
+schema_version: "1"
+environments:
+  staging:
+    base_url: https://example.com
+suites:
+  - id: web-critical
+    environment: staging
+    goals:
+      - id: g1
+        type: browser
+        description: d
+        success_criteria:
+          url_matches: "/"

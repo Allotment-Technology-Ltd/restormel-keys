@@ -1,0 +1,40 @@
+{
+  "name": "@restormel/keys-react",
+  "version": "0.1.7",
+  "deprecated": "Bugfix-only until 2026-12-01. Use @restormel/keys-elements — https://restormel.dev/keys/docs/guides/npm-to-rest-keys",
+  "description": "React components and hooks for Restormel Keys. Wraps Web Components; native-feeling API for React and Next.js.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "dependencies": {
+    "@restormel/keys": "workspace:*",
+    "@restormel/keys-elements": "workspace:*"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.0.0",
+    "@types/react": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "jsdom": "^25.0.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.4.2",
+    "vitest": "^4.1.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  }
+}

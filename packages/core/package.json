@@ -1,0 +1,85 @@
+{
+  "name": "@restormel/keys",
+  "version": "0.2.21",
+  "deprecated": "Bugfix-only until 2026-12-01. New integrations: Keys REST (/keys/v1) and @restormel/keys-elements — https://restormel.dev/keys/docs/guides/npm-to-rest-keys",
+  "description": "Drop-in BYOK for AI apps. Headless key resolution, cost estimation, and provider adapters (OpenAI, Anthropic, Google).",
+  "keywords": [
+    "byok",
+    "ai",
+    "openai",
+    "anthropic",
+    "google",
+    "api-keys",
+    "routing",
+    "llm"
+  ],
+  "author": "Allotment Technology Ltd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Allotment-Technology-Ltd/restormel-keys.git"
+  },
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys#readme",
+  "bugs": {
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./storage/*": {
+      "types": "./dist/storage/*.d.ts",
+      "import": "./dist/storage/*.js",
+      "default": "./dist/storage/*.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js",
+      "default": "./dist/server/index.js"
+    },
+    "./server/*": {
+      "types": "./dist/server/*.d.ts",
+      "import": "./dist/server/*.js",
+      "default": "./dist/server/*.js"
+    },
+    "./security/*": {
+      "types": "./dist/security/*.d.ts",
+      "import": "./dist/security/*.js",
+      "default": "./dist/security/*.js"
+    },
+    "./dashboard": {
+      "types": "./dist/dashboard/index.d.ts",
+      "import": "./dist/dashboard/index.js",
+      "default": "./dist/dashboard/index.js"
+    },
+    "./dashboard/*": {
+      "types": "./dist/dashboard/*.d.ts",
+      "import": "./dist/dashboard/*.js",
+      "default": "./dist/dashboard/*.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.0"
+  }
+}

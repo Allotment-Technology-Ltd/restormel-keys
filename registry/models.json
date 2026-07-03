@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "lastUpdatedAt": "2026-04-14",
+  "models": [
+    {
+      "id": "gpt-4o",
+      "lifecycle": "active",
+      "providers": ["openai", "openrouter", "portkey"]
+    },
+    {
+      "id": "gpt-4o-mini",
+      "lifecycle": "active",
+      "providers": ["openai", "openrouter", "portkey"]
+    },
+    {
+      "id": "claude-sonnet-4",
+      "lifecycle": "active",
+      "providers": ["anthropic", "openrouter", "portkey"]
+    },
+    {
+      "id": "gemini-3.1-pro-preview",
+      "lifecycle": "active",
+      "providers": ["google", "openrouter", "portkey"]
+    },
+    {
+      "id": "gemini-3-flash-preview",
+      "lifecycle": "active",
+      "providers": ["google", "openrouter", "portkey"]
+    },
+    {
+      "id": "gemini-2.5-pro",
+      "lifecycle": "active",
+      "providers": ["google", "openrouter", "portkey"]
+    }
+  ]
+}

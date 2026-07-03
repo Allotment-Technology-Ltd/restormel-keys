@@ -1,0 +1,100 @@
+# Restormel Keys dashboard (SvelteKit adapter-node) — build and serve on Coolify/Docker.
+# Build from repo root: docker build -f Dockerfile.dashboard -t restormel-dashboard .
+#
+# DEPLOY_TARGET=node is baked into the build stage so adapter-node output is produced.
+# Auth and DB config are runtime env (Better Auth + Neon); no build-time secrets.
+#
+# Port: 8080 (set via ENV; override at runtime with PORT= if needed).
+# Healthcheck: GET /healthz — DB-independent liveness probe (no DB calls). The catalog
+# endpoint (/keys/v1/catalog) is the public contract but must NOT be the liveness probe.
+#
+# NOTE: This image is for the dashboard container only. The ingest-worker container
+# builds from Dockerfile.worker (Coolify ignores custom start commands for
+# dockerfile build packs, and the daemon needs node as PID 1 for SIGTERM).
+
+# --- Build stage ---
+FROM node:22-alpine AS build
+
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+WORKDIR /app
+
+# Copy workspace manifests + lockfile first for layer-cache efficiency.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy all package.json files so pnpm can resolve the workspace graph without
+# copying the full source tree (avoids cache-busting on source changes alone).
+# A .dockerignore in the repo root is the right way to exclude large dirs like
+# node_modules and .git — ensure it exists (or prune manually below).
+COPY . .
+
+# Install all workspace dependencies (frozen to match lockfile).
+# --prod=false forces devDependencies even when the platform (e.g. Coolify)
+# injects NODE_ENV=production as a build ARG — the build needs @types/node etc.
+RUN pnpm install --frozen-lockfile --prod=false
+
+# Build dashboard with adapter-node output.
+ENV DEPLOY_TARGET=node
+# Raise V8 old-space limit for the build. The SvelteKit/Vite production build of the
+# dashboard (many routes + the Better Auth scaffold + dual-driver pg deps) exceeds Node's
+# ~2GB default old-space and aborts with SIGABRT (exit 134, "Reached heap limit — JavaScript
+# heap out of memory"). 4096MB is backed by RAM + swap on the build host.
+ENV NODE_OPTIONS=--max-old-space-size=4096
+RUN pnpm --filter dashboard build
+
+# --- Serve stage (production-only deps, non-root user) ---
+FROM node:22-alpine AS serve
+
+WORKDIR /app
+
+# Ship the full built workspace: npm cannot resolve pnpm's workspace:* protocol,
+# and the ingest worker needs scripts/ + tsx + workspace libs at runtime (it runs
+# TS via tsx, not the adapter bundle). The same full workspace + devDependencies
+# (tsx) are what the docker-entrypoint relies on to run the migration runner on
+# startup — see ENTRYPOINT below. Fat image; slimming via `pnpm deploy` is a
+# filed follow-up once staging is proven.
+COPY --from=build /app /app
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Make the migration entrypoint executable (COPY does not preserve a script's +x).
+RUN chmod +x /app/apps/dashboard/docker-entrypoint.sh
+
+# Create a non-root user to run the server.
+RUN addgroup -S restormel && adduser -S restormel -G restormel && \
+    chown -R restormel:restormel /app
+
+USER restormel
+
+# Runtime environment.
+# ORIGIN is required by adapter-node for correct CSRF / form-action handling.
+# Set it to the real public URL in Coolify env (e.g. https://restormel.dev).
+# BODY_SIZE_LIMIT: ingest job POSTs carry source payloads — set generously.
+ENV PORT=8080 \
+    HOST=0.0.0.0 \
+    NODE_ENV=production \
+    BODY_SIZE_LIMIT=10485760
+
+EXPOSE 8080
+
+# Healthcheck: /healthz is the container liveness probe — it is DB-independent
+# and returns 200 with no external calls. The catalog (/keys/v1/catalog) is the
+# public contract endpoint but must NOT be the liveness probe: a DB/Neon blip
+# failing the catalog must never trigger a container eviction (the exact cascade
+# that caused the 2026-06-12 outage — Neon 402 → catalog 500 → probe fail → 503).
+#
+# MUST target 127.0.0.1 — busybox wget resolves localhost to ::1 but node binds IPv4.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:${PORT}/healthz || exit 1
+
+# ENTRYPOINT applies pending DB migrations against DATABASE_URL BEFORE starting the
+# server, then exec's the CMD (issue #18). Fail-closed: if a migration errors the
+# entrypoint exits non-zero, the container never starts the server, /healthz never
+# goes green, and Coolify marks the deploy failed — so a half-migrated DB is never
+# served. See apps/dashboard/docker-entrypoint.sh for the full rationale + the
+# multi-replica concurrency caveat (single-container deploy today).
+ENTRYPOINT ["/app/apps/dashboard/docker-entrypoint.sh"]
+
+# adapter-node entry point (workspace root layout — see serve-stage COPY note).
+# Passed to the entrypoint as "$@" and exec'd after migrations succeed.
+# The worker app overrides this with its daemon start command in Coolify.
+CMD ["node", "apps/dashboard/build/index.js"]

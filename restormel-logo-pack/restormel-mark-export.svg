@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Restormel mark</title>
+  <desc id="desc">Concentric square routing symbol: nested outlines with solid centre kernel on a dark rounded square.</desc>
+  <!-- Brand: bg #070B12, line #C9F7D5 (Restormel mint)  matches dashboard / logo pack -->
+  <rect width="1024" height="1024" rx="128" fill="#070B12"/>
+  <g stroke="#C9F7D5" stroke-width="8.8" stroke-linejoin="miter">
+    <rect x="224" y="160" width="576" height="576" fill="none"/>
+    <rect x="304" y="240" width="416" height="416" fill="none"/>
+    <rect x="384" y="320" width="256" height="256" fill="none"/>
+  </g>
+  <!-- Solid kernel (innermost square) -->
+  <rect x="464" y="400" width="96" height="96" fill="#C9F7D5" stroke="none"/>
+</svg>

@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+/**
+ * @restormel/keys-cli — init, add keys, list, validate, doctor, estimate, catalog, patch.
+ */
+import { Command } from "commander";
+import { registerInit } from "./commands/init.js";
+import { registerAdd } from "./commands/add.js";
+import { registerList } from "./commands/list.js";
+import { registerValidate } from "./commands/validate.js";
+import { registerDoctor } from "./commands/doctor.js";
+import { registerEstimate } from "./commands/estimate.js";
+import { registerSync } from "./commands/sync.js";
+import { registerModels } from "./commands/models.js";
+import { registerRouting } from "./commands/routing.js";
+import { registerPatch } from "./commands/patch.js";
+import { registerCatalog } from "./commands/catalog.js";
+import { registerLogin } from "./commands/login.js";
+import { registerReplay } from "./commands/replay.js";
+import { registerRules } from "./commands/rules.js";
+import { registerConnect } from "./commands/connect.js";
+
+const program = new Command();
+program
+  .name("keys")
+  .description(
+    "Restormel Keys CLI — init, login, add keys, validate, doctor, cost estimate, models, routing, catalog, patch, replay, connect eval"
+  )
+  .version("0.1.9");
+
+registerInit(program);
+registerAdd(program);
+registerList(program);
+registerValidate(program);
+registerDoctor(program);
+registerEstimate(program);
+registerSync(program);
+registerModels(program);
+registerRouting(program);
+registerCatalog(program);
+registerPatch(program);
+registerLogin(program);
+registerReplay(program);
+registerRules(program);
+registerConnect(program);
+
+program.parse();

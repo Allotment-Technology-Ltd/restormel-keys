@@ -1,0 +1,7 @@
+[
+  {
+    "id": "GHSA-gv7w-rqvm-qjhr",
+    "reason": "esbuild@0.28.1 (the fixed version) requires dropping the esbuild ^0.25.x pin that vite@6.4.3 and tsx@4.21.0 both depend on — it cannot land without a coordinated vite/tsx major bump, so esbuild stays pinned to 0.25.0 via pnpm.overrides. The vuln is a missing binary integrity check in the Deno module path; the dashboard build uses Node/pnpm, not Deno, so the code path is unreachable in production. Genuine risk-accept (no clean fix). Re-evaluate on the next vite major. Expiry set to 30-day max per High policy.",
+    "expires": "2026-07-14"
+  }
+]

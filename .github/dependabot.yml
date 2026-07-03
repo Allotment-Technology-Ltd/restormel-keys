@@ -1,0 +1,33 @@
+# Dependabot (Prompt 1.3)
+#
+# Batch into one grouped PR per ecosystem (weekly) so Vercel preview + Neon
+# Marketplace preview branches are not multiplied across many small Dependabot PRs.
+# GitHub Actions already skip Neon branch create/delete for dependabot[bot]
+# (neon_workflow.yml); this config reduces PR count at the source.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 1
+    groups:
+      weekly-npm:
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 1
+    groups:
+      weekly-actions:
+        patterns:
+          - "*"

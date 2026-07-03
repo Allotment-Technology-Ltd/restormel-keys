@@ -1,0 +1,64 @@
+# Minimal runnable example — serve this directory on port 4173, then run the CLI from repo root.
+# Filename is restormel-testing.yaml (hyphen); some docs abbreviate as restormel.testing.yaml.
+#
+# P2 parity: observe-only success_criteria (no judge_rubric / ac_sequence). Two goals, multi-field
+# criteria per goal — same coverage as a longer suite with less navigation churn (CI-friendly).
+schema_version: "1"
+
+keys: {}
+
+defaults:
+  retry_policy:
+    max_retries: 1
+    backoff_ms: 400
+  default_timeout_ms: 30000
+  artifact_policy:
+    screenshots: on_failure
+    browser_trace: on_failure
+    console: true
+
+environments:
+  local:
+    base_url: http://127.0.0.1:4173
+    auth_mode: none
+
+suites:
+  - id: web-critical
+    description: >
+      Two browser goals, observe-only: home shell (URL, copy, landmarks, hero h1) and secondary
+      about page (`serve` maps `about.html` to `/about`). Maps to Appendix B parity “deterministic stability” without agent steps.
+    environment: local
+    goals:
+      - id: home-shell
+        type: browser
+        description: Home — URL, runner copy, nav landmark, main + hero (deterministic observe-only).
+        success_criteria:
+          url_matches: "/"
+          text_present:
+            - basic-web
+            - runner-ready
+            - "About this demo"
+            - "4173"
+          dom_signals:
+            - "main"
+            - "nav"
+          structured_checks:
+            - id: hero_h1_text
+              path: "css:main h1"
+              expect: "basic-web"
+      - id: about-shell
+        type: browser
+        description: Secondary route — `about.html` on disk; `serve` canonicalises to `/about` (observe-only).
+        start_path: /about
+        success_criteria:
+          url_matches: "/about"
+          text_present:
+            - about-basic-web
+          dom_signals:
+            - "main"
+          structured_checks:
+            - id: about_h1
+              path: "css:main h1"
+              expect: "about-basic-web"
+
+target_url_overrides: {}

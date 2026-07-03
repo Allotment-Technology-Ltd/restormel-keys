@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — M2 Make Ready (hub + revisitable gates)</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root { --hairline:#d8cfb0; --teal-ink:#1c7c72; --amber-fg:#92400e; --warn:#c97a1a; --bad:#b23b34; }
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; color: #4a4538; max-width: 70ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+  .arch { margin: 9px 0 0; font-family: var(--font-mono); font-size: 11px; color: #5a5446; line-height: 1.65; max-width: 70ch; }
+  .arch .t { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #221f18; }
+  .arch .aha { color: var(--teal-ink); }
+
+  .scr { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); overflow: hidden; }
+
+  /* journey ledger (continuity) */
+  .ledger { display: flex; border-bottom: 2px solid var(--color-ink); background: var(--color-surface); }
+  .lc { flex: 1; padding: 8px 11px; border-right: 1.5px solid var(--hairline); display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-faint); }
+  .lc:last-child { border-right: none; }
+  .lc .d { width: 14px; height: 14px; border: 1.5px solid var(--color-ink); display: grid; place-items: center; font-size: 8px; flex: 0 0 auto; }
+  .lc.done { color: var(--color-ink); } .lc.done .d { background: var(--signal-teal); }
+  .lc.now { color: var(--color-ink); background: color-mix(in oklab, var(--color-yellow) 22%, var(--color-surface)); } .lc.now .d { background: var(--color-yellow); }
+  .lc.lock .d { border-style: dashed; }
+
+  /* topbar: breadcrumb home + lateral gate nav */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 2px solid var(--color-ink); background: var(--color-bg-deep); padding: 9px 14px; }
+  .crumb { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .crumb .home { color: var(--color-ink); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .crumb .sep { color: var(--color-ink-faint); }
+  .crumb .here { color: var(--color-ink-faint); }
+  .gate-nav { display: flex; align-items: center; gap: 6px; }
+  .gn { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; border: 1.5px solid var(--color-ink); padding: 5px 8px; background: var(--color-surface); color: var(--color-ink-faint); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .gn .dot { width: 8px; height: 8px; border: 1.5px solid var(--color-ink); flex: 0 0 auto; }
+  .gn.done { color: var(--color-ink); } .gn.done .dot { background: var(--signal-teal); }
+  .gn.cur { background: var(--color-yellow); color: var(--color-ink); } .gn.cur .dot { background: var(--color-ink); }
+  .gn.warn { color: var(--color-ink); } .gn.warn .dot { background: var(--bad); }
+
+  .body { padding: 22px 26px 26px; }
+  .h-eyebrow { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 9px; }
+  .h-title { font-family: var(--font-display); font-weight: 900; font-size: 32px; line-height: 0.94; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 10px; }
+  .h-desc { font-family: var(--font-body); font-size: 13.5px; line-height: 1.55; color: var(--color-ink-muted); margin: 0 0 18px; max-width: 56ch; }
+  .h-desc b { color: var(--color-ink); font-weight: 600; }
+
+  /* HUB — trust dial */
+  .trust { display: flex; align-items: center; gap: 18px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-md); padding: 16px 18px; margin-bottom: 18px; }
+  .trust .dial { display: flex; align-items: baseline; gap: 8px; flex: 0 0 auto; }
+  .trust .num { font-family: var(--font-display); font-weight: 900; font-size: 54px; line-height: 0.8; }
+  .trust .arrow { font-size: 18px; color: var(--color-ink-faint); }
+  .trust .target { font-family: var(--font-display); font-weight: 900; font-size: 32px; color: var(--teal-ink); line-height: 0.8; }
+  .trust .tinfo { flex: 1; border-left: 2px solid var(--hairline); padding-left: 16px; }
+  .trust .tlbl { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-ink-faint); }
+  .trust .tdesc { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-muted); line-height: 1.5; margin-top: 5px; }
+  .trust .tdesc b { color: var(--color-ink); }
+
+  .sec-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 2px solid var(--color-ink); padding-bottom: 8px; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; }
+  .sec-h .leg { font-weight: 700; font-size: 9.5px; color: var(--color-ink-faint); letter-spacing: 0.03em; }
+
+  /* gate cards */
+  .gates { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .gcard { display: grid; grid-template-columns: 30px 1fr auto; gap: 15px; align-items: center; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 15px 16px; cursor: pointer; }
+  .gcard .gidx { font-family: var(--font-display); font-weight: 900; font-size: 30px; color: var(--color-ink-faint); line-height: 1; text-align: center; }
+  .gbody .gname { font-family: var(--font-display); font-weight: 900; font-size: 20px; text-transform: uppercase; line-height: 1; }
+  .gbody .gwhat { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-muted); margin-top: 5px; line-height: 1.4; }
+  .gbody .gprog { display: flex; align-items: center; gap: 11px; margin-top: 10px; }
+  .gbody .gtrack { width: 150px; height: 9px; border: 1.5px solid var(--color-ink); background: var(--color-bg); flex: 0 0 auto; }
+  .gbody .gfill { height: 100%; background: var(--signal-teal); }
+  .gbody .gfill.warn { background: var(--color-yellow); }
+  .gbody .gstat { font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-faint); } .gbody .gstat b { color: var(--color-ink); }
+  .gright { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .gtag { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 5px 9px; border: 1.5px solid var(--color-ink); white-space: nowrap; }
+  .gtag.you { background: var(--color-yellow); }
+  .gtag.done { background: var(--signal-teal); }
+  .gtag.run { background: var(--color-ink); color: var(--color-bg); }
+  .gtag.review { background: var(--bad); color: var(--color-bg); }
+  .gopen { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 6px; color: var(--color-ink); }
+  .gcard.is-done { opacity: 0.85; }
+
+  /* model row */
+  .modr { display: flex; align-items: center; gap: 10px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 10px 13px; margin-bottom: 16px; font-family: var(--font-mono); font-size: 11px; }
+  .modr .tag { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ink-faint); }
+  .modr .mname { font-weight: 700; color: var(--color-ink); }
+  .modr .meta { margin-left: auto; color: var(--color-ink-faint); font-size: 10px; }
+
+  /* readiness meter */
+  .meter { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 15px 16px; margin-bottom: 16px; }
+  .meter .top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 11px; }
+  .meter .mlbl { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .meter .mpct { font-family: var(--font-display); font-weight: 900; font-size: 26px; line-height: 1; }
+  .meter .track { height: 16px; border: 2px solid var(--color-ink); background: var(--color-bg); display: flex; overflow: hidden; }
+  .meter .fill { background: var(--signal-teal); border-right: 2px solid var(--color-ink); }
+  .meter .fill.warn { background: var(--color-yellow); }
+  .meter .sub2 { display: flex; justify-content: space-between; margin-top: 9px; font-family: var(--font-mono); font-size: 10.5px; color: var(--color-ink-faint); }
+  .meter .sub2 b { color: var(--color-ink); }
+
+  .sub-h { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 2px solid var(--color-ink); padding-bottom: 8px; margin: 0 0 0; display: flex; align-items: center; justify-content: space-between; }
+
+  /* work list */
+  .wl { border: 2px solid var(--color-ink); border-top: none; background: var(--color-surface); box-shadow: var(--shadow-sm); margin-bottom: 16px; }
+  .wl-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 12px 15px; border-bottom: 1.5px solid var(--hairline); }
+  .wl-row:last-child { border-bottom: none; }
+  .wl-claim { font-family: var(--font-mono); font-size: 12px; line-height: 1.4; }
+  .wl-claim .q { color: var(--color-ink); font-weight: 700; }
+  .wl-sug { display: block; margin-top: 4px; font-size: 10px; color: var(--color-ink-faint); }
+  .wl-sug b { color: var(--teal-ink); }
+  .wl-act { display: flex; gap: 7px; }
+  .mini { font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; border: 2px solid var(--color-ink); padding: 7px 10px; cursor: pointer; white-space: nowrap; }
+  .mini.y { background: var(--color-yellow); box-shadow: 2px 2px 0 var(--color-ink); }
+  .mini.g { background: var(--color-surface); color: var(--color-ink-faint); }
+
+  /* running embed */
+  .run { border: 2px solid var(--color-ink); background: var(--color-ink); color: var(--color-bg); box-shadow: var(--shadow-sm); padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; font-family: var(--font-mono); font-size: 12px; }
+  .run .spin { width: 13px; height: 13px; border: 2px solid color-mix(in oklab, var(--color-bg) 40%, transparent); border-top-color: var(--signal-teal); border-radius: 999px; flex: 0 0 auto; animation: sp 0.8s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .run b { color: var(--color-bg); }
+  .run .eta { margin-left: auto; color: color-mix(in oklab, var(--color-bg) 65%, transparent); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .idx { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+  .idx .c { border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-sm); padding: 12px; text-align: center; }
+  .idx .cv { font-family: var(--font-display); font-weight: 900; font-size: 22px; line-height: 1; }
+  .idx .cl { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-faint); margin-top: 5px; }
+
+  /* validate verdict bars */
+  .vbar { display: flex; height: 30px; border: 2px solid var(--color-ink); margin-bottom: 6px; overflow: hidden; }
+  .vbar .seg { display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; border-right: 2px solid var(--color-ink); color: var(--color-ink); }
+  .vbar .seg:last-child { border-right: none; }
+  .vbar .ok { background: var(--signal-teal); }
+  .vbar .wk { background: var(--color-yellow); }
+  .vbar .bd { background: var(--bad); color: var(--color-bg); }
+  .vlegend { display: flex; gap: 16px; margin-bottom: 16px; font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-faint); }
+  .vlegend span { display: inline-flex; align-items: center; gap: 6px; } .vlegend b { color: var(--color-ink); }
+  .vlegend .sw { width: 10px; height: 10px; border: 1.5px solid var(--color-ink); }
+  .vrow { display: grid; grid-template-columns: auto 1fr; gap: 11px; align-items: start; padding: 12px 15px; border-bottom: 1.5px solid var(--hairline); }
+  .vrow:last-child { border-bottom: none; }
+  .verdict { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 4px 8px; border: 1.5px solid var(--color-ink); white-space: nowrap; margin-top: 1px; }
+  .verdict.wk { background: var(--color-yellow); } .verdict.bd { background: var(--bad); color: var(--color-bg); }
+  .vtext { font-family: var(--font-mono); font-size: 12px; line-height: 1.45; }
+  .vtext .q { font-weight: 700; }
+  .vwhy { display: block; margin-top: 4px; font-size: 10px; color: var(--color-ink-faint); }
+
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 2px solid var(--color-ink); padding-top: 16px; margin-top: 18px; }
+  .foot-note { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-faint); max-width: 38ch; line-height: 1.45; }
+  .foot-note b { color: var(--color-ink); }
+  .foot-actions { display: flex; gap: 10px; align-items: center; }
+  .btn-cont { display: inline-flex; align-items: center; gap: 9px; background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); font-family: var(--font-mono); font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 12px 20px; text-decoration: none; white-space: nowrap; cursor: pointer; }
+  .btn-back { display: inline-flex; align-items: center; gap: 7px; background: var(--color-surface); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 11px 15px; text-decoration: none; white-space: nowrap; cursor: pointer; }
+  .ghost-link { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-ink-faint); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .save-pill { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--teal-ink); }
+  .save-pill .sq { width: 9px; height: 9px; background: var(--signal-teal); border: 1.5px solid var(--color-ink); }
+</style>
+</head>
+<body>
+
+<!-- ════════════ M2 · HUB — MAKE READY ════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:760px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">M2 · hub</span><span class="name">Make ready — the home you return to</span></div>
+    <p class="sub">The answer to “how do I jump back in / what's left?”: a <b>hub, not a wizard</b>. Three readiness gates, each a place with live status. Do them in any order, leave and come back, and the page always says what still needs you. Embed runs itself; Sources &amp; Validate need a human.</p>
+    <p class="arch"><span class="t">AHA-min:</span> <span class="aha">I can see exactly what stands between me and a trustworthy graph.</span> · <span class="t">Re-entry:</span> reachable any time from Graph home — not a one-shot flow.</p>
+  </div>
+  <div class="scr" data-screen-label="M2 hub — Make ready">
+    <div class="ledger">
+      <div class="lc done"><span class="d">✓</span>M0</div>
+      <div class="lc done"><span class="d">✓</span>M1</div>
+      <div class="lc now"><span class="d">▸</span>M2 · Make ready</div>
+      <div class="lc lock"><span class="d">○</span>M3</div>
+      <div class="lc lock"><span class="d">○</span>M4</div>
+    </div>
+    <div class="topbar">
+      <div class="crumb"><span class="home">← Graph home</span><span class="sep">/</span><span class="here">Make ready</span></div>
+      <span style="font-family:var(--font-mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--color-ink-faint);">2 of 3 need you</span>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M2 · make it trustworthy</p>
+      <h1 class="h-title">Make ready</h1>
+
+      <div class="trust">
+        <div class="dial"><span class="num">88</span><span class="arrow">→</span><span class="target">90+</span></div>
+        <div class="tinfo">
+          <div class="tlbl">Trust score · target 90+</div>
+          <div class="tdesc">Up from <b>71</b> at ingest. Resolve the <b>164 unsourced</b> ideas and the <b>47 flagged</b> claims to clear the bar.</div>
+        </div>
+      </div>
+
+      <div class="sec-h">Three gates <span class="leg">do them in any order</span></div>
+      <div class="gates">
+        <div class="gcard">
+          <div class="gidx">1</div>
+          <div class="gbody">
+            <div class="gname">Link to sources</div>
+            <div class="gwhat">Every idea traces back to where it came from.</div>
+            <div class="gprog"><div class="gtrack"><div class="gfill warn" style="width:86%;"></div></div><span class="gstat"><b>86%</b> · 164 need a link</span></div>
+          </div>
+          <div class="gright"><span class="gtag you">Needs you</span><span class="gopen">Open →</span></div>
+        </div>
+
+        <div class="gcard is-done">
+          <div class="gidx">2</div>
+          <div class="gbody">
+            <div class="gname">Embed for retrieval</div>
+            <div class="gwhat">Ideas are findable by your app. Runs itself.</div>
+            <div class="gprog"><div class="gtrack"><div class="gfill" style="width:100%;"></div></div><span class="gstat"><b>100%</b> · 1,204 vectors</span></div>
+          </div>
+          <div class="gright"><span class="gtag done">Done · auto</span><span class="gopen">View →</span></div>
+        </div>
+
+        <div class="gcard">
+          <div class="gidx">3</div>
+          <div class="gbody">
+            <div class="gname">Validate ideas</div>
+            <div class="gwhat">Claims cross-checked; weak ones flagged for you.</div>
+            <div class="gprog"><div class="gtrack"><div class="gfill" style="width:96%;"></div></div><span class="gstat"><b>47</b> flagged of 1,204</span></div>
+          </div>
+          <div class="gright"><span class="gtag review">Needs review</span><span class="gopen">Open →</span></div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note"><b>Embed's done.</b> The 164 unsourced + 47 flagged are what stand between you and production-grade.</span>
+        <div class="foot-actions">
+          <span class="ghost-link">Use as-is · trust 88</span>
+          <a class="btn-cont" href="#">Review 47 flagged →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ GATE 1 — LINK TO SOURCES ════════════ -->
+<div class="frame" style="position:absolute; left:920px; top:80px; width:720px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">gate 1</span><span class="name">Link to sources — a screen, reachable any time</span></div>
+    <p class="sub">Opened <b>from the hub</b>, not forced after a previous step. Breadcrumb home, lateral nav to the other gates, and “← Make ready” to return. You can leave at 86% and come back — status persists.</p>
+    <p class="arch"><span class="t">Initial / Learning:</span> accept all matches in one tap. · <span class="t">Advanced:</span> resolve each link, mark deliberate inferences.</p>
+  </div>
+  <div class="scr" data-screen-label="Gate 1 — Link to sources">
+    <div class="topbar">
+      <div class="crumb"><span class="home">← Make ready</span><span class="sep">/</span><span class="here">Link to sources</span></div>
+      <div class="gate-nav">
+        <span class="gn cur warn"><span class="dot"></span>Sources</span>
+        <span class="gn done"><span class="dot"></span>Embed</span>
+        <span class="gn warn"><span class="dot"></span>Validate</span>
+      </div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M2 · make ready · gate 1</p>
+      <h1 class="h-title">Link ideas to sources</h1>
+
+      <div class="meter">
+        <div class="top"><span class="mlbl">Sourced</span><span class="mpct">86%</span></div>
+        <div class="track"><div class="fill warn" style="width:86%;"></div></div>
+        <div class="sub2"><span><b>1,040</b> of 1,204 ideas grounded</span><span><b>164</b> need a link</span></div>
+      </div>
+
+      <div class="sub-h">Auto-matched — confirm or mark inference <span style="font-weight:700;font-size:10px;color:var(--teal-ink);cursor:pointer;">Accept all →</span></div>
+      <div class="wl">
+        <div class="wl-row">
+          <div class="wl-claim"><span class="q">“Latency budget is 200ms p99.”</span><span class="wl-sug">matched → <b>perf-slo.md</b> · §2 · 0.94 conf</span></div>
+          <div class="wl-act"><span class="mini y">Link</span><span class="mini g">Inference</span></div>
+        </div>
+        <div class="wl-row">
+          <div class="wl-claim"><span class="q">“Cold-start hurts new users most.”</span><span class="wl-sug">matched → <b>coldstart-eval.md</b> · 0.88 conf</span></div>
+          <div class="wl-act"><span class="mini y">Link</span><span class="mini g">Inference</span></div>
+        </div>
+        <div class="wl-row">
+          <div class="wl-claim"><span class="q">“Merch re-rank lifted CTR 4%.”</span><span class="wl-sug">matched → <b>merch-experiment.notion</b> · 0.81 conf</span></div>
+          <div class="wl-act"><span class="mini y">Link</span><span class="mini g">Inference</span></div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note">161 more auto-matched below — you only touch the low-confidence ones.</span>
+        <div class="foot-actions">
+          <a class="btn-back" href="#">← Make ready</a>
+          <a class="btn-cont" href="#">Link all matched</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ GATE 2 — EMBED FOR RETRIEVAL ════════════ -->
+<div class="frame" style="position:absolute; left:1700px; top:80px; width:720px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">gate 2</span><span class="name">Embed for retrieval — automatic, viewable</span></div>
+    <p class="sub">The gate with <b>nothing to decide</b>. It vectorises every idea so retrieval can reach it — the hub marks it Done · auto. Opening it just lets an advanced user watch progress or inspect the index; everyone else never needs to.</p>
+    <p class="arch"><span class="t">Initial / Learning:</span> never opens it — the hub says “done”. · <span class="t">Advanced:</span> see index, dimensions, re-embed on a different model.</p>
+  </div>
+  <div class="scr" data-screen-label="Gate 2 — Embed for retrieval">
+    <div class="topbar">
+      <div class="crumb"><span class="home">← Make ready</span><span class="sep">/</span><span class="here">Embed for retrieval</span></div>
+      <div class="gate-nav">
+        <span class="gn warn"><span class="dot"></span>Sources</span>
+        <span class="gn cur done"><span class="dot"></span>Embed</span>
+        <span class="gn warn"><span class="dot"></span>Validate</span>
+      </div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M2 · make ready · gate 2</p>
+      <h1 class="h-title">Embed for retrieval</h1>
+
+      <div class="modr"><span class="tag">Embed model</span><span class="mname">voyage-3</span><span class="meta">1024-dim · your key from M1</span></div>
+
+      <div class="meter">
+        <div class="top"><span class="mlbl">Embedded</span><span class="mpct">100%</span></div>
+        <div class="track"><div class="fill" style="width:100%;"></div></div>
+        <div class="sub2"><span><b>1,204</b> of 1,204 vectorised</span><span style="color:var(--teal-ink);">✓ complete</span></div>
+      </div>
+
+      <div class="sub-h" style="border-bottom:2px solid var(--color-ink);padding-bottom:8px;margin-bottom:14px;">Retrieval index</div>
+      <div class="idx">
+        <div class="c"><div class="cv">1,204</div><div class="cl">vectors</div></div>
+        <div class="c"><div class="cv">HNSW</div><div class="cl">index type</div></div>
+        <div class="c"><div class="cv">just now</div><div class="cl">last built</div></div>
+      </div>
+
+      <div class="foot">
+        <span class="foot-note"><b>Nothing to do here.</b> Re-embed only if you change the embed model.</span>
+        <div class="foot-actions">
+          <span class="ghost-link">Re-embed on another model</span>
+          <a class="btn-back" href="#">← Make ready</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ GATE 3 — VALIDATE IDEAS ════════════ -->
+<div class="frame" style="position:absolute; left:2480px; top:80px; width:760px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1"><span class="num">gate 3</span><span class="name">Validate ideas — the trust gate</span></div>
+    <p class="sub">The gate that moves the score. A validator cross-checks each claim against its sources and the rest of the graph; <b>weak or contradicted</b> claims get flagged and flow into <b>Review</b>. Re-runnable any time you add sources or change the validator.</p>
+    <p class="arch"><span class="t">Initial / Learning:</span> read the trust number, send flags to Review. · <span class="t">Advanced:</span> tune thresholds, pick the validator family.</p>
+  </div>
+  <div class="scr" data-screen-label="Gate 3 — Validate ideas">
+    <div class="topbar">
+      <div class="crumb"><span class="home">← Make ready</span><span class="sep">/</span><span class="here">Validate ideas</span></div>
+      <div class="gate-nav">
+        <span class="gn warn"><span class="dot"></span>Sources</span>
+        <span class="gn done"><span class="dot"></span>Embed</span>
+        <span class="gn cur warn"><span class="dot"></span>Validate</span>
+      </div>
+    </div>
+    <div class="body">
+      <p class="h-eyebrow">M2 · make ready · gate 3</p>
+      <h1 class="h-title">Validate ideas</h1>
+
+      <div class="modr"><span class="tag">Validator</span><span class="mname">claude-sonnet-4-6</span><span class="meta">cross-family · catches your model's blind spots</span></div>
+
+      <div class="sub-h" style="border:none;padding:0;margin-bottom:11px;">1,204 checked · trust <b style="color:var(--teal-ink);margin-left:4px;">71 → 88</b></div>
+      <div class="vbar">
+        <div class="seg ok" style="width:96%;">Supported 1,157</div>
+        <div class="seg wk" style="width:3%;"></div>
+        <div class="seg bd" style="width:1%;"></div>
+      </div>
+      <div class="vlegend">
+        <span><span class="sw" style="background:var(--signal-teal);"></span><b>1,157</b> supported</span>
+        <span><span class="sw" style="background:var(--color-yellow);"></span><b>35</b> weak</span>
+        <span><span class="sw" style="background:var(--bad);"></span><b>12</b> contradicted</span>
+      </div>
+
+      <div class="sub-h">Flagged → triage in Review</div>
+      <div class="wl" style="border-top:none;">
+        <div class="vrow">
+          <span class="verdict wk">Weak</span>
+          <div class="vtext"><span class="q">“Merch re-rank lifted CTR 4%.”</span><span class="vwhy">one source · small sample (n=212) · no replication</span></div>
+        </div>
+        <div class="vrow">
+          <span class="verdict bd">Contradicted</span>
+          <div class="vtext"><span class="q">“We sunset v1 in Q2.”</span><span class="vwhy">conflicts with <b style="color:var(--color-ink);">roadmap.md</b> → “v1 supported through Q3”</span></div>
+        </div>
+        <div class="vrow">
+          <span class="verdict wk">Weak</span>
+          <div class="vtext"><span class="q">“Latency budget is 200ms p99.”</span><span class="vwhy">source is a draft · superseded doc exists</span></div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <div class="save-pill"><span class="sq"></span>Trust +17 · autosaved</div>
+        <div class="foot-actions">
+          <a class="btn-back" href="#">← Make ready</a>
+          <a class="btn-cont" href="#">Send 47 to Review →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

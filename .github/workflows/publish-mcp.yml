@@ -1,0 +1,41 @@
+# One-off or recovery: publish @restormel/mcp without running the full release train.
+name: Publish mcp
+on:
+  workflow_dispatch:
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build @restormel/keys
+        run: pnpm --filter @restormel/keys run build
+      - name: Build deps for @restormel/mcp tests
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/observability run build
+          pnpm --filter @restormel/context-packs run build
+          pnpm --filter @restormel/state run build
+          pnpm --filter @restormel/testing-core run build
+          pnpm --filter @restormel/testing-config run build
+      - name: Test @restormel/mcp
+        run: pnpm --filter @restormel/mcp run test
+      - name: Build @restormel/mcp
+        run: pnpm --filter @restormel/mcp run build
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+      - name: Publish @restormel/mcp to npm
+        run: pnpm --filter @restormel/mcp publish --access public --no-git-checks

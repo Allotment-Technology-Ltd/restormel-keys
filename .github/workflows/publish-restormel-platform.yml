@@ -1,0 +1,141 @@
+# Publish @restormel/contracts, @restormel/context-packs, @restormel/reasoning-core, @restormel/graphrag-core, @restormel/connect-core, @restormel/state, @restormel/observability, @restormel/graph-reasoning-extensions on tag platform-v*
+# Order: contracts → context-packs → reasoning-core → graphrag-core → connect-core → state → observability → graph-reasoning-extensions (pnpm rewrites workspace:* on publish).
+# graph-core / ui-graph-svelte use tag graph-v* (publish-graph.yml). Requires NPM_TOKEN.
+# MIRROR DEDUPE (PBI #248): canonical publisher is .forgejo/workflows/publish-restormel-platform.yml
+# (same `platform-v*` tag). `push: tags` removed so a mirror tag-push no longer re-fires this
+# copy → avoids the double npm publish race; workflow_dispatch retained for manual recovery.
+name: Publish Restormel platform packages
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "If true, run publish --dry-run only (no npm upload)."
+        type: boolean
+        default: false
+      package_scope:
+        description: "Which packages to upload (push tags always publish all platform packages including context-packs and state)."
+        type: choice
+        default: all
+        options:
+          - all
+          - context-packs
+          - reasoning-core
+          - graphrag-core
+          - connect-core
+          - state
+          - observability
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-platform-${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      PLATFORM_PUBLISH_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+      PLATFORM_PACKAGE_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.package_scope || 'all' }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: PNPM install
+        uses: ./.github/actions/pnpm-workspace-install
+
+      - name: Test + build platform packages
+        run: |
+          pnpm --filter @restormel/contracts run build
+          pnpm --filter @restormel/contracts test
+          pnpm --filter @restormel/context-packs run build
+          pnpm --filter @restormel/context-packs test
+          pnpm --filter @restormel/reasoning-core run build
+          pnpm --filter @restormel/reasoning-core test
+          pnpm --filter @restormel/graph-core run build
+          pnpm --filter @restormel/graph-core test
+          pnpm --filter @restormel/graphrag-core run build
+          pnpm --filter @restormel/graphrag-core test
+          pnpm --filter @restormel/keys-tokens run build
+          pnpm --filter @restormel/keys run build
+          pnpm --filter @restormel/aaif run build
+          pnpm --filter @restormel/connect-core run build
+          pnpm --filter @restormel/connect-core test
+          pnpm --filter @restormel/state run build
+          pnpm --filter @restormel/state test
+          pnpm --filter @restormel/observability run build
+          pnpm --filter @restormel/observability test
+          pnpm --filter @restormel/graph-reasoning-extensions run build
+          pnpm --filter @restormel/graph-reasoning-extensions test
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN secret is not set."
+            exit 1
+          fi
+          printf '%s\n' "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          EXTRA=""
+          if [ "${PLATFORM_PUBLISH_DRY_RUN}" = "true" ]; then
+            EXTRA="--dry-run"
+            echo "Dry run only."
+          fi
+          SCOPE="${PLATFORM_PACKAGE_SCOPE:-all}"
+          if [ "${SCOPE}" = "all" ]; then
+            pnpm --filter @restormel/contracts publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/context-packs publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/reasoning-core publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/graphrag-core publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/connect-core publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/state publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/observability publish --access public --no-git-checks ${EXTRA}
+            pnpm --filter @restormel/graph-reasoning-extensions publish --access public --no-git-checks ${EXTRA}
+          elif [ "${SCOPE}" = "context-packs" ]; then
+            pnpm --filter @restormel/context-packs publish --access public --no-git-checks ${EXTRA}
+          elif [ "${SCOPE}" = "reasoning-core" ]; then
+            pnpm --filter @restormel/reasoning-core publish --access public --no-git-checks ${EXTRA}
+          elif [ "${SCOPE}" = "graphrag-core" ]; then
+            pnpm --filter @restormel/graphrag-core publish --access public --no-git-checks ${EXTRA}
+          elif [ "${SCOPE}" = "connect-core" ]; then
+            pnpm --filter @restormel/connect-core publish --access public --no-git-checks ${EXTRA}
+          elif [ "${SCOPE}" = "state" ]; then
+            pnpm --filter @restormel/state publish --access public --no-git-checks ${EXTRA}
+          else
+            pnpm --filter @restormel/observability publish --access public --no-git-checks ${EXTRA}
+          fi
+          # Scoped packages can still land as private under some org defaults; force public visibility.
+          if [ "${PLATFORM_PUBLISH_DRY_RUN}" != "true" ]; then
+            if [ "${SCOPE}" = "all" ]; then
+              npm access set status=public @restormel/contracts
+              npm access set status=public @restormel/context-packs
+              npm access set status=public @restormel/reasoning-core
+              npm access set status=public @restormel/graphrag-core
+              npm access set status=public @restormel/connect-core
+              npm access set status=public @restormel/state
+              npm access set status=public @restormel/observability
+              npm access set status=public @restormel/graph-reasoning-extensions
+            elif [ "${SCOPE}" = "context-packs" ]; then
+              npm access set status=public @restormel/context-packs
+            elif [ "${SCOPE}" = "reasoning-core" ]; then
+              npm access set status=public @restormel/reasoning-core
+            elif [ "${SCOPE}" = "graphrag-core" ]; then
+              npm access set status=public @restormel/graphrag-core
+            elif [ "${SCOPE}" = "connect-core" ]; then
+              npm access set status=public @restormel/connect-core
+            elif [ "${SCOPE}" = "state" ]; then
+              npm access set status=public @restormel/state
+            else
+              npm access set status=public @restormel/observability
+            fi
+          fi

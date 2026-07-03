@@ -1,0 +1,36 @@
+# One-off or recovery: publish @restormel/keys-react without running the full release train.
+name: Publish keys-react
+on:
+  workflow_dispatch:
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build dependencies (keys, keys-svelte, keys-elements)
+        run: |
+          pnpm --filter @restormel/keys run build
+          pnpm --filter @restormel/keys-svelte run build
+          pnpm --filter @restormel/keys-elements run build
+      - name: Test @restormel/keys-react
+        run: pnpm --filter @restormel/keys-react test
+      - name: Build @restormel/keys-react
+        run: pnpm --filter @restormel/keys-react run build
+      - name: Configure npm auth
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+      - name: Publish @restormel/keys-react to npm
+        run: pnpm --filter @restormel/keys-react publish --access public --no-git-checks

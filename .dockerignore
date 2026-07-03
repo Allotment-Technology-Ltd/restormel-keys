@@ -1,0 +1,22 @@
+# Used when building Dockerfile.site or Dockerfile.dashboard from repo root
+.git
+.gitignore
+node_modules
+**/node_modules
+**/dist
+**/.astro
+.env
+.env.*
+*.md
+!apps/site/README.md
+.cursor
+.github
+docs
+!docs/design-tokens.css
+prompts
+scripts
+!scripts/copy-openapi.mjs
+!scripts/post-build.mjs
+!scripts/vercel-copy-build-output.mjs
+*.log
+.DS_Store

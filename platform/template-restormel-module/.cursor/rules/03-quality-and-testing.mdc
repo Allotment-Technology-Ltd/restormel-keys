@@ -1,0 +1,11 @@
+---
+description: Narrow testable changes; deterministic checks; scripts for repeatable validation
+globs:
+alwaysApply: true
+---
+
+# Quality and testing
+
+- **Narrow, testable changes.** Name exact target files; do not make broad speculative edits.
+- When the change touches code or docs: run **lint/typecheck** and any **repo hygiene / secret scans** your project defines before marking done.
+- Prefer scripted checks over ad hoc validation.

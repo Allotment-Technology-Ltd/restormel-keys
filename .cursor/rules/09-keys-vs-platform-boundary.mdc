@@ -1,0 +1,26 @@
+---
+description: Restormel monorepo — product code vs vendored platform template mirror
+globs:
+alwaysApply: true
+---
+
+# This repo vs `platform/` mirror
+
+**restormel-keys** (this repository) is the **single canonical** home for Restormel **product** code: `@restormel/keys`, `@restormel/testing-*`, **`@restormel/keys-tokens`** (under `packages/keys-tokens`), dashboard (`apps/dashboard`, including Testing routes at `/testing`), Zuplo gateway sources, and publish trains **`keys-v*`**, **`tokens-v*`**, **`testing-v*`**.
+
+**`platform/`** in this repo is a **vendored mirror**: Cursor/module **templates**, and copies of **GitHub composite actions** used when scaffolding *other* repositories. If you change something that must stay aligned with those external scaffolds, update **`platform/`** alongside the root [`.github/actions/`](.github/actions/) copies so they do not drift.
+
+## Put work in **`platform/`** when
+
+- Updating the **module scaffold** or **Cursor baseline** intended to be copied into *new* non-Keys repos (`platform/template-restormel-module/`, `platform/cursor-template/` when present).
+- Changing **suite-default** composite action *sources* that you also want mirrored for template consumers (`platform/.github/actions/`).
+
+## Keep work at **repo root** (`packages/`, `apps/`, `docs/`) when
+
+- Anything **Keys-specific** or **Testing-specific**: APIs, dashboard schema, runner, CLI, tokens **values** and contracts, marketing apps, dogfood workflows.
+
+## Quick check
+
+Ask: *Is this only for copying into a brand-new external repo template?* **Yes** → update **`platform/`** (and keep root composites in sync if applicable). **No** → implement under **`packages/`** / **`apps/`** / **`docs/`**.
+
+**Do not** point contributors at a separate **restormel-platform** GitHub repo as the authority for tokens; **`packages/keys-tokens`** is the source of truth here.

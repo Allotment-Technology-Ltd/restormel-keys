@@ -1,0 +1,27 @@
+{
+  "name": "restormel-keys-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zuplo gateway config for Restormel Keys API (config-as-code)",
+  "scripts": {
+    "deploy": "node scripts/deploy-gateway.mjs"
+  },
+  "devDependencies": {
+    "zuplo": "^6.67.25"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "overrides": {
+      "axios": ">=1.15.0",
+      "brace-expansion": ">=5.0.5",
+      "fastify": ">=5.8.3",
+      "picomatch": ">=2.3.2",
+      "undici": ">=6.24.0",
+      "minimatch": ">=10.2.3",
+      "js-yaml": ">=4.1.1",
+      "tmp": ">=0.2.4"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+---
+description: When to change this Restormel module vs restormel-platform (suite-wide tokens and templates)
+globs:
+alwaysApply: true
+---
+
+# This module vs restormel-platform
+
+**This repo** is a Restormel **product module** (app routes, APIs, module CI, module docs).
+
+**restormel-platform** (separate GitHub repo) = **Suite-wide** assets: **`@restormel/keys-tokens`** (npm; publish tag **`tokens-v*`**), default **GitHub composites**, **cursor-template**, **template-restormel-module** sources.
+
+## Put work in **restormel-platform** when
+
+- Changing **token values** or **contracts.ts** / shared CSS in the **tokens package** (not one-off app overrides).
+- Changing **suite-default** composite actions meant for **all** Restormel modules.
+- Updating the **canonical** module scaffold or Cursor baseline for **new** repos.
+
+Then: publish a new **`@restormel/keys-tokens`** if needed and **bump** this app’s dependency (e.g. `apps/web/package.json`).
+
+## Keep work in **this repo** when
+
+- Routes, UI, APIs, migrations, env, and **module-specific** workflows.
+
+**Quick check:** *Would another Restormel module copy this unchanged?* **Yes** → **platform**. **No** → **this repo**.
+
+Do not vendor token **source** as the authority here; consume **`@restormel/keys-tokens`** from **npm** unless you intentionally use **`file:`** for local platform development (see init script `--platform-repo`).

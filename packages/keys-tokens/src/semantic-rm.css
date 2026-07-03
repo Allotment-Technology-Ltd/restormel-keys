@@ -1,0 +1,26 @@
+/**
+ * Semantic --rm-* tokens for brand/app/docs shells.
+ * Requires base.css to be loaded first (var(--ink), etc.).
+ * See docs/design-system-index.md and docs/04-design-and-site.md.
+ */
+@import "./base.css";
+
+:root {
+  --rm-bg: var(--ink);
+  --rm-surface: var(--charcoal);
+  --rm-surface-raised: var(--elevated);
+  --rm-border: var(--slate);
+  --rm-text: var(--paper);
+  --rm-muted: var(--mist);
+  --rm-dim: var(--steel);
+  --rm-sage: var(--signal-teal);
+  --rm-sage-bg: var(--signal-teal-10);
+  --rm-font-display: var(--font-sans);
+  --rm-font-ui: var(--font-mono);
+  --rm-radius: var(--radius-base);
+  --rm-container-max: 72rem;
+  --rm-container-narrow: 56rem;
+  --rm-reading-width: 65ch;
+  --rm-card-radius: var(--radius-md);
+  --rm-card-shadow: var(--shadow-base);
+}

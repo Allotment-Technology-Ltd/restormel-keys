@@ -1,0 +1,76 @@
+{
+  "name": "@restormel/mcp",
+  "version": "0.2.7",
+  "description": "MCP tool definitions for Restormel — models, providers, cost, routing, entitlements, and docs.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "restormel",
+    "tools"
+  ],
+  "author": "Allotment Technology Ltd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Allotment-Technology-Ltd/restormel-keys.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/Allotment-Technology-Ltd/restormel-keys/tree/main/packages/mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Allotment-Technology-Ltd/restormel-keys/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "restormel-mcp": "bin/restormel-mcp.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/create-server.d.ts",
+      "import": "./dist/create-server.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@restormel/keys": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@restormel/dispatch": "workspace:*",
+    "@restormel/connect-core": "workspace:*",
+    "@restormel/contracts": "workspace:*",
+    "@restormel/keys": "workspace:*",
+    "@restormel/observability": "workspace:*",
+    "@restormel/state": "workspace:*",
+    "@restormel/testing-config": "workspace:*",
+    "zod": "^4.0.0"
+  }
+}

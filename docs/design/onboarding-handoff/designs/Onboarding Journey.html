@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Restormel — Onboarding & Learning Journey</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; background: #b8b09a; }
+  :root {
+    --brut-ink: #0c0c0c; --brut-white: #fffef0; --brut-canvas: #f3ead0;
+    --brut-neon: #ffd600; --brut-blue: #1a3f8a; --brut-coral: #d94e47;
+    --brut-font: "Space Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --hairline: #d8cfb0; --teal-ink: #1c7c72;
+  }
+
+  /* ── frame chrome ── */
+  .frame-label { margin: 0 0 14px 2px; font-family: var(--font-mono); color: #2b2820; }
+  .frame-label .row1 { display: flex; align-items: center; gap: 10px; }
+  .frame-label .num { background: var(--color-ink); color: var(--color-bg); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 9px; text-transform: uppercase; }
+  .frame-label .name { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .frame-label .sub { margin: 7px 0 0; font-size: 12px; font-weight: 400; letter-spacing: 0.02em; color: #4a4538; max-width: 80ch; line-height: 1.5; }
+  .frame-label .sub b { color: #221f18; font-weight: 700; }
+
+  /* ── shell ── */
+  .screen { display: grid; grid-template-columns: 232px 1fr; background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); overflow: hidden; }
+  .sidebar { background: var(--color-surface); border-right: 2px solid var(--color-ink); padding: 20px 14px 18px; display: flex; flex-direction: column; gap: 4px; }
+  .side-logo { padding: 4px 6px 16px; border-bottom: 2px solid var(--color-ink); margin-bottom: 14px; }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav a { font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-ink); text-decoration: none; padding: 10px 12px; border: 2px solid transparent; display: flex; align-items: center; gap: 11px; }
+  .nav a .tick { width: 8px; height: 8px; border: 1.5px solid var(--color-ink); background: transparent; flex: 0 0 auto; }
+  .nav a.active { background: var(--color-ink); color: var(--color-bg); }
+  .nav a.active .tick { background: var(--signal-teal); border-color: var(--color-bg); }
+  .nav a.locked { color: var(--color-ink-faint); }
+  .nav a.locked .tick { border-color: var(--color-ink-faint); }
+  .nav a .lk { margin-left: auto; font-size: 10px; }
+  .nav-spacer { margin-top: auto; }
+  .nav-divider { height: 0; border-top: 2px solid var(--color-ink); margin: 12px 4px; }
+  .content { display: flex; flex-direction: column; min-width: 0; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 11px 28px; border-bottom: 2px solid var(--color-ink); background: var(--color-bg); }
+  .workspace { font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-ink-muted); display: flex; gap: 9px; align-items: center; }
+  .workspace .sep { color: var(--color-ink-faint); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .avatar { width: 36px; height: 36px; border: 2px solid var(--color-ink); background: var(--color-yellow); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 700; font-size: 12px; box-shadow: var(--shadow-sm); }
+  .main { padding: 26px 28px 32px; display: flex; flex-direction: column; }
+  .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; border-bottom: 2px solid var(--color-ink); padding-bottom: 18px; margin-bottom: 22px; }
+  .kicker { display: inline-block; font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-ink); border: 1.5px solid var(--color-ink); padding: 3px 9px; margin-bottom: 12px; }
+  .page-title { font-family: var(--font-display); font-weight: 900; font-size: 52px; line-height: 0.9; letter-spacing: -0.01em; text-transform: uppercase; margin: 0; }
+  .page-desc { font-family: var(--font-body); font-size: 14.5px; color: var(--color-ink-muted); margin: 11px 0 0; max-width: 54ch; line-height: 1.5; }
+  .page-desc b { color: var(--color-ink); font-weight: 600; }
+  .sec-label { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-ink-faint); margin: 0 0 14px; }
+
+  /* ── product journey ledger (elevated spine) ── */
+  .ledger-wrap { margin-bottom: 24px; }
+  .ledger-cap { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-ink-faint); margin: 0 0 9px 1px; }
+  .ledger { display: grid; grid-template-columns: repeat(5, 1fr); border: 2px solid var(--color-ink); background: var(--color-ink); box-shadow: var(--shadow-md); }
+  .tile { background: var(--color-bg); border: 1.5px solid var(--color-ink); padding: 13px 14px; display: flex; flex-direction: column; gap: 8px; min-height: 142px; position: relative; }
+  .tile.done { background: var(--color-surface); }
+  .tile.active { background: var(--color-surface); }
+  .tile.active::before { content: ""; position: absolute; left: -1.5px; right: -1.5px; top: -1.5px; height: 6px; background: var(--color-yellow); border-bottom: 1.5px solid var(--color-ink); }
+  .tile.locked { background: var(--color-bg-deep); }
+  .tile-top { display: flex; align-items: center; gap: 9px; padding-top: 2px; }
+  .tile.active .tile-top { padding-top: 7px; }
+  .tile-num { width: 34px; height: 22px; flex: 0 0 auto; border: 2px solid var(--color-ink); display: grid; place-items: center; font-family: var(--font-mono); font-weight: 700; font-size: 11px; background: var(--color-surface); }
+  .tile.done .tile-num { background: var(--signal-teal); }
+  .tile.active .tile-num { background: var(--color-yellow); }
+  .tile.locked .tile-num { background: transparent; color: var(--color-ink-faint); border-style: dashed; border-color: var(--color-ink-faint); }
+  .tile-name { font-family: var(--font-display); font-weight: 900; font-size: 17px; line-height: 0.98; text-transform: uppercase; }
+  .tile.locked .tile-name { color: var(--color-ink-faint); }
+  .tile-sub { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--color-ink-muted); line-height: 1.45; }
+  .tile.locked .tile-sub { color: var(--color-ink-faint); }
+  .tile-state { margin-top: auto; }
+  .tchip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 4px 8px; border: 1.5px solid var(--color-ink); }
+  .tchip.done { background: var(--signal-teal); color: var(--color-ink); }
+  .tchip.here { background: var(--color-ink); color: var(--color-yellow); }
+  .tchip.lock { background: transparent; color: var(--color-ink-faint); border-style: dashed; border-color: var(--color-ink-faint); }
+
+  /* ── verify-a-claim hero (the M0 payoff) ── */
+  .verify-hero { display: grid; grid-template-columns: 1fr 430px; border: 3px solid var(--color-ink); box-shadow: var(--shadow-lg); background: var(--color-surface); margin-bottom: 22px; }
+  .vh-left { padding: 26px 28px; }
+  .vh-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); margin: 0 0 10px; }
+  .vh-title { font-family: var(--font-display); font-weight: 900; font-size: 50px; line-height: 0.9; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 12px; }
+  .vh-desc { font-family: var(--font-body); font-size: 14.5px; line-height: 1.55; color: var(--color-ink-muted); margin: 0 0 20px; max-width: 42ch; }
+  .btn-verify { display: inline-flex; align-items: center; gap: 10px; background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-md); font-family: var(--font-mono); font-size: 15px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 15px 26px; text-decoration: none; transition: var(--brut-transition); }
+  .btn-verify:hover { transform: translate(-3px,-3px); box-shadow: 9px 9px 0 var(--color-ink); }
+  .vh-note { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em; color: var(--color-ink-faint); margin: 16px 0 0; }
+  .vh-chat { background: var(--code-bg); color: var(--code-fg); border-left: 2px solid var(--color-ink); padding: 22px 22px; display: flex; flex-direction: column; gap: 14px; justify-content: center; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; }
+  .chat-q { color: var(--code-fg); }
+  .chat-q b, .chat-a b { color: var(--code-keyword); }
+  .chat-a { color: var(--code-value); }
+  .chat-a .cite { color: var(--code-comment); }
+  .chat-trust { display: flex; align-items: center; gap: 8px; color: var(--signal-teal); font-weight: 700; border-top: 1px solid rgba(255,255,255,0.16); padding-top: 13px; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+
+  /* ── rest available (de-emphasised) ── */
+  .rest-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .rest-card { border: 2px solid var(--color-ink); background: var(--color-bg); padding: 14px 15px; display: flex; flex-direction: column; gap: 5px; text-decoration: none; color: inherit; }
+  .rest-card:hover { background: var(--color-bg-deep); }
+  .rest-card .rc-name { font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; justify-content: space-between; }
+  .rest-card .rc-when { font-family: var(--font-mono); font-size: 9.5px; color: var(--color-ink-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+  .rest-card .rc-when.live { color: var(--teal-ink); }
+
+  /* ── Frame A · ladder map (strategy board, no shell) ── */
+  .board { background: var(--color-bg); border: 3px solid var(--color-ink); box-shadow: 12px 12px 0 rgba(12,12,12,0.9); padding: 30px 32px 34px; }
+  .board-hd { border-bottom: 2px solid var(--color-ink); padding-bottom: 20px; margin-bottom: 22px; }
+  .board-h1 { font-family: var(--font-display); font-weight: 900; font-size: 50px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.01em; margin: 0; }
+  .board-p { font-family: var(--font-body); font-size: 15px; line-height: 1.55; color: var(--color-ink-muted); margin: 12px 0 0; max-width: 70ch; }
+  .board-p b { color: var(--color-ink); font-weight: 600; }
+  .ladder { display: flex; flex-direction: column; }
+  .rung { display: grid; grid-template-columns: 92px 1fr 250px; border: 2px solid var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-md); }
+  .rung-num { display: grid; place-items: center; font-family: var(--font-display); font-weight: 900; font-size: 30px; background: var(--color-bg-deep); border-right: 2px solid var(--color-ink); }
+  .r-now .rung-num { background: var(--signal-teal); }
+  .r-next .rung-num { background: var(--color-yellow); }
+  .rung-main { padding: 16px 20px; min-width: 0; }
+  .rung-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 5px; flex-wrap: wrap; }
+  .rung-name { font-family: var(--font-display); font-weight: 900; font-size: 23px; text-transform: uppercase; line-height: 1; margin: 0; }
+  .rung-time { font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+  .rung-goal { font-family: var(--font-body); font-size: 13.5px; color: var(--color-ink-muted); margin: 0 0 11px; line-height: 1.5; }
+  .rung-line { font-family: var(--font-mono); font-size: 11px; color: var(--color-ink-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 7px; }
+  .needs-lbl { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-ink-faint); border: 1.5px solid var(--color-ink-faint); padding: 2px 6px; flex: 0 0 auto; }
+  .chip-need { border: 1.5px solid var(--color-ink); padding: 2px 8px; background: var(--color-bg); white-space: nowrap; }
+  .rung-aha { border-left: 2px solid var(--color-ink); background: color-mix(in oklab, var(--signal-teal) 12%, var(--color-surface)); padding: 16px 18px; display: flex; flex-direction: column; gap: 7px; justify-content: center; }
+  .aha-lbl { font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal-ink); }
+  .rung-aha p { font-family: var(--font-display); font-weight: 900; font-size: 18px; text-transform: uppercase; line-height: 1.05; margin: 0; }
+  .gate { display: flex; align-items: center; gap: 12px; padding: 8px 0 8px 42px; }
+  .gate-line { width: 4px; height: 28px; background: var(--color-ink); flex: 0 0 auto; }
+  .gate-lbl { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ink-muted); }
+  .ladder-legend { margin-top: 22px; border: 2px dashed var(--color-ink); background: var(--color-bg); padding: 13px 18px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.02em; color: var(--color-ink-muted); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ladder-legend b { color: var(--color-ink); }
+  .ll-dot { width: 11px; height: 11px; border: 1.5px solid var(--color-ink); flex: 0 0 auto; }
+  .ll-dot.teal { background: var(--signal-teal); }
+  .ll-dot.yellow { background: var(--color-yellow); }
+  .ll-dot.lock { background: var(--color-bg-deep); border-style: dashed; }
+
+  /* ── ingest-config loop callout (Frame A) ── */
+  .loop { display: grid; grid-template-columns: 58px 1fr; border: 3px solid var(--color-ink); background: color-mix(in oklab, var(--color-yellow) 14%, var(--color-surface)); box-shadow: var(--shadow-md); margin-top: 22px; }
+  .loop-icon { display: grid; place-items: center; font-size: 28px; border-right: 3px solid var(--color-ink); background: var(--color-yellow); }
+  .loop-main { padding: 15px 20px; }
+  .loop-h { font-family: var(--font-display); font-weight: 900; font-size: 20px; text-transform: uppercase; line-height: 1; margin: 0 0 8px; }
+  .loop-p { font-family: var(--font-body); font-size: 13px; line-height: 1.55; color: var(--color-ink-muted); margin: 0 0 11px; max-width: 80ch; }
+  .loop-p b { color: var(--color-ink); font-weight: 600; }
+  .loop-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 11px; }
+  .loop-chip { border: 1.5px solid var(--color-ink); background: var(--color-bg); padding: 3px 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .loop-arrow { color: var(--color-ink-faint); font-weight: 700; }
+
+  /* ════ coachmark walkthrough (Frame C) ════ */
+  .cm-content { position: relative; }
+  .cm-scrim { position: absolute; inset: 0; background: rgba(12,12,12,0.58); z-index: 5; }
+  .cm-raise { position: relative; z-index: 6; }
+  .cm-hl { outline: 4px solid var(--color-yellow); outline-offset: 5px; }
+  .coachmark { position: relative; z-index: 6; width: 392px; margin: 20px 0 0; background: var(--color-surface); border: 3px solid var(--color-ink); box-shadow: 6px 6px 0 var(--color-ink); padding: 17px 19px; }
+  .coachmark::before { content: ""; position: absolute; top: -11px; left: 44px; width: 18px; height: 18px; background: var(--color-surface); border-left: 3px solid var(--color-ink); border-top: 3px solid var(--color-ink); transform: rotate(45deg); }
+  .cm-step { font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-ink-faint); margin: 0 0 6px; }
+  .cm-title { font-family: var(--font-display); font-weight: 900; font-size: 21px; text-transform: uppercase; line-height: 1; margin: 0 0 8px; }
+  .cm-body { font-family: var(--font-body); font-size: 13px; line-height: 1.5; color: var(--color-ink-muted); margin: 0 0 15px; }
+  .cm-body b { color: var(--color-ink); }
+  .cm-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .cm-dots { display: flex; gap: 5px; }
+  .cm-dots i { width: 7px; height: 7px; border: 1.5px solid var(--color-ink); }
+  .cm-dots i.on { background: var(--color-ink); }
+  .cm-right { display: flex; align-items: center; gap: 12px; }
+  .cm-skip { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-ink-faint); background: none; border: none; cursor: pointer; }
+  .cm-next { display: inline-flex; align-items: center; gap: 7px; background: var(--color-yellow); color: var(--color-ink); border: 2px solid var(--color-ink); box-shadow: var(--shadow-sm); font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 9px 15px; text-decoration: none; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════ FRAME A · THE LEARNING JOURNEY ════════════════════════ -->
+<div class="frame" style="position:absolute; left:80px; top:80px; width:1180px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Frame A</span>
+      <span class="name">The learning journey — the ordering model</span>
+    </div>
+    <p class="sub">The fix for the ordering problem: order by <b>value earned</b>, not dependencies owed. Each rung reveals only what it needs and pays off <b>before</b> asking for more. First-run enters at M0; returning users resume at their rung. <b>Ingest-config (sources + models + store) is a recurring loop, not a one-time step</b> — so model choice sits at ingest-time, not M3.</p>
+  </div>
+
+  <div class="board" data-screen-label="Frame A — Learning journey ladder">
+    <header class="board-hd">
+      <span class="kicker">Onboarding model</span>
+      <h1 class="board-h1">The learning journey</h1>
+      <p class="board-p">Today the implied order is <b>dependency-first</b> (keys → models → store → ingest → review → publish). That's the overwhelm. Flip it: reveal each dependency only at the wall where it unlocks the next benefit, and give a concrete <b>aha</b> at every rung.</p>
+    </header>
+
+    <div class="ladder">
+      <!-- M0 -->
+      <div class="rung r-now">
+        <div class="rung-num">M0</div>
+        <div class="rung-main">
+          <div class="rung-head"><h3 class="rung-name">Verify a claim</h3><span class="rung-time">~2 min · 0 setup</span></div>
+          <p class="rung-goal">Ask the pre-baked starter graph a question; get a cited, verified answer in the in-app prove-chat.</p>
+          <div class="rung-line"><span class="needs-lbl">Needs</span><span class="chip-need">Nothing — starter graph is provided</span></div>
+          <div class="rung-line"><span class="needs-lbl">Reveals</span> Dashboard · prove-chat</div>
+        </div>
+        <div class="rung-aha"><span class="aha-lbl">The aha</span><p>“It answers with receipts.”</p></div>
+      </div>
+      <div class="gate"><span class="gate-line"></span><span class="gate-lbl">↓ now they want answers about <em>their</em> data</span></div>
+
+      <!-- M1 -->
+      <div class="rung r-next">
+        <div class="rung-num">M1</div>
+        <div class="rung-main">
+          <div class="rung-head"><h3 class="rung-name">Answer your own doc</h3><span class="rung-time">~1 ingest</span></div>
+          <p class="rung-goal">Point Connect at one of your documents, ingest it, and verify a claim from your own content.</p>
+          <div class="rung-line"><span class="needs-lbl">Needs</span><span class="chip-need">1 source</span><span class="chip-need">a model to extract + a model to embed</span><span class="chip-need">managed store (default)</span></div>
+          <div class="rung-line"><span class="needs-lbl">Note</span> bring any provider — one multi-model key or several; we tell you <em>what</em> you need, you choose <em>how</em></div>
+          <div class="rung-line"><span class="needs-lbl">Reveals</span> Keys · Connect (ingest)</div>
+        </div>
+        <div class="rung-aha"><span class="aha-lbl">The aha</span><p>“My content, answered &amp; cited.”</p></div>
+      </div>
+      <div class="gate"><span class="gate-line"></span><span class="gate-lbl">↓ some answers are weak — they want them trustworthy</span></div>
+
+      <!-- M2 -->
+      <div class="rung">
+        <div class="rung-num">M2</div>
+        <div class="rung-main">
+          <div class="rung-head"><h3 class="rung-name">Make it trustworthy</h3></div>
+          <p class="rung-goal">Validate unchecked ideas and triage flagged claims until the graph is production-grade.</p>
+          <div class="rung-line"><span class="needs-lbl">Needs</span><span class="chip-need">a validation model</span><span class="chip-need">Review + Make-ready</span></div>
+          <div class="rung-line"><span class="needs-lbl">Reveals</span> Make-ready · Review</div>
+        </div>
+        <div class="rung-aha"><span class="aha-lbl">The aha</span><p>“Trust score climbs.”</p></div>
+      </div>
+      <div class="gate"><span class="gate-line"></span><span class="gate-lbl">↓ they want control &amp; scale on their own infra</span></div>
+
+      <!-- M3 -->
+      <div class="rung">
+        <div class="rung-num">M3</div>
+        <div class="rung-main">
+          <div class="rung-head"><h3 class="rung-name">Own your stack</h3></div>
+          <p class="rung-goal">Move onto your own graph DB and bind your own provider keys. Model choice stays at <b>ingest-time</b> — change it and your <b>next ingest</b> picks it up.</p>
+          <div class="rung-line"><span class="needs-lbl">Needs</span><span class="chip-need">your graph DB (Surreal / Neo / …)</span><span class="chip-need">your production keys</span></div>
+          <div class="rung-line"><span class="needs-lbl">Reveals</span> Graph DB · Production keys</div>
+        </div>
+        <div class="rung-aha"><span class="aha-lbl">The aha</span><p>“Production on my infra.”</p></div>
+      </div>
+      <div class="gate"><span class="gate-line"></span><span class="gate-lbl">↓ they want their app to consume it</span></div>
+
+      <!-- M4 -->
+      <div class="rung">
+        <div class="rung-num">M4</div>
+        <div class="rung-main">
+          <div class="rung-head"><h3 class="rung-name">Ship it</h3></div>
+          <p class="rung-goal">Prove it in the in-app chat, then publish the graph as an MCP your app or agent consumes.</p>
+          <div class="rung-line"><span class="needs-lbl">Needs</span><span class="chip-need">prove-chat ✓</span><span class="chip-need">publish MCP</span></div>
+          <div class="rung-line"><span class="needs-lbl">Reveals</span> Go live · MCP endpoint</div>
+        </div>
+        <div class="rung-aha"><span class="aha-lbl">The aha</span><p>“My app is live on my graph.”</p></div>
+      </div>
+    </div>
+
+    <div class="loop">
+      <div class="loop-icon">↻</div>
+      <div class="loop-main">
+        <h4 class="loop-h">Ingest-config is a loop, not a milestone</h4>
+        <p class="loop-p"><b>Sources + models + store</b> are chosen together <b>every time you ingest</b> — first at M1, again on any re-ingest. That's why model choice lives at <b>ingest-time</b>, never after. M3 swaps the <b>store</b> (your DB) and binds your <b>keys</b>; change a model later and it simply applies to your <b>next ingest</b>.</p>
+        <div class="loop-chips"><span class="loop-chip">Sources</span><span class="loop-arrow">+</span><span class="loop-chip">Models</span><span class="loop-arrow">+</span><span class="loop-chip">Store</span><span class="loop-arrow">↻</span><span class="loop-chip">re-runs each ingest</span></div>
+      </div>
+    </div>
+
+    <div class="ladder-legend">
+      <span class="ll-dot teal"></span><b>M0</b> available now ·
+      <span class="ll-dot yellow"></span><b>next</b> step (one hero action) ·
+      <span class="ll-dot lock"></span><b>locked</b> until its gate clears — shown with its single unlock condition, never hidden.
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ FRAME B · FIRST-RUN DASHBOARD HOME ════════════════════════ -->
+<div class="frame" style="position:absolute; left:1340px; top:80px; width:1280px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Frame B</span>
+      <span class="name">First-run home — the hook, zero config</span>
+    </div>
+    <p class="sub">Lands straight on <b>M0</b>. The journey ledger shows where they are and what's next; later rungs are <b>locked but visible</b> with their unlock condition. One hero action — <b>Verify a claim</b> on the starter graph — everything else is quietly available.</p>
+  </div>
+
+  <div class="screen" data-screen-label="Frame B — First-run Dashboard">
+    <aside class="sidebar">
+      <div class="side-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="134" height="29" fill="none" role="img" aria-label="Restormel">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white)" stroke="var(--brut-ink)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="2" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink)" />
+          <text x="76" y="43" fill="var(--brut-ink)" font-family="var(--brut-font)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue)" stroke="var(--brut-ink)" stroke-width="1" />
+        </svg>
+      </div>
+      <nav class="nav">
+        <a href="#" class="active"><span class="tick"></span>Dashboard</a>
+        <a href="#"><span class="tick"></span>Connect</a>
+        <a href="#" class="locked"><span class="tick"></span>Keys<span class="lk">○</span></a>
+        <a href="#" class="locked"><span class="tick"></span>Routes<span class="lk">○</span></a>
+        <a href="#" class="locked"><span class="tick"></span>Records<span class="lk">○</span></a>
+        <a href="#" class="locked"><span class="tick"></span>Usage<span class="lk">○</span></a>
+      </nav>
+      <div class="nav-spacer"></div>
+      <div class="nav-divider"></div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Docs</a>
+        <a href="#"><span class="tick"></span>Settings</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="topbar">
+        <div class="workspace"><span>Acme Prod</span><span class="sep">/</span><span>dashboard</span></div>
+        <div class="topbar-right"><div class="avatar">AM</div></div>
+      </div>
+
+      <div class="main">
+        <header class="page-header">
+          <div>
+            <span class="kicker">Welcome</span>
+            <h1 class="page-title">Start here</h1>
+            <p class="page-desc">You're two minutes from your first verified answer. <b>No keys, no setup</b> — we've loaded a starter graph for you.</p>
+          </div>
+        </header>
+
+        <!-- PRODUCT JOURNEY LEDGER -->
+        <div class="ledger-wrap">
+          <p class="ledger-cap">Your journey · where you are → what's next</p>
+          <div class="ledger">
+            <div class="tile active">
+              <div class="tile-top"><span class="tile-num">M0</span><span class="tile-name">Verify a claim</span></div>
+              <p class="tile-sub">Starter graph · 0 setup</p>
+              <div class="tile-state"><span class="tchip here">▸ You are here</span></div>
+            </div>
+            <div class="tile locked">
+              <div class="tile-top"><span class="tile-num">M1</span><span class="tile-name">Answer your doc</span></div>
+              <p class="tile-sub">Your source + models</p>
+              <div class="tile-state"><span class="tchip lock">○ After M0</span></div>
+            </div>
+            <div class="tile locked">
+              <div class="tile-top"><span class="tile-num">M2</span><span class="tile-name">Make it trusted</span></div>
+              <p class="tile-sub">Validate · review</p>
+              <div class="tile-state"><span class="tchip lock">○ After M1</span></div>
+            </div>
+            <div class="tile locked">
+              <div class="tile-top"><span class="tile-num">M3</span><span class="tile-name">Own your stack</span></div>
+              <p class="tile-sub">Your graph DB · keys</p>
+              <div class="tile-state"><span class="tchip lock">○ After M2</span></div>
+            </div>
+            <div class="tile locked">
+              <div class="tile-top"><span class="tile-num">M4</span><span class="tile-name">Ship it</span></div>
+              <p class="tile-sub">Publish MCP</p>
+              <div class="tile-state"><span class="tchip lock">○ After M3</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HERO: verify a claim -->
+        <div class="verify-hero">
+          <div class="vh-left">
+            <p class="vh-eyebrow">M0 · the one thing to do now</p>
+            <h2 class="vh-title">Verify a claim</h2>
+            <p class="vh-desc">Ask our starter knowledge graph anything. You'll get an answer with citations you can actually check — about two minutes, zero configuration.</p>
+            <a class="btn-verify" href="#">▶ Verify a claim</a>
+            <p class="vh-note">Running on the Restormel starter graph · 1,204 verified ideas · no key or source needed yet</p>
+          </div>
+          <div class="vh-chat">
+            <div class="chat-q"><b>You</b> — does existentialism hold that existence precedes essence?</div>
+            <div class="chat-a"><b>Graph</b> — Yes. Verified against the source. <span class="cite">[Stanford Encyclopedia · chunk 12]</span></div>
+            <div class="chat-trust"><span>●</span> Verified · 3 supporting sources · trust 92</div>
+          </div>
+        </div>
+
+        <!-- rest available -->
+        <p class="sec-label">Explore when you're ready — nothing here is required yet</p>
+        <div class="rest-grid">
+          <a href="#" class="rest-card"><span class="rc-name">Connect <span>→</span></span><span class="rc-when live">try your own doc · M1</span></a>
+          <a href="#" class="rest-card"><span class="rc-name">Keys <span>○</span></span><span class="rc-when">bring models · needed at M1</span></a>
+          <a href="#" class="rest-card"><span class="rc-name">Routes <span>○</span></span><span class="rc-when">advanced gateway</span></a>
+          <a href="#" class="rest-card"><span class="rc-name">Docs <span>→</span></span><span class="rc-when">how it works</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ FRAME C · COACHMARK WALKTHROUGH ═══════════════════════ -->
+<div class="frame" style="position:absolute; left:2700px; top:80px; width:1280px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Frame C</span>
+      <span class="name">Coachmark walkthrough — learn by doing</span>
+    </div>
+    <p class="sub">Module intros fire <b>in place, tied to the journey</b> — not a generic upfront tour. Each coachmark explains one thing, says <b>when you'll need it</b>, and never blocks the hero action. Dismissible, resumable, 4 short steps.</p>
+  </div>
+
+  <div class="screen" data-screen-label="Frame C — Coachmark walkthrough">
+    <aside class="sidebar">
+      <div class="side-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="134" height="29" fill="none" role="img" aria-label="Restormel">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white)" stroke="var(--brut-ink)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="2" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink)" />
+          <text x="76" y="43" fill="var(--brut-ink)" font-family="var(--brut-font)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue)" stroke="var(--brut-ink)" stroke-width="1" />
+        </svg>
+      </div>
+      <nav class="nav">
+        <a href="#" class="active"><span class="tick"></span>Dashboard</a>
+        <a href="#"><span class="tick"></span>Connect</a>
+        <a href="#" class="locked"><span class="tick"></span>Keys<span class="lk">○</span></a>
+        <a href="#" class="locked"><span class="tick"></span>Routes<span class="lk">○</span></a>
+        <a href="#" class="locked"><span class="tick"></span>Records<span class="lk">○</span></a>
+        <a href="#" class="locked"><span class="tick"></span>Usage<span class="lk">○</span></a>
+      </nav>
+      <div class="nav-spacer"></div>
+      <div class="nav-divider"></div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Docs</a>
+        <a href="#"><span class="tick"></span>Settings</a>
+      </nav>
+    </aside>
+
+    <div class="content cm-content">
+      <div class="topbar">
+        <div class="workspace"><span>Acme Prod</span><span class="sep">/</span><span>dashboard</span></div>
+        <div class="topbar-right"><div class="avatar">AM</div></div>
+      </div>
+
+      <div class="main">
+        <header class="page-header">
+          <div>
+            <span class="kicker">Welcome</span>
+            <h1 class="page-title">Start here</h1>
+            <p class="page-desc">You're two minutes from your first verified answer.</p>
+          </div>
+        </header>
+
+        <div class="ledger-wrap cm-raise cm-hl">
+          <p class="ledger-cap">Your journey · where you are → what's next</p>
+          <div class="ledger">
+            <div class="tile active">
+              <div class="tile-top"><span class="tile-num">M0</span><span class="tile-name">Verify a claim</span></div>
+              <p class="tile-sub">Starter graph · 0 setup</p>
+              <div class="tile-state"><span class="tchip here">▸ You are here</span></div>
+            </div>
+            <div class="tile locked">
+              <div class="tile-top"><span class="tile-num">M1</span><span class="tile-name">Answer your doc</span></div>
+              <p class="tile-sub">Your source + models</p>
+              <div class="tile-state"><span class="tchip lock">○ After M0</span></div>
+            </div>
+            <div class="tile locked">
+              <div class="tile-top"><span class="tile-num">M2</span><span class="tile-name">Make it trusted</span></div>
+              <p class="tile-sub">Validate · review</p>
+              <div class="tile-state"><span class="tchip lock">○ After M1</span></div>
+            </div>
+            <div class="tile locked">
+              <div class="tile-top"><span class="tile-num">M3</span><span class="tile-name">Own your stack</span></div>
+              <p class="tile-sub">Your graph DB · keys</p>
+              <div class="tile-state"><span class="tchip lock">○ After M2</span></div>
+            </div>
+            <div class="tile locked">
+              <div class="tile-top"><span class="tile-num">M4</span><span class="tile-name">Ship it</span></div>
+              <p class="tile-sub">Publish MCP</p>
+              <div class="tile-state"><span class="tchip lock">○ After M3</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- the coachmark, anchored under the ledger -->
+        <div class="coachmark">
+          <p class="cm-step">Step 1 of 4 · your journey</p>
+          <h3 class="cm-title">This ledger is your map</h3>
+          <p class="cm-body">It always shows <b>where you are and the one next thing to do</b>. Locked steps stay visible with what unlocks them — so the path is never a mystery.</p>
+          <div class="cm-actions">
+            <span class="cm-dots"><i class="on"></i><i></i><i></i><i></i></span>
+            <span class="cm-right">
+              <button type="button" class="cm-skip">Skip tour</button>
+              <button type="button" class="cm-next">Next →</button>
+            </span>
+          </div>
+        </div>
+
+        <div class="verify-hero" style="margin-top:22px;">
+          <div class="vh-left">
+            <p class="vh-eyebrow">M0 · the one thing to do now</p>
+            <h2 class="vh-title">Verify a claim</h2>
+            <p class="vh-desc">Ask our starter knowledge graph anything — cited answers in about two minutes, zero configuration.</p>
+            <a class="btn-verify" href="#">▶ Verify a claim</a>
+          </div>
+          <div class="vh-chat">
+            <div class="chat-q"><b>You</b> — does existentialism hold that existence precedes essence?</div>
+            <div class="chat-a"><b>Graph</b> — Yes. Verified against the source. <span class="cite">[Stanford · chunk 12]</span></div>
+            <div class="chat-trust"><span>●</span> Verified · 3 sources · trust 92</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-scrim"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ FRAME D · RETURNING-USER DASHBOARD ══════════════════════ -->
+<div class="frame" style="position:absolute; left:4060px; top:80px; width:1280px;">
+  <div class="frame-label" data-drags-parent="1">
+    <div class="row1">
+      <span class="num">Frame D</span>
+      <span class="name">Returning user — the journey, resumed</span>
+    </div>
+    <p class="sub">Same ledger, real state: M0–M2 done, <b>M3 lit</b> as the next rung. One hero next-action (own your stack), the rest available. The order of operations stays, but it's never a blank page — always one obvious move.</p>
+  </div>
+
+  <div class="screen" data-screen-label="Frame D — Returning-user Dashboard">
+    <aside class="sidebar">
+      <div class="side-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" width="134" height="29" fill="none" role="img" aria-label="Restormel">
+          <rect x="8" y="8" width="48" height="48" fill="var(--brut-ink)" />
+          <rect x="4" y="4" width="48" height="48" fill="var(--brut-white)" stroke="var(--brut-ink)" stroke-width="4" />
+          <rect x="12" y="12" width="15" height="15" fill="var(--brut-blue)" />
+          <rect x="29" y="12" width="15" height="15" fill="var(--brut-neon)" />
+          <rect x="12" y="29" width="15" height="15" fill="var(--brut-coral)" />
+          <rect x="29" y="29" width="15" height="15" fill="var(--brut-canvas)" />
+          <line x1="28" y1="12" x2="28" y2="44" stroke="var(--brut-ink)" stroke-width="3" />
+          <line x1="12" y1="28" x2="44" y2="28" stroke="var(--brut-ink)" stroke-width="3" />
+          <rect x="23" y="23" width="10" height="10" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="2" />
+          <rect x="0" y="26" width="4" height="12" fill="var(--brut-ink)" />
+          <rect x="52" y="26" width="8" height="12" fill="var(--brut-ink)" />
+          <text x="76" y="43" fill="var(--brut-ink)" font-family="var(--brut-font)" font-size="28" font-weight="800" letter-spacing="0.1em">RESTORMEL</text>
+          <rect x="76" y="52" width="118" height="4" fill="var(--brut-neon)" stroke="var(--brut-ink)" stroke-width="1" />
+          <rect x="76" y="58" width="72" height="3" fill="var(--brut-blue)" stroke="var(--brut-ink)" stroke-width="1" />
+        </svg>
+      </div>
+      <nav class="nav">
+        <a href="#" class="active"><span class="tick"></span>Dashboard</a>
+        <a href="#"><span class="tick"></span>Connect</a>
+        <a href="#"><span class="tick"></span>Keys</a>
+        <a href="#"><span class="tick"></span>Routes</a>
+        <a href="#"><span class="tick"></span>Records</a>
+        <a href="#"><span class="tick"></span>Usage</a>
+      </nav>
+      <div class="nav-spacer"></div>
+      <div class="nav-divider"></div>
+      <nav class="nav">
+        <a href="#"><span class="tick"></span>Docs</a>
+        <a href="#"><span class="tick"></span>Settings</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <div class="topbar">
+        <div class="workspace"><span>Acme Prod</span><span class="sep">/</span><span>dashboard</span></div>
+        <div class="topbar-right">
+          <a class="tchip done" href="#" style="text-decoration:none;padding:7px 11px;">● Graph live · trust 92</a>
+          <div class="avatar">AM</div>
+        </div>
+      </div>
+
+      <div class="main">
+        <header class="page-header">
+          <div>
+            <span class="kicker">Welcome back</span>
+            <h1 class="page-title">Pick up where<br />you left off</h1>
+            <p class="page-desc">Your graph is trustworthy on our managed store. <b>One move left</b> before you can ship it on your own stack.</p>
+          </div>
+        </header>
+
+        <div class="ledger-wrap">
+          <p class="ledger-cap">Your journey · 3 of 5 done</p>
+          <div class="ledger">
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Verify a claim</span></div>
+              <p class="tile-sub">Starter graph</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Answer your doc</span></div>
+              <p class="tile-sub">3 sources ingested</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile done">
+              <div class="tile-top"><span class="tile-num">✓</span><span class="tile-name">Make it trusted</span></div>
+              <p class="tile-sub">Trust 92 · 0 flagged</p>
+              <div class="tile-state"><span class="tchip done">✓ Done</span></div>
+            </div>
+            <div class="tile active">
+              <div class="tile-top"><span class="tile-num">M3</span><span class="tile-name">Own your stack</span></div>
+              <p class="tile-sub">Your graph DB · keys</p>
+              <div class="tile-state"><span class="tchip here">▸ You are here</span></div>
+            </div>
+            <div class="tile locked">
+              <div class="tile-top"><span class="tile-num">M4</span><span class="tile-name">Ship it</span></div>
+              <p class="tile-sub">Publish MCP</p>
+              <div class="tile-state"><span class="tchip lock">○ After M3</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="verify-hero">
+          <div class="vh-left">
+            <p class="vh-eyebrow">M3 · your next step</p>
+            <h2 class="vh-title">Own your stack</h2>
+            <p class="vh-desc">You've proven it on our managed store. Move your verified graph onto your own database and provider mix — then you're one step from shipping.</p>
+            <a class="btn-verify" href="#">▶ Connect your graph DB</a>
+            <p class="vh-note">On managed store · 1,204 ideas · trust 92 · bring Surreal, Neo, or other</p>
+          </div>
+          <div class="vh-chat">
+            <div class="chat-q"><b>Graph</b> · acme-prod</div>
+            <div class="chat-a">1,204 ideas · trust 92 · <span class="cite">managed store</span></div>
+            <div class="chat-trust"><span>●</span> M3 unlocks: your DB · extra keys · per-stage models</div>
+          </div>
+        </div>
+
+        <p class="sec-label">Also available — your live surfaces</p>
+        <div class="rest-grid">
+          <a href="#" class="rest-card"><span class="rc-name">Connect <span>→</span></span><span class="rc-when live">graph live · ingest more</span></a>
+          <a href="#" class="rest-card"><span class="rc-name">Keys <span>→</span></span><span class="rc-when">2 providers · add more</span></a>
+          <a href="#" class="rest-card"><span class="rc-name">Routes <span>→</span></span><span class="rc-when">4 live</span></a>
+          <a href="#" class="rest-card"><span class="rc-name">Records <span>→</span></span><span class="rc-when">runs &amp; history</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,22 @@
+# Restormel site (holding page) — build Astro static, serve on Cloud Run.
+# Build: apps/site (Astro). Serve: static files on PORT for Cloud Run.
+# Build from repo root: docker build -f Dockerfile.site -t restormel-site .
+
+# --- Build stage ---
+FROM node:20-alpine AS build
+RUN corepack enable && corepack prepare pnpm@9 --activate
+WORKDIR /app
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter site build
+
+# --- Serve stage ---
+FROM node:20-alpine
+RUN npm install -g serve
+ENV PORT=8080
+WORKDIR /app
+COPY --from=build /app/apps/site/dist .
+RUN addgroup -S restormel && adduser -S restormel -G restormel && chown -R restormel:restormel /app
+USER restormel
+# Cloud Run sets PORT at runtime
+CMD ["sh", "-c", "serve -s . -l ${PORT:-8080}"]

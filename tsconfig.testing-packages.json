@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "files": [],
+  "references": [
+    { "path": "./packages/testing-core" },
+    { "path": "./packages/testing-config" },
+    { "path": "./packages/testing-keys-adapter" },
+    { "path": "./packages/testing-browser-playwright" },
+    { "path": "./packages/testing-report" },
+    { "path": "./packages/testing-runner" },
+    { "path": "./packages/testing-cli" },
+    { "path": "./packages/testing-github-action" },
+    { "path": "./packages/testing-runs-server" }
+  ]
+}

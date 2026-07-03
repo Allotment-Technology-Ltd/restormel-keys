@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "midjourney": {
+      "type": "http",
+      "url": "https://midjourney.mcp.acedata.cloud/mcp",
+      "headers": {
+        "Authorization": "Bearer ${ACEDATA_MIDJOURNEY_API_TOKEN}"
+      }
+    }
+  }
+}

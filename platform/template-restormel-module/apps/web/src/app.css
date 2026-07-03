@@ -1,0 +1,16 @@
+/**
+ * Restormel design tokens — base + semantic (--rm-*) for app shell.
+ * See https://github.com/Allotment-Technology-Ltd/restormel-keys/blob/main/docs/design-system-index.md
+ */
+@import "@restormel/keys-tokens/semantic-rm.css";
+
+:root {
+  font-family: var(--rm-font-ui, system-ui, sans-serif);
+  background: var(--rm-bg);
+  color: var(--rm-text);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}

@@ -1,0 +1,42 @@
+/**
+ * Restormel Keys — embeddable component theme (--rk-*).
+ * Aligned with docs/DESIGN-TOKENS.md (design-system-index.md).
+ * Host apps can override --rk-* for theming; defaults match design system.
+ */
+
+.rk-dark,
+:where(.rk-keys) {
+  --rk-bg: #0f1419;
+  --rk-bg-elevated: #1a1f26;
+  --rk-bg-hover: #212830;
+  --rk-border: #2e3440;
+  --rk-text: #e8edf2;
+  --rk-text-muted: #c4cfdb;
+  --rk-accent: #4c8dff;
+  --rk-accent-hover: #6ba3ff;
+  --rk-danger: #f25c54;
+  --rk-danger-hover: #f4736d;
+  --rk-success: #2ec4b6;
+  --rk-amber: #ffb84d;
+  --rk-focus-ring: 0 0 0 2px rgba(76, 141, 255, 0.5);
+  --rk-radius: 6px;
+  --rk-font: inherit;
+}
+
+.rk-light {
+  --rk-bg: #f8f9fa;
+  --rk-bg-elevated: #ffffff;
+  --rk-bg-hover: #e9ecef;
+  --rk-border: #dee2e6;
+  --rk-text: #212529;
+  --rk-text-muted: #868e96;
+  --rk-accent: #3d7ae6;
+  --rk-accent-hover: #4c8dff;
+  --rk-danger: #d94e47;
+  --rk-danger-hover: #f25c54;
+  --rk-success: #25afa3;
+  --rk-amber: #e6a63e;
+  --rk-focus-ring: 0 0 0 2px rgba(61, 122, 230, 0.5);
+  --rk-radius: 6px;
+  --rk-font: inherit;
+}

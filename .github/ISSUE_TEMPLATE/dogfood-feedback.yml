@@ -1,0 +1,77 @@
+name: Dogfood / consumer feedback
+description: Improvements found while integrating Restormel Keys from another project (open here or relay from a consumer repo).
+title: "[Dogfood] "
+labels:
+  - task
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when **dogfooding** Restormel Keys from another repo. Prefer **no secrets**: describe behaviour with masked identifiers, environment names, and links to public docs or issues only.
+
+  - type: input
+    id: consumer_repo
+    attributes:
+      label: Consumer project
+      description: Repository or product name (e.g. org/my-app or internal codename).
+      placeholder: e.g. my-org/sophia
+    validations:
+      required: true
+
+  - type: input
+    id: packages
+    attributes:
+      label: Packages / versions (if known)
+      description: e.g. @restormel/keys@0.2.x, @restormel/keys-svelte@0.1.x — omit or approximate if unsure.
+      placeholder: "@restormel/keys@0.2.13"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Primary area
+      description: Where the gap or bug shows up first.
+      options:
+        - SDK / types (@restormel/keys)
+        - Dashboard client (@restormel/keys/dashboard)
+        - Svelte UI (@restormel/keys-svelte)
+        - API / OpenAPI / resolve
+        - CLI / doctor / validate
+        - Docs / walkthrough
+        - Other / unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: What you were trying to do
+      description: Short context (stack, route, policy, embed path, etc.).
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected vs actual
+      description: What should have happened vs what happened (errors, missing types, UX gaps).
+    validations:
+      required: true
+
+  - type: input
+    id: links
+    attributes:
+      label: Links (optional)
+      description: Related issues/PRs in the consumer repo or docs (no private keys or URLs with tokens).
+      placeholder: https://github.com/org/repo/issues/123
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirmation
+      options:
+        - label: I confirm this description does not include raw API keys or other secrets.
+          required: true
