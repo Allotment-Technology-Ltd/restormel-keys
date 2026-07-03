@@ -147,7 +147,7 @@ A backup that has never been restored is a hypothesis. The company runs:
 | **SurrealDB import** (latest export into a scratch STS) | **Quarterly** | Imports cleanly; graph query returns expected rows |
 | **Full DR rehearsal** (rebuild cluster + recover all stores) | **Annually** | Aggregate RTO ≤ 2 h met or the gap is recorded + remediated |
 | **Backup freshness / dead-man's-switch** | **Continuous** (alerting) | A missed backup raises an alert per `restormel-infra-alert-response` |
-| **Restore-drill muscle** (Phase-8 procedure) | reused | per the `restormel-backup` skill |
+| **Restore-drill muscle** (Phase-8 procedure) | reused | per the `restormel-dr-recovery` skill |
 
 - Each drill produces an **evidence record** under `evidence/` (append-only), capturing date,
   scope, measured RTO/RPO, and any gap + remediation. A failed drill triggers an **incident record**
@@ -178,4 +178,4 @@ re-confirmed against measured drill data and re-approved.
 - `REC-PLAN-012` Infrastructure Split Migration · `REC-PLAN-015` Break-Glass Rollback Runbook
 - `k3s-cluster-target-design.md` §7 (backups & DR) · `full-migration-plan-k3s.md` §D/§E
 - `risk-register.yaml` (**RISK-001**) · `asset-inventory.yaml` (AST-003/009/010)
-- Operational runbooks: `deploy/k3s/runbooks/` (per-product cutover) · `restormel-backup` skill
+- Operational runbooks: `deploy/k3s/runbooks/` (per-product cutover) · `restormel-dr-recovery` skill

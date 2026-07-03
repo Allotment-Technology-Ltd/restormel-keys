@@ -410,7 +410,7 @@ the live cluster.)
 
 ## 6. Evidence / posture record template (one per drill)
 
-Filed via the **`restormel-isms-records`** skill after each drill. Class = posture (control-tier ≥ 2 →
+Filed via the **`restormel-isms-governance`** skill after each drill. Class = posture (control-tier ≥ 2 →
 requires `owner`/`approved-by`/`approved-on`/`retention`). Append-only under `evidence/`. The harness
 emits this pre-filled; the founder reviews + commits.
 

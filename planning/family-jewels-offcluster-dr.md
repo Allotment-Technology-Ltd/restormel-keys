@@ -50,7 +50,7 @@ Every build/irreversible step is still founder-gated and flagged; Stage A explic
 
 ## 0. Evidence base (live findings, 2026-06-24)
 
-Verified via `KUBECONFIG=/private/tmp/k3s-create/kubeconfig`, the repo, the `restormel-backup`
+Verified via `KUBECONFIG=/private/tmp/k3s-create/kubeconfig`, the repo, the `restormel-dr-recovery`
 skill, and Forgejo PR #283.
 
 **Cluster (K3s 3-node HA, ingress `135.181.25.76`):**
@@ -77,7 +77,7 @@ skill, and Forgejo PR #283.
 
 **Dead-man's-switch (cluster):** `monitoring/deadmans-heartbeat` CronJob `*/5` curls
 `HEARTBEAT_PING_URL` (external). Backup-specific DMS for the `.150` restic job is Uptime Kuma push
-monitor #5 + Telegram (per `restormel-backup` skill).
+monitor #5 + Telegram (per `restormel-dr-recovery` skill).
 
 **Forgejo + Infisical (still on `.150`, off-cluster by design):**
 
@@ -205,7 +205,7 @@ off-cluster storage target", but **PR #283 (now MERGE) migrates the `restic-buil
 - **CHOSEN — Hetzner S3 (fsn1)** as the single family-jewels store (already the cluster DR target),
   single-region, object-lock + versioning on.
 
-Head-to-head, for the **complete** family-jewels role (J1–J11), reusing the `restormel-backup` skill
+Head-to-head, for the **complete** family-jewels role (J1–J11), reusing the `restormel-dr-recovery` skill
 facts (shared rclone `storagebox` remote, shared restic passphrase `/root/.config/restic-password`,
 `restic-surreal` + `restic-buildops` repos, retention `--keep-daily 7 --keep-weekly 4 --keep-monthly
 6`, the Phase-8 restore drill):
@@ -490,7 +490,7 @@ still a live producer until the box itself goes.
 Confirm nothing live depends on `.150` (no DNS, no registry pull, no ESO host pointing at it — they now
 point on-cluster). Stop the `.150` restic cron last. **Then delete the `.150` box.** The fsn1 bucket(s)
 are now the **sole** store; confirm lifecycle / object-lock / versioning / retention + DMS coverage.
-Update governance via the `restormel-isms-records` skill: `governance/asset-inventory.yaml` +
+Update governance via the `restormel-isms-governance` skill: `governance/asset-inventory.yaml` +
 `suppliers.yaml` (remove `.150` and BX11; confirm Hetzner Object Storage `fsn1` as the DR sub-processor)
 and `risk-register.yaml` (close the standby-compute risk; record the accepted "single-region store +
 on-cluster bootstrap" residual risk, mitigated by object-lock + the automated/quarterly drills).
@@ -563,6 +563,6 @@ All §0 findings verified live on 2026-06-24 (`KUBECONFIG=/private/tmp/k3s-creat
 clusters + ObjectStore `backups-fsn1`, `data/surreal-backup` CronJob, Loki S3 config, 49 local-only
 `ETCDSnapshotFile` CRs, 5 Infisical `ClusterSecretStore`s, live image refs to
 `git.allotmentology.tech`. Repo: `scripts/backup/buildops-backup.sh` (Forgejo volume + Infisical
-coverage), `restormel-backup` skill, Forgejo PR #283 (BX11→fsn1 S3 restic migration, open). Memory:
+coverage), `restormel-dr-recovery` skill, Forgejo PR #283 (BX11→fsn1 S3 restic migration, open). Memory:
 `infra-direction-2026-06-23`, `k3s-migration-program`, `database-strategy`, `coolify-migration`,
 `prod-box-disk-guard`.

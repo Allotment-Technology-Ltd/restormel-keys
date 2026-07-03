@@ -82,7 +82,7 @@ Sequencing (full-migration-plan §C, §D):
 ## Backups & RPO
 
 `surreal export` → restic → **BX11 Storage Box** (`50-backup-cronjob.yaml`), reusing the
-existing restic/rclone topology (`restormel-backup` skill). Restore = `restic restore` the
+existing restic/rclone topology (`restormel-dr-recovery` skill). Restore = `restic restore` the
 latest `dump-*.surql`, then `surreal import` into a fresh StatefulSet (design §7).
 
 > **Founder flag — RPO:** this CronJob runs **hourly** (per the task's RPO decision), which is

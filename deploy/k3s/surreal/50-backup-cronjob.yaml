@@ -4,7 +4,7 @@
 # Surreal RPO anchor of <=24h (k3s-cluster-target-design.md §7) — flagged for the founder in
 # the README. Logical exports are cheap (581MB corpus); restic dedupes, so hourly is affordable.
 #
-# Reuses the existing restic+rclone->BX11 muscle (restormel-backup skill): the `restic-buildops`
+# Reuses the existing restic+rclone->BX11 muscle (restormel-dr-recovery skill): the `restic-buildops`
 # (or a new `restic-surreal-k3s`) repo on the Storage Box, same passphrase convention. The
 # restic password, repository path, and rclone.conf all arrive via ESO (10-externalsecret.yaml),
 # never in git.

@@ -245,7 +245,7 @@ argocd app sync restormel-dashboard-prod && argocd app sync restormel-worker-pro
   apps were down on the source, there should be **no divergent writes** to reconcile.
 - Log the rollback, the trigger, and the observed state to `migration-log.md`; **file an
   incident record (REC-TPL-004)** if the rollback was triggered by a failure (mandatory —
-  CLAUDE.md / restormel-isms-records).
+  CLAUDE.md / restormel-isms-governance).
 
 ---
 

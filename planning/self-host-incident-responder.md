@@ -42,7 +42,7 @@ the Claude **model API** (inference); the repo, host, secrets, CI, and git stay 
         ▼
  Responder run = Claude Agent SDK container
    • repo cloned from FORGEJO (scoped token, private net 172.16.x)
-   • repo CLAUDE.md + skills: restormel-infra-alert-response, restormel-isms-records
+   • repo CLAUDE.md + skills: restormel-infra-alert-response, restormel-isms-governance
    • scoped tool surface (below); ANTHROPIC_API_KEY + scoped Forgejo token from the box secret store
         │
         ├─► Forgejo: push `responder/<incident>` branch + open a DRAFT PR (proposed fix)
@@ -91,7 +91,7 @@ the Claude **model API** (inference); the repo, host, secrets, CI, and git stay 
 ### Phase 0 — Prereqs & SDK choice
 Confirm G1–G5. Pick the Agent SDK runtime (TS or Python). **Verify against the Claude Agent SDK docs**
 that it can load the repo's `CLAUDE.md` + `.claude/skills/*` as the agent's instructions (so the
-responder reuses `restormel-infra-alert-response` + `restormel-isms-records` verbatim). *Verify:* a
+responder reuses `restormel-infra-alert-response` + `restormel-isms-governance` verbatim). *Verify:* a
 hello-world SDK agent runs in a container with the model key. *Rollback:* n/a.
 
 ### Phase 1 — Responder harness (container)
@@ -133,7 +133,7 @@ flow (review the responder's PR + record → land on Forgejo). Close out when th
 
 ## Relation
 Runs on the build/ops box per **REC-PLAN-012**; automates the invocation of the
-`restormel-infra-alert-response` + `restormel-isms-records` skills; automates filing records like
+`restormel-infra-alert-response` + `restormel-isms-governance` skills; automates filing records like
 **REC-INC-001**. Supersedes the GitHub-bound Cloud routine as the durable approach; the Cloud
 mirror-read is the interim.
 

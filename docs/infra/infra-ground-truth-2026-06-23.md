@@ -156,4 +156,4 @@ Node uptime ~67.6 h at query time (short-window counters). `metrics-server` **NO
 | F13 | **No data migrated yet** — CNPG app DBs are 7–19 MB empty schemas; backups protect near-empty DBs; the real DR test comes at cutover. | **Low (watch)** | Track data-cutover readiness; re-validate backup/restore once production data lands |
 | F14 | **Network doc drift** — private net is `/16` (API) not `/24` (skill). | **Low** | Correct private-network range in infra-access skill (/16 parent, /24 subnet) |
 
-> **Phase-2 note:** per CLAUDE.md the F3 inventory gap is also an ISMS record-keeping obligation (REC-GOV-006 / CIS Control 1) — route remediation through `restormel-isms-records` when Phase-2 filing begins. This document names findings only; it does not propose Phase-2 fixes beyond the draft PBI titles above.
+> **Phase-2 note:** per CLAUDE.md the F3 inventory gap is also an ISMS record-keeping obligation (REC-GOV-006 / CIS Control 1) — route remediation through `restormel-isms-governance` when Phase-2 filing begins. This document names findings only; it does not propose Phase-2 fixes beyond the draft PBI titles above.

@@ -316,7 +316,7 @@ single-node topology.** Recommended split: default = shared logical (long tail, 
 granularity — **the sweet spot the design ships**; dedicated cluster only as a paid premium, gated on the
 capacity work. **FLAG:** marketing "per-workspace database" as *physical* while delivering *shared-cluster
 separate-database* is a truth-in-advertising + DPIA concern — state the actual isolation level per tier
-(`restormel-high-risk-security`, `restormel-isms-records`).
+(`restormel-high-risk-security`, `restormel-isms-governance`).
 
 ### C.5 Cost-recovery pricing — sovereign (default) tier
 Recommended: tiered free + flat-paid + per-GB overage above a generous quota.
@@ -347,7 +347,7 @@ Credit comfortably funds **hundreds of mostly-idle trial workspaces** (the funne
 of heavy always-on workspaces (28 would exhaust it). Policy: free while credit lasts + aggressive
 autosuspend; per-workspace credit cap (e.g. USD 5/mo) → prompt upgrade-to-sovereign or BYO-key; burn dashboard
 + 50/80% alerts; at exhaustion → BYO-key (zero cost to us) or migrate to Sovereign Standard £5; label
-non-sovereign at provision time (DPIA + sub-processor — `restormel-isms-records`).
+non-sovereign at provision time (DPIA + sub-processor — `restormel-isms-governance`).
 
 ### C.7 Headline pricing recommendation
 - **Sovereign (default)** = cost-recovery with margin: **£5–6/wksp/mo flat + £0.50/GB over 10 GB**, delivered

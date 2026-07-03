@@ -143,17 +143,17 @@ Alerts with a bare metric and no remediation context are configuration failures 
 
 ## Closing step — file the incident record
 
-**After remediation, file the incident record — invoke the `restormel-isms-records` skill.** Every
+**After remediation, file the incident record — invoke the `restormel-isms-governance` skill.** Every
 remediated incident/outage/alert gets a Tier-3 incident record (REC-TPL-004 → `evidence/incidents/`)
 while the facts are fresh. This is mandatory, not optional — a handled incident with no record filed is
-an ISMS failure. The `restormel-isms-records` skill has the template, directory, frontmatter, and PR
+an ISMS failure. The `restormel-isms-governance` skill has the template, directory, frontmatter, and PR
 filing process.
 
 ---
 
 ## Related
 
-- `restormel-isms-records` skill — file the incident record after remediation (mandatory closing step).
+- `restormel-isms-governance` skill — file the incident record after remediation (mandatory closing step).
 - [docs/runbooks/infra-alert-response.md](../../../docs/runbooks/infra-alert-response.md) — full runbook with all thresholds and TODO placeholders for live configuration
 - [docs/infra/security-monitoring-roadmap.md](../../../docs/infra/security-monitoring-roadmap.md) — Workstreams B2–B6 detail and phased rollout
 - `restormel-vuln-triage` skill — if the alert is triggered by a scanner finding rather than a host metric

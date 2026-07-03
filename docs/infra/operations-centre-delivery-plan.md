@@ -423,7 +423,7 @@ gated by `restormel-high-risk-security` (touches `hooks.server.ts`), not folded 
 - Sentry/PostHog: full grep of both repos; `apps/dashboard/src/hooks.{client,server}.ts`,
   `docs/infra/security-monitoring-roadmap.md` (B1), `governance/soa.md`.
 - Backup: `scripts/backup/buildops-backup.sh`, `scripts/backup/buildops-backup.cron`,
-  `.claude/skills/restormel-backup/SKILL.md`, `governance/asset-inventory.yaml` (AST-012),
+  `.claude/skills/restormel-dr-recovery/SKILL.md`, `governance/asset-inventory.yaml` (AST-012),
   `planning/infra-migration-rollback-runbook.md`.
 - Integration: `apps/dashboard/src/lib/server/{posthog-capture.ts,db-adapter.ts}`,
   `apps/dashboard/src/lib/debug/server-perf.ts`, `packages/testing-runs-server/src/logger.ts`,

@@ -240,6 +240,6 @@ Ingress + cert are recreated; `argocd.restormel.dev` resolves again.
 ## ISMS
 
 File a change record on each founder-present apply (REC-TPL per
-`restormel-isms-records`); the decommission removes a public un-gated entry point
+`restormel-isms-governance`); the decommission removes a public un-gated entry point
 to infra internals (security posture improvement — note in the access-control
 posture). No incident unless an apply causes an outage (then REC-TPL-004).

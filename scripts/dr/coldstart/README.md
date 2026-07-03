@@ -161,7 +161,7 @@ from escrow are a **usable recovery pair**. A mismatch is a CRITICAL **STOP** on
 ## After the run — file the evidence
 
 The harness emits a pre-filled evidence record (`class: evidence`, tier-3, id placeholder `REC-EVID-XXX`)
-in the temp dir; its path is printed at the end. **File it via the `restormel-isms-records` skill**
+in the temp dir; its path is printed at the end. **File it via the `restormel-isms-governance` skill**
 (append-only under `evidence/posture/`): pick the next free `REC-EVID-NNN`, then run
 `node scripts/records/register.mjs` to regenerate the register. The recorded **RTO becomes the documented
 DR RTO**. (The WS6 `DESIGN.md` template predates the current schema and says `class: posture` / `REC-POS-DR`;

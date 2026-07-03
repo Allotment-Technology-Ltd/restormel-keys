@@ -117,7 +117,7 @@ cleanup(){
   write_evidence_record         # always emit the posture record (PASS or FAIL)
   log "Evidence written: ${EVID_OUT}"
   log "DRILL ${DRILL_RESULT}. Total RTO: ${TOTAL_RTO:-n/a}s"
-  log "File the evidence record via the restormel-isms-records skill (append-only under evidence/)."
+  log "File the evidence record via the restormel-isms-governance skill (append-only under evidence/)."
 }
 trap cleanup EXIT
 

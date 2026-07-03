@@ -651,6 +651,6 @@ ${etcd_note:-- none}
       → founder may proceed to Stage D (delete .150 standbys → cancel BX11) → Stage E (decommission .150).
 - [ ] Any FAIL / gitops-fallback-only / PASS-PARTIAL ⇒ **STOP** — Stage D/E blocked; remediate and re-drill.
 
-File via the restormel-isms-records skill (append-only under evidence/posture/).
+File via the restormel-isms-governance skill (append-only under evidence/posture/).
 EOF
 }

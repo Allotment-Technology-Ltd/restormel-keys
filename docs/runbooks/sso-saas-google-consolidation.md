@@ -65,5 +65,5 @@ review-interval: P12M
 ## After the changes (ISMS)
 
 - Update the access-control posture / sub-processor notes if any vendor's auth
-  method changed materially (`restormel-isms-records`).
+  method changed materially (`restormel-isms-governance`).
 - This is a **decision + org-config** task, not infra — no PR, no deploy.

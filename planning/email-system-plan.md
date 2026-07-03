@@ -223,4 +223,4 @@ no full DPIA required**; revisit if we add behavioural profiling/segmentation or
 - Approval handler: `apps/dashboard/src/routes/keys/admin/api/founders/[email]/+server.ts`,
   `apps/dashboard/src/lib/server/founders-access.ts`
 - Tokens: `packages/keys-tokens/src/brutalist-rm.css`
-- Design skill: `restormel-neu-brutalist-ui`; governance routing: `restormel-isms-records`
+- Design skill: `restormel-neu-brutalist-ui`; governance routing: `restormel-isms-governance`
