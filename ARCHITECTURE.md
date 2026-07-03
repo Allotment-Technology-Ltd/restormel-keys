@@ -1,8 +1,10 @@
 # Architecture
 
-High-level architecture summary for Restormel Keys — a headless BYOK (Bring Your Own Key)
-and provider-routing library for AI apps. UI, CLI, and MCP surfaces are thin wrappers around
-one control plane; there's no hidden lock-in to a specific framework or database.
+High-level architecture summary for **Restormel Keys** — the open **BYOK (Bring Your Own Key)
+and provider-routing** layer. Keys is the *enabler*; the product is Restormel's verified-context
+knowledge graph (**Connect**), a separate, not-yet-open-sourced system. This doc covers the open
+Keys layer that lives in this repo. UI, CLI, and MCP surfaces are thin wrappers around one
+control plane; there's no hidden lock-in to a specific framework or database.
 
 **Product shape:** REST API (Keys REST, `/keys/v1/*`) is the primary integration surface.
 UI: `@restormel/keys-elements` (Web Components). CLI: `@restormel/keys-cli`, `@restormel/doctor`.

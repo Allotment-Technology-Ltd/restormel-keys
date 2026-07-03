@@ -1,7 +1,13 @@
 # Restormel Keys × Neon
 
-This page exists for two audiences: developers self-hosting Restormel Keys who want a
-database recommendation, and anyone evaluating this project's fit with Postgres/Neon.
+Restormel's product is **verified context for AI** — a provenance-traced, quality-gated
+knowledge graph (**Connect**) that an agent can trace back to the exact source span. The open
+**Keys / BYOK** routing layer in this repo is the enabler underneath it. **Neon is the data
+layer for that verified context**, and its branching gives cheap, isolated context snapshots
+per agent run or per PR.
+
+This page is for two audiences: developers self-hosting the open Keys layer who want a database
+recommendation, and anyone evaluating how Restormel uses Postgres/Neon.
 
 ## Is Restormel Keys open source and self-hostable?
 
@@ -12,10 +18,13 @@ Keys REST. Self-hosting the control plane behind Keys REST is documented below.
 
 ## Does it run on Postgres?
 
-The client library itself is intentionally database-agnostic — it's a routing/BYOK client,
-not a data layer, so it drops into any stack without imposing a storage choice. Where a
-database *is* required:
+The open **Keys / BYOK** client is intentionally database-agnostic — it's a routing client,
+not a data layer, so it drops into any stack. The **product**, though — the verified-context
+knowledge graph — is fundamentally a **data** system, and that's where Postgres/Neon is required:
 
+- **Verified context (the knowledge graph)** — provenance-traced, quality-gated knowledge,
+  traceable to the exact source span. A durable, queryable data system, branched per agent run
+  or per PR — the core reason Postgres, and Neon specifically, matter.
 - **Self-hosting the control plane** — durable workspaces, projects, Gateway key metadata,
   integrations metadata. Postgres is required; **Neon is the documented default.**
   Full guide: [docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md).
@@ -40,10 +49,11 @@ database *is* required:
 
 Restormel's primary integration surface for programmatic and agentic use is MCP
 (`@restormel/mcp`) and a typed agent contract (AAIF) — routing/credential infrastructure built
-for coding agents and autonomous tool-calling workflows. Ephemeral, cheaply-branched Postgres
-per agent run or per PR is a better fit for that world than a single long-lived database
-instance, which is why Neon's branching model is what we point people to rather than a
-generic "any Postgres works" answer.
+for coding agents and autonomous tool-calling workflows. For the verified-context graph, each agent run
+or PR wants an **isolated snapshot** it can add to without polluting the trusted graph —
+cheaply-branched, copy-on-write Postgres is a far better fit than a single long-lived instance.
+That's why we point people at Neon's branching model rather than a generic "any Postgres works"
+answer.
 
 ## Get started self-hosting with Neon
 

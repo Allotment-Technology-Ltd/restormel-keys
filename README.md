@@ -1,13 +1,14 @@
 # Restormel
 
-**A headless BYOK (Bring Your Own Key) and provider-routing library for AI apps** — route
-model requests across providers with policy, health, and cost awareness, behind one REST API
-(Keys REST). UI, CLI, and MCP surfaces are thin wrappers around the same control plane; there's
-no lock-in to a specific framework or database.
+**Verified context for AI products** — a provenance-traced, quality-gated knowledge graph an
+agent (or its auditor) can trace back to the exact source span. That verified-context product
+(**Connect**) is the point; the open **Keys / BYOK** model-routing layer in this repo is the
+enabler underneath it — it routes model requests across providers with policy, health, and cost
+awareness behind one REST API (Keys REST).
 
-This monorepo (`restormel-keys`) holds the public `@restormel/*` packages and runnable examples.
-The hosted dashboard/control plane is a separate, not-yet-open-sourced product — see
-[STATUS.md](STATUS.md).
+This monorepo (`restormel-keys`) holds the **open** `@restormel/*` packages — the Keys / BYOK
+foundation plus runnable examples. **Connect** (the knowledge-graph engine) and the hosted
+control plane are a separate, commercial, not-yet-open-sourced product — see [STATUS.md](STATUS.md).
 
 **Start here:** [Positioning](docs/product/positioning.md) · [STATUS](STATUS.md) · [ROADMAP](ROADMAP.md) · [ARCHITECTURE](ARCHITECTURE.md) · [docs index](docs/README.md)
 
