@@ -1,15 +1,17 @@
 # Restormel
 
-**The verified-context layer for AI products** — provenance-traced, quality-gated knowledge
-an agent (or its auditor) can trace back to the exact source span. One workspace to **route**
-model requests (Keys) and to **ingest, retrieve, and verify** knowledge (Connect).
+**A headless BYOK (Bring Your Own Key) and provider-routing library for AI apps** — route
+model requests across providers with policy, health, and cost awareness, behind one REST API
+(Keys REST). UI, CLI, and MCP surfaces are thin wrappers around the same control plane; there's
+no lock-in to a specific framework or database.
 
-This monorepo (`restormel-keys`) holds the whole suite: the `apps/dashboard` SvelteKit app
-(marketing site, docs, dashboard, Cloud API surfaces) and the `@restormel/*` packages.
+This monorepo (`restormel-keys`) holds the public `@restormel/*` packages and runnable examples.
+The hosted dashboard/control plane is a separate, not-yet-open-sourced product — see
+[STATUS.md](STATUS.md).
 
 **Start here:** [Positioning](docs/product/positioning.md) · [STATUS](STATUS.md) · [ROADMAP](ROADMAP.md) · [ARCHITECTURE](ARCHITECTURE.md) · [docs index](docs/README.md)
 
-**Phase:** 01 (implementation). **Stack:** UK/EU self-host on Coolify · Forgejo-native CI · self-hosted Postgres + BYO SurrealDB · PostHog EU · Zuplo gateway · Paddle billing.
+**Self-hosting:** Postgres is the one required dependency for the control plane — **Neon is the documented, recommended provider** (see [NEON.md](NEON.md)). The client packages are database-agnostic.
 
 **Contributing:** [CONTRIBUTING](CONTRIBUTING.md) · **License:** MIT — [LICENSE](LICENSE)
 
@@ -31,7 +33,7 @@ This monorepo (`restormel-keys`) holds the whole suite: the `apps/dashboard` Sve
 | [@restormel/keys-svelte](packages/svelte) | **Deprecated** | Use `@restormel/keys-elements` |
 | [@restormel/keys-react](packages/react) | **Deprecated** | Use `@restormel/keys-elements` |
 
-**Restormel Testing** (non-MVP by default — enable `restormel-module-testing` for public docs) — see [docs/architecture/restormel-monorepo-packages.md](docs/architecture/restormel-monorepo-packages.md):
+**Restormel Testing** (optional module) — the agent-driven acceptance-testing runner and its packages:
 
 | Package | Description |
 |---------|-------------|
@@ -44,7 +46,7 @@ This monorepo (`restormel-keys`) holds the whole suite: the `apps/dashboard` Sve
 
 *(Vue wrapper is not published.)*
 
-**Monorepo / packages / publish tags:** [docs/architecture/restormel-monorepo-packages.md](docs/architecture/restormel-monorepo-packages.md). Hosting & CI: [docs/infra/](docs/infra/) (Coolify · Forgejo).
+**Package reference & publish tags:** [docs/reference/npm-packages.md](docs/reference/npm-packages.md).
 
 ---
 
@@ -85,13 +87,23 @@ If `keys-cli` is unavailable, create `restormel.config.json` manually — see [d
 - **`@restormel/validate`**: credential health gates (great for CI; stable exit codes).\n
 - **`@restormel/keys-cli`**: onboarding and wrappers (`keys init/add/list/estimate`, plus `keys doctor/validate` delegating to the wedge CLIs).
 
-See the public docs page: `/keys/docs/reference/cli` in the dashboard app.
+See [docs/reference/npm-packages.md](docs/reference/npm-packages.md) for the full CLI reference.
 
 ---
 
-## Publish (Phase 2)
+## Database & Neon
 
-CI builds **`@restormel/dispatch`** and **`@restormel/mcp`** on every main/PR run (with keys + keys-svelte) via [.github/workflows/ci.yml](.github/workflows/ci.yml). Local full quality: `pnpm run quality` (includes AAIF + MCP build).
+Client packages are database-agnostic. If you self-host the control plane, **Neon is the
+documented, recommended Postgres provider** — see [NEON.md](NEON.md) for why, and
+[docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md)
+for setup. Try [`examples/neon-testing-runs-quickstart`](examples/neon-testing-runs-quickstart)
+for a 5-minute, runnable integration.
+
+---
+
+## Publishing
+
+Local full quality gate: `pnpm run quality` (builds AAIF + MCP and runs the package checks).
 
 Publishing is **tag-driven only**. The [Publish workflow](.github/workflows/publish.yml) runs only when a git tag matching **`keys-v*`** is pushed (for example `keys-v0.2.9`).
 

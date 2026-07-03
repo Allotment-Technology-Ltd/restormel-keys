@@ -1,89 +1,41 @@
 # Status
 
-Current state and next actions. Single source for "where we are"; keep aligned with
-[ROADMAP.md](ROADMAP.md). Positioning lives in [docs/product/positioning.md](docs/product/positioning.md).
+Where this project is today. Kept in sync with [ROADMAP.md](ROADMAP.md).
 
-**Phase:** 01 — Implementation.
-**Last reviewed:** 2026-06-13.
+**Stage:** Active development, pre-1.0. Packages are versioned and released independently —
+see the status column in [README.md](README.md#packages-public-integrators) for what's stable
+vs. deprecated.
 
-## What Restormel is now
+## What's shipped
 
-The **verified-context layer for AI products**: provenance-traced, quality-gated knowledge an
-agent (or its auditor) can trace to the exact source span. Two MVP products in one signed-in
-workspace at restormel.dev — **Keys** (Route: the control plane, BYOK + routing) and
-**Connect** (Ingest · Retrieve · Verify). Full positioning + market in
-[docs/product/positioning.md](docs/product/positioning.md).
+- **Keys REST** — the control-plane API (`/keys/v1/*`) for BYOK credential storage, routing,
+  and provider selection. The recommended integration path for new apps.
+- **`@restormel/keys-elements`** — Web Components UI (key manager, model selector, cost
+  estimator) for apps that want a ready-made front end.
+- **`@restormel/keys-cli`, `@restormel/doctor`, `@restormel/validate`** — setup, health-check,
+  and CI-friendly credential validation tooling.
+- **`@restormel/mcp`** — MCP tools + stdio server, for agents and IDEs that need to resolve
+  routing/BYOK decisions as part of a tool call.
+- **`@restormel/aaif`** — a typed request/response contract + runtime helper for hosts that
+  want to mirror routing/resolve decisions without going through MCP.
+- **Deprecated, maintenance-only until 2026-12-01:** the in-process `@restormel/keys` npm
+  core, `@restormel/keys-svelte`, `@restormel/keys-react` — replaced by Keys REST +
+  `@restormel/keys-elements`.
 
-## MVP surface (module flags)
+## Self-hosting
 
-Production defaults show **Keys + Connect** only. `MVP_MODULE_DEFAULTS`
-(`apps/dashboard/src/lib/module-flags-types.ts`): `connect` + `keys` on; `testing`, `graph`,
-`gatewayProviders`, `guardrails`, `environments`, `modelPools`, `hostedRuntime`,
-`catalogExternalSignals` off. Gated via PostHog `restormel-module-*` (EU project) or
-`RESTORMEL_MODULE_FLAGS`. Post-MVP re-enable = flip flags; no code deletion. Canonical:
-[docs/guides/keys-mvp-mode.md](docs/guides/keys-mvp-mode.md),
-[docs/guides/keys-mvp-module-flags.md](docs/guides/keys-mvp-module-flags.md).
+Neon Postgres is the documented default database for self-hosted deployments that need the
+full control plane. See [NEON.md](NEON.md) and
+[docs/guides/database-neon-for-self-hosters.md](docs/guides/database-neon-for-self-hosters.md).
+Client packages (`keys-cli`, `keys-elements`, `mcp`, etc.) don't require a database themselves
+— they're transport clients against Keys REST.
 
-## Infrastructure — Coolify / Forgejo-native (cutover 2026-06-13)
+## Testing
 
-Production runs **UK/EU self-host on Coolify**; CI/CD is **Forgejo-native** (migrated off
-GitHub Actions + Vercel). Deploy from the single `apps/dashboard` SvelteKit app. Runbooks:
-[docs/infra/coolify-cutover-runbook.md](docs/infra/coolify-cutover-runbook.md),
-[docs/infra/coolify-env-inventory.md](docs/infra/coolify-env-inventory.md),
-[docs/infra/suite-server-sizing.md](docs/infra/suite-server-sizing.md),
-[docs/infra/off-github-runbook.md](docs/infra/off-github-runbook.md). Data: **self-hosted Postgres**
-(spine) + **BYO SurrealDB** (graph). Analytics: **PostHog EU**. Cloud API gateway: **Zuplo**.
-Billing: **Paddle**.
-
-> `.forgejo/workflows` overrides `.github` on the Forgejo mirror; push the `.forgejo` variant
-> with any CI change. Some `.github` workflows (e.g. tag-driven npm publish) still run on the
-> GitHub mirror — confirm per workflow rather than assuming.
-
-## Verified Context pivot — largely shipped
-
-The verification spine is live and proven end-to-end: evidence-bound verification (Layer 1
-binding + Layer 2 span-scoped cross-model entailment with abstention), trust scorecard,
-provenance traces, published quality bar (≥90% supported / ≤2% unsupported), and a weekly
-CI efficacy gate. All ten rows of the
-[claims ledger](docs/product/verified-context-claims-ledger.md) are `proven` (2026-06-13). Delivery +
-the claims-integrity rule: [docs/product/verified-context-pivot-roadmap.md](docs/product/verified-context-pivot-roadmap.md).
-Marketing reposition (Stage 1.3) landed on `/`, `/connect`, `/keys/use-cases`; remaining
-public surfaces (`/keys` landing, docs IA, API-doc IA, nav) are the subject of the
-public-pages revamp programme.
-
-## Product & platform
-
-- **Single app:** all surfaces in `apps/dashboard` (SvelteKit 2 + Svelte 5) — `/keys` landing,
-  `/keys/pricing`, suite docs at `/docs` + product docs at `/keys/docs`, dashboard at
-  `/keys/dashboard`. `apps/site` is archived.
-- **Auth (v1):** Gateway Key (`rk_…`) for programmatic access; Better Auth (self-hosted)
-  session for dashboard admin/config.
-- **npm surface:** Keys REST + `@restormel/keys-elements` (Web Components) recommended;
-  `@restormel/keys`, `-svelte`, `-react` deprecated (maintenance until 2026-12-01).
-  [docs/reference/npm-packages.md](docs/reference/npm-packages.md) is the availability truth source.
-- **Connect (MVP):** operator pipeline (BYO graph, domain packs, ingest worker, validation
-  review, re-validation) + REST v1 (`/connect/v1/verify|retrieve|ingest/jobs`) + MCP
-  `connect.*`. Active gaps: non-degraded Retrieve on populated BYO graphs and Ingest GA
-  hardening — see [ROADMAP.md](ROADMAP.md).
-- **Dashboard:** "world-class" delivery roadmap completed 2026-06-12 (run console, logs,
-  Prove-it gesture, brutalist sweep, copy/a11y). Service operators via `/keys/admin`
-  ([docs/runbooks/service-admin-operators.md](docs/runbooks/service-admin-operators.md)).
-- **Integrations:** `/integrations` marketing + dashboard dev-tools; `@restormel/aaif`,
-  `@restormel/mcp` (suite read tools + `POST /api/suite/invoke`). Full spec:
-  [docs/integrations/INTEGRATIONS-FULL-SPEC.md](docs/integrations/INTEGRATIONS-FULL-SPEC.md).
-
-## Next actions
-
-1. **Public-pages + docs revamp** (in planning): reposition `/keys` as the control plane for
-   Verified Context; consolidate docs IA; restructure API-doc IA; drop the "Developers" nav
-   dropdown (keep one footer GitHub link); close the public-page PostHog analytics gap; SEO
-   pass. Decisions captured 2026-06-13.
-2. **Connect GA hardening:** reliable Retrieve on populated BYO graphs; Ingest validation at
-   scale + observability; SOPHIA hosted cutover.
-3. **Remaining pivot stages:** 3.2b (BYO Surreal incremental re-ingest, opt-in) and 3.4
-   (agent memory write API) — see the pivot roadmap.
+`@restormel/testing-*` (deterministic suites, CLI, GitHub Action) is available but not part of
+the primary integration path documented in the README — see
+[docs/restormel-monorepo-packages.md](docs/restormel-monorepo-packages.md).
 
 ---
 
-*Update when state or next actions change. Use the roadmap-status-sync skill to keep STATUS
-and ROADMAP aligned.*
+*Update when the package table or self-hosting story changes.*
