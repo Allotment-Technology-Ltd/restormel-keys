@@ -1,0 +1,74 @@
+# Neon preview branches for pull requests.
+#
+# On each PR this creates an isolated Neon branch, verifies connectivity, and applies the
+# Runs API schema (packages/testing-runs-server/schema/027_*.sql) against it — so schema
+# changes are exercised on a real, disposable Postgres before merge. The branch is deleted
+# when the PR closes.
+#
+# It is a no-op unless two repository secrets are configured, so it is safe on forks:
+#   NEON_API_KEY     — a Neon API key (Neon Console → Account settings → API keys)
+#   NEON_PROJECT_ID  — the target Neon project id (Project settings → General)
+# Background: NEON.md and docs/guides/database-neon-for-self-hosters.md.
+name: neon-preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+concurrency:
+  group: neon-preview-${{ github.event.number }}
+  cancel-in-progress: false
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          if [ -n "$NEON_API_KEY" ] && [ -n "$NEON_PROJECT_ID" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Neon preview skipped — set NEON_API_KEY and NEON_PROJECT_ID repo secrets to enable."
+          fi
+
+  preview:
+    needs: config
+    if: ${{ needs.config.outputs.enabled == 'true' && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create (or reuse) a Neon branch for this PR
+        id: branch
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_name: preview/pr-${{ github.event.number }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Verify connectivity and apply the Runs schema (idempotent)
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url }}
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'select version();'
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -f packages/testing-runs-server/schema/027_restormel_testing_run_jobs.sql
+          echo "::notice::Neon preview branch ready: preview/pr-${{ github.event.number }}"
+
+  cleanup:
+    needs: config
+    if: ${{ needs.config.outputs.enabled == 'true' && github.event.action == 'closed' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete this PR's Neon branch
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch: preview/pr-${{ github.event.number }}
+          api_key: ${{ secrets.NEON_API_KEY }}

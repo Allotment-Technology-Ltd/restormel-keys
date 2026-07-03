@@ -1,0 +1,15 @@
+{
+  "name": "neon-testing-runs-quickstart",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Run @restormel/testing-runs-server with a Neon Postgres durable run store.",
+  "scripts": {
+    "start": "restormel-testing-runs-server --workspace=.",
+    "migrate": "psql \"$RESTORMEL_RUNS_DATABASE_URL\" -v ON_ERROR_STOP=1 -f node_modules/@restormel/testing-runs-server/schema/027_restormel_testing_run_jobs.sql",
+    "smoke": "./smoke.sh"
+  },
+  "dependencies": {
+    "@restormel/testing-runs-server": "^0.1.8"
+  }
+}
